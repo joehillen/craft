@@ -1,0 +1,12 @@
+* A user should never need to call out to another language,
+  but they should also not be prevented from doing so.
+
+* A configuration management system should scale, both up and down.
+
+  The user should be able to use as many or as few features as they need.
+
+* Idempotence is essential.
+
+* Semantic values are evil.
+
+* Type safety is not optional.

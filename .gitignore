@@ -1,0 +1,6 @@
+TAGS
+*~
+*.o
+dist/
+bin/
+.stack-work/

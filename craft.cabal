@@ -1,0 +1,93 @@
+name:                craft
+
+-- The package version.  See the Haskell package versioning policy (PVP)
+-- for standards guiding when and how versions should be incremented.
+-- http://www.haskell.org/haskellwiki/Package_versioning_policy
+-- PVP summary:      +-+------- breaking API changes
+--                   | | +----- non-breaking API additions
+--                   | | | +--- code changes with no API change
+version:             0.1.0.0
+-- synopsis:
+-- description:
+license:             Apache-2.0
+-- license-file:        LICENSE
+author:              Joe Hillenbrand
+maintainer:          joehillen@gmail.com
+-- copyright:
+-- category:
+build-type:          Simple
+-- Extra files to be distributed with the package, such as examples or a
+-- README.
+-- extra-source-files:
+cabal-version:       >=1.10
+
+library
+  hs-source-dirs:      src
+                     , src/Craft
+  exposed-modules:     Craft
+                     , Craft.Actions
+                     , Craft.Apt
+                     , Craft.Daemontools
+                     , Craft.Directory
+                     , Craft.Exec
+                     , Craft.Facter
+                     , Craft.File
+                     , Craft.File.Link
+                     , Craft.File.Mode
+                     , Craft.Git
+                     , Craft.Group
+                     , Craft.Helpers
+                     , Craft.Internal.Helpers
+                     , Craft.Internal.FileDirectory
+                     , Craft.Internal.UserGroup
+                     , Craft.Nginx
+                     , Craft.Pip
+                     , Craft.Options
+                     , Craft.S3File
+                     , Craft.Ssh
+                     , Craft.Ssh.Config
+                     , Craft.Ssh.PrivateKey
+                     , Craft.SysVinit
+                     , Craft.Types
+                     , Craft.Upstart
+                     , Craft.User
+                     , Craft.Watch
+
+  default-language:    Haskell2010
+  default-extensions:  RankNTypes
+                     , OverloadedStrings
+                     , RecordWildCards
+                     , LambdaCase
+                     , QuasiQuotes
+                     , BangPatterns
+
+  build-depends:       base >= 4.8 && < 4.9
+                     , ansi-terminal
+                     , containers
+                     , directory
+                     , filepath
+                     , process
+                     , process-extras
+                     , transformers
+                     , unix
+                     , string-qq
+                     , parsec
+                     , async
+                     , mtl
+                     , optparse-applicative
+                     , template-haskell
+                     , wreq
+                     , lens
+                     , bytestring
+                     , extra
+                     , simplessh
+                     , libssh2
+
+test-suite craft-test
+  type:                exitcode-stdio-1.0
+  hs-source-dirs:      test
+  main-is:             Spec.hs
+  build-depends:       base
+                     , craft
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N
+  default-language:    Haskell2010

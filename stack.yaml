@@ -1,0 +1,8 @@
+flags: {}
+packages:
+- '.'
+extra-deps:
+- string-qq-0.0.2
+- simplessh-0.2.0.5
+- libssh2-0.2.0.3
+resolver: nightly-2015-06-25
