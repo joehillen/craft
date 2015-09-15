@@ -6,10 +6,19 @@ Craft only works with GHC 7.10.
 
 # Getting Started
 
+Get [stack](https://github.com/commercialhaskell/stack#how-to-install)
+
 ```
+stack init # only need to run once
 stack build
 ```
 
+## Try me!
+
+```
+make
+vagrant up --provision
+```
 
 # TODO
 
