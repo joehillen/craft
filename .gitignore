@@ -1,6 +1,8 @@
 TAGS
 *~
 *.o
+*.hi
 dist/
 bin/
 .stack-work/
+main
