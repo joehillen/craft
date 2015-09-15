@@ -112,6 +112,7 @@ aptPackages =
     , "netemul"
     , "ntp"
     , "pv"
+    , "python-pip"
     , "sysstat"
     , "tmux"
     , "traceroute"
