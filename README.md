@@ -122,3 +122,7 @@ Use `parseExec`.
  * docker
  * guix
  * nix
+
+# Ideas
+
+ * [Prevent Resource Conflicts at Compile-Time](http://stackoverflow.com/a/26031509)
