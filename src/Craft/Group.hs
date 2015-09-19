@@ -5,7 +5,6 @@ module Craft.Group
 )
 where
 
-import           Control.Monad.IO.Class (liftIO)
 import           Data.List (intercalate)
 
 import           Craft
@@ -39,7 +38,6 @@ opts =
 
 createGroup :: Name -> Options -> Craft Group
 createGroup gn Options{..} = do
-  liftIO $ msg "Group.createGroup" gn
   exec_ "/usr/sbin/groupadd" args
   exec_ "/usr/bin/gpasswd" ["--members", intercalate "," optUsers, gn]
   fromName gn >>= \case

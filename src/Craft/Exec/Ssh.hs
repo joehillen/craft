@@ -62,7 +62,7 @@ sshExecBS :: SshExecuter
           -> Craft (ExitCode, ByteString, ByteString)
 sshExecBS ex stdin prog args = do
   p <- craftProc "ssh" $ mkSshArgs ex prog args
-  liftIO $ PBS.readCreateProcessWithExitCode p stdin
+  PBS.readCreateProcessWithExitCode p stdin
 
 
 mkSshArgs :: SshExecuter -> Command -> Args -> Args

@@ -1,6 +1,7 @@
 module Craft.Exec where
 
 import           Control.Monad.Reader
+import           Control.Monad.Free
 import qualified Data.ByteString as BS
 import           Data.List (intercalate)
 import           System.Exit
@@ -11,84 +12,93 @@ import           Text.Parsec
 import           Text.Parsec.String (Parser)
 
 import           Craft.Types
-import           Craft.Helpers
 
 
-type Command = FilePath
-type Args = [String]
-type StdErr = String
-type StdOut = String
+-- | Craft DSL
+exec :: Command -> Args -> Craft ExecResult
+exec cmd args = do
+  env <- asks craftExecEnv
+  lift $ execF env cmd args
 
-data LocalExecuter = LocalExecuter
+exec_ :: Command -> Args -> Craft ()
+exec_ cmd args = do
+  env <- asks craftExecEnv
+  lift $ execF_ env cmd args
+
+fileRead :: FilePath -> Craft BS.ByteString
+fileRead fp = lift $ fileReadF fp
+
+fileWrite :: FilePath -> BS.ByteString -> Craft ()
+fileWrite fp content = lift $ fileWriteF fp content
+
+-- | better than grep
+parseExec :: Parser a -> Command -> Args -> Craft a
+parseExec parser command args = do
+  (exit, stdout, stderr) <- exec command args
+  let exitStr = case exit of ExitSuccess   -> "0"
+                             ExitFailure c -> show c
+  case parse parser (unwords $ command:args) stdout of
+    Left err -> error $
+      "parseExec failed!\n"
+      ++ show err ++ "\n"
+      ++ "stdout:\n"
+      ++ stdout ++ "\n" ++
+      if not (null stderr) then "stderr:\n"   ++ stderr ++ "\n"
+                           else ""
+      ++ "exit code: " ++ exitStr
+    Right r -> return r
+
+withPath :: [FilePath] -> Craft a -> Craft a
+withPath paths = id
+
+withCWD :: FilePath -> Craft a -> Craft a
+withCWD path = local (\r -> r { craftExecCWD = path })
 
 isSuccess :: ExitCode -> Bool
 isSuccess ExitSuccess     = True
 isSuccess (ExitFailure _) = False
 
-localExec :: Command -> Args -> Craft (ExitCode, StdOut, StdErr)
-localExec prog args = do
-  p <- craftProc prog args
-  liftIO $ readCreateProcessWithExitCode p "" {- stdin -}
+-- | runCraftLocal
+runCraftLocal :: r -> ReaderT r (Free CraftDSL) a -> IO a
+runCraftLocal e = iterM runCraftLocal' . flip runReaderT e
 
-localExec_ :: Command -> Args -> Craft ()
-localExec_ prog args= do
-  (_, _, _, ph) <- liftIO . createProcess =<< craftProc prog args
+-- | runCraftLocal implementation
+runCraftLocal' :: CraftDSL (IO a) -> IO a
+runCraftLocal' (Exec env command args next) = do
+  let p = craftProc env command args
+  result <- readCreateProcessWithExitCode p "" {- stdin -}
+  next result
+runCraftLocal' (Exec_ env command args next) = do
+  let p = craftProc env command args
+  (_, _, _, ph) <- liftIO $ createProcess p
   liftIO (waitForProcess ph) >>= \case
-    ExitSuccess -> return ()
     ExitFailure n -> error $ "exec_ failed with code: " ++ show n
+    ExitSuccess   -> next
+runCraftLocal' (FileRead fp next) = do
+  content <- BS.readFile fp
+  next content
+runCraftLocal' (FileWrite fp content next) = do
+  BS.writeFile fp content
+  next
 
-instance Executer LocalExecuter where
-  executer   _      = localExec
-  executer_  _      = localExec_
-  fileReader _ fp   = liftIO $ BS.readFile fp
-  fileWriter _ fp c = liftIO $ BS.writeFile fp c
+craftProc :: Env -> Command -> Args -> CreateProcess
+craftProc env prog args =
+  (proc prog args) { env           = Just env
+                   , close_fds     = True
+                   , create_group  = True
+                   , delegate_ctlc = False
+                   }
 
-exec_ :: Command -> Args -> Craft ()
-exec_ prog args = do
-  ex <- asks craftExecuter
-  executer_ ex prog args
+-- | Free CraftDSL functions
+execF :: Env -> Command -> Args -> Free CraftDSL ExecResult
+execF env cmd args = liftF $ Exec env cmd args id
 
-exec :: FilePath -> [String] -> Craft (ExitCode, String, String)
-exec prog args = do
-  ex <- asks craftExecuter
-  executer ex prog args
+execF_ :: Env -> Command -> Args -> Free CraftDSL ()
+execF_ env cmd args = liftF $ Exec_ env cmd args ()
 
+fileReadF :: FilePath -> Free CraftDSL BS.ByteString
+fileReadF fp = liftF $ FileRead fp id
 
--- | better than grep
-parseExec :: Parser a -> Command -> Args -> Craft a
-parseExec parser prog args = do
-  (exit, stdout, stderr) <- exec prog args
-  let exitStr = case exit of
-                  ExitSuccess -> "0"
-                  ExitFailure c -> show c
-  case parse parser (unwords $ prog:args) stdout of
-    Left err -> error $
-      "parseExec failed!\n"
-      ++ show err ++ "\n"
-      ++ "stdout:\n"   ++ stdout ++ "\n" ++
-      if not (null stderr) then "stderr:\n"   ++ stderr ++ "\n" else ""
-      ++ "exit code: " ++ exitStr
-    Right r -> return r
+fileWriteF :: FilePath -> BS.ByteString -> Free CraftDSL ()
+fileWriteF fp content = liftF $ FileWrite fp content ()
 
-craftProc :: Command -> Args -> Craft CreateProcess
-craftProc prog args = do
-  path <- intercalate ":" <$> asks craftExecPath
-  cwd'  <- asks craftExecCWD
-  liftIO $ msg "exec" $
-    unwords ( ("PWD=" ++ cwd')
-            : ("PATH=" ++ path)
-            : prog
-            : args
-            )
-  return $ (proc prog args) { cwd           = Just cwd'
-                            , env           = Just [("PATH", path)]
-                            , close_fds     = True
-                            , create_group  = True
-                            , delegate_ctlc = False
-                            }
-
-withPath :: [FilePath] -> Craft a -> Craft a
-withPath paths = local (\r -> r { craftExecPath = paths })
-
-withCWD :: FilePath -> Craft a -> Craft a
-withCWD path = local (\r -> r { craftExecCWD = path })

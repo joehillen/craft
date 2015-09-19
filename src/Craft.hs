@@ -20,23 +20,20 @@ import           Craft.Watch as X
 import           Craft.Exec as X
 import           Craft.Helpers as X
 
-craftEnv :: CraftEnv LocalExecuter NoPackageManager
+craftEnv :: CraftEnv NoPackageManager
 craftEnv =
   CraftEnv
   { craftSourcePaths    = []
-  , craftExecuter       = LocalExecuter
   , craftPackageManager = NoPackageManager
-  , craftExecPath       = ["/usr/sbin", "/usr/bin", "/sbin", "/bin"]
+  --, craftExecPath       = ["/usr/sbin", "/usr/bin", "/sbin", "/bin"]
+  , craftExecEnv        = []
   , craftExecCWD        = "/"
   }
 
-runCraft :: (Executer ex, PackageManager pm)
-         => CraftEnv ex pm -> Craft a -> IO a
-runCraft env ma = runReaderT ma env
-
-readSourceFile :: FilePath -> Craft ByteString
+readSourceFile :: FilePath -> IO ByteString
 readSourceFile name = do
-  fps <- asks craftSourcePaths
+  --fps <- asks craftSourcePaths
+  let fps = [] :: [FilePath]
   fs <- filterM (\fp -> liftIO $ doesFileExist $ fp </> name) fps
   if null fs then
     error $ "Source file `" ++ name ++ "` not found in file sources: "

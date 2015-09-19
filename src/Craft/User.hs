@@ -7,7 +7,6 @@ module Craft.User
 where
 
 import           Control.Monad (when, unless)
-import           Control.Monad.IO.Class (liftIO)
 import qualified Data.Set as S
 import           Data.List (intercalate)
 import           System.Exit
@@ -123,7 +122,6 @@ createUser :: UserName -> Options -> Craft User
 createUser un uopts@Options{..} = do
   user' <- fromName un >>= \case
     Nothing -> do
-      liftIO $ msg "User.createUser" un
       createUser' un uopts
       fromName un
     x       -> return x
@@ -201,7 +199,10 @@ lock :: UserName -> Craft ()
 lock un = userMod un ["--lock"]
 
 idToName :: UserID -> Craft Name
-idToName i = liftIO $ userName <$> getUserEntryForID i
+idToName = notImplemented "idToName"
+
+-- idToName :: UserID -> Craft Name
+-- idToName i = userName <$> getUserEntryForID i
 
 fromName :: Name -> Craft (Maybe User)
 fromName = userFromName

@@ -8,7 +8,6 @@ import           Craft.Internal.FileDirectory
 
 import           Control.Lens
 import           Control.Monad (unless)
-import           Control.Monad.IO.Class (liftIO)
 import qualified Data.ByteString.Char8 as BS
 import           Data.Maybe
 import           Network.Wreq (head_, responseHeader)
@@ -31,10 +30,13 @@ s3file path source =
   , version = AnyVersion
   }
 
-getS3Sum :: String -> IO (Maybe String)
-getS3Sum url = do
-  r <- head_ url
-  return $ filter ('"' /=) . BS.unpack <$> (r ^? responseHeader "ETag")
+getS3Sum :: String -> Craft (Maybe String)
+getS3Sum = notImplemented "getS3Sum"
+
+-- getS3Sum :: String -> IO (Maybe String)
+-- getS3Sum url = do
+--   r <- head_ url
+--   return $ filter ('"' /=) . BS.unpack <$> (r ^? responseHeader "ETag")
 
 
 instance Craftable S3File where
@@ -56,7 +58,7 @@ instance Craftable S3File where
 
     exists <- File.exists path
     curSum <- File.md5sum path
-    s3Sum <- liftIO $ fromJust <$> getS3Sum url
+    s3Sum <- fromJust <$> getS3Sum url
 
     case version of
       AnyVersion     -> unless  exists                      downloadFile

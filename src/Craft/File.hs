@@ -81,9 +81,7 @@ instance Craftable File where
       Just c -> write path c
 
 write :: Path -> ByteString -> Craft ()
-write fp c = do
-  ex <- asks craftExecuter
-  fileWriter ex fp c
+write = fileWrite
 
 exists :: Path -> Craft Bool
 exists fp = do
@@ -99,14 +97,13 @@ get fp = do
     m <- getMode fp
     o <- getOwner fp
     g <- getGroup fp
-    ex <- asks craftExecuter
-    c <- fileReader ex fp
+    content <- fileRead fp
     return . Just $
       File { path    = fp
             , mode    = m
             , owner   = o
             , group   = g
-            , content = Just c
+            , content = Just content
             }
 
 md5sum :: Path -> Craft String

@@ -1,28 +1,37 @@
+{-# LANGUAGE DeriveFunctor #-}
 module Craft.Types where
 
 import           Control.Monad.Reader
+import           Control.Monad.Free
 import           System.Exit
 import           Data.ByteString (ByteString)
 
 import           Craft.Helpers
 
-type Craft a = forall ex. forall pm. (Executer ex, PackageManager pm)
-            => ReaderT (CraftEnv ex pm) IO a
+type Craft a = forall pm. (PackageManager pm)
+             => ReaderT (CraftEnv pm) (Free CraftDSL) a
 
-data CraftEnv ex pm
+data CraftEnv pm
   = CraftEnv
     { craftSourcePaths    :: [FilePath]
-    , craftExecuter       :: Executer ex => ex
     , craftPackageManager :: PackageManager pm => pm
-    , craftExecPath       :: [FilePath]
+    , craftExecEnv        :: Env
     , craftExecCWD        :: FilePath
     }
 
-class Executer ex where
-  executer   :: ex -> FilePath -> [String] -> Craft (ExitCode, String, String)
-  executer_  :: ex -> FilePath -> [String] -> Craft ()
-  fileReader :: ex -> FilePath -> Craft ByteString
-  fileWriter :: ex -> FilePath -> ByteString-> Craft ()
+type StdOut = String
+type StdErr = String
+type Args = [String]
+type Command = FilePath
+type ExecResult = (ExitCode, StdOut, StdErr)
+type Env = [(String, String)]
+
+data CraftDSL next
+  = Exec Env Command Args (ExecResult -> next)
+  | Exec_ Env Command Args next
+  | FileRead FilePath (ByteString -> next)
+  | FileWrite FilePath ByteString next
+ deriving Functor
 
 class (Eq a, Show a) => Craftable a where
   crafter :: a -> Craft ()
@@ -98,4 +107,3 @@ instance Craftable Package where
   remover pkg = do
     pm <- asks craftPackageManager
     uninstaller pm pkg
-

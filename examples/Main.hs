@@ -20,13 +20,11 @@ import qualified Craft.User as User
 import qualified Craft.Pip as Pip
 
 main :: IO ()
-main = do
-  runCraft craftEnv
-           { craftPackageManager = Apt
-           } $ do
-    Apt.update
-    void addAdmins
-    packages
+main = runCraftLocal craftEnv { craftPackageManager = Apt
+                              } $ do
+  Apt.update
+  void addAdmins
+  packages
 
 
 bash,zsh :: FilePath

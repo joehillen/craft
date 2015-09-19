@@ -82,6 +82,7 @@ library
                      , extra
                      , simplessh
                      , libssh2
+                     , free
 
 test-suite craft-test
   type:                exitcode-stdio-1.0
