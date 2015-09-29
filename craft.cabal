@@ -80,8 +80,6 @@ library
                      , lens
                      , bytestring
                      , extra
-                     , simplessh
-                     , libssh2
                      , free
 
 test-suite craft-test

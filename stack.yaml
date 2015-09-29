@@ -3,6 +3,4 @@ packages:
 - '.'
 extra-deps:
 - string-qq-0.0.2
-- simplessh-0.2.0.5
-- libssh2-0.2.0.3
 resolver: lts-3.5
