@@ -23,10 +23,9 @@ import           Craft.Helpers as X
 craftEnv :: CraftEnv NoPackageManager
 craftEnv =
   CraftEnv
-  { craftSourcePaths    = []
+  { craftSourcePaths    = ["."]
   , craftPackageManager = NoPackageManager
-  --, craftExecPath       = ["/usr/sbin", "/usr/bin", "/sbin", "/bin"]
-  , craftExecEnv        = []
+  , craftExecEnv        = [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
   , craftExecCWD        = "/"
   }
 
@@ -34,9 +33,9 @@ readSourceFile :: FilePath -> IO ByteString
 readSourceFile name = do
   --fps <- asks craftSourcePaths
   let fps = [] :: [FilePath]
-  fs <- filterM (\fp -> liftIO $ doesFileExist $ fp </> name) fps
-  if null fs then
+  files <- filterM (\fp -> doesFileExist $ fp </> name) fps
+  if null files then
     error $ "Source file `" ++ name ++ "` not found in file sources: "
             ++ show fps
   else
-    liftIO $ BS.readFile $ head fs </> name
+    BS.readFile $ head files </> name

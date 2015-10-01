@@ -4,6 +4,7 @@ import           Control.Monad.Reader
 import           Control.Monad.Free
 import qualified Data.ByteString as BS
 import           Data.List (intercalate)
+import           Data.List.Split (splitOn)
 import           System.Exit
 import           System.Process hiding ( readCreateProcessWithExitCode
                                        , readProcessWithExitCode)
@@ -48,11 +49,46 @@ parseExec parser command args = do
       ++ "exit code: " ++ exitStr
     Right r -> return r
 
+
+craftExecPath :: CraftEnv a -> [FilePath]
+craftExecPath craftEnv =
+  maybe [] (splitOn ":") $ lookup "PATH" $ craftExecEnv craftEnv
+
+-- TESTME
+prependPath :: FilePath -> Craft a -> Craft a
+prependPath newpath go = do
+  path <- asks craftExecPath
+  withPath (newpath:path) go
+
+-- TESTME
 withPath :: [FilePath] -> Craft a -> Craft a
-withPath paths = id
+withPath paths go = do
+  env <- asks craftExecEnv
+  let env' = map (replaceKey "PATH" paths') env
+  withEnv env' go
+  local (\r -> r {craftExecEnv = env'}) go
+ where
+  paths' = intercalate ":" paths
+
+
+replaceKey :: Eq a => a -> b -> (a, b) -> (a, b)
+replaceKey k'  v' (k, v)
+  | k == k'   = (k, v')
+  | otherwise = (k, v)
+
+
+withEnv :: Env -> Craft a -> Craft a
+withEnv env = local (\r -> r { craftExecEnv = env })
+
+
+-- TESTME
+withEnvVar :: String -> String -> Craft a -> Craft a
+withEnvVar name val go = undefined
+
 
 withCWD :: FilePath -> Craft a -> Craft a
 withCWD path = local (\r -> r { craftExecCWD = path })
+
 
 isSuccess :: ExitCode -> Bool
 isSuccess ExitSuccess     = True

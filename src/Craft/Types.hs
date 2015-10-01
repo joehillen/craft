@@ -27,7 +27,7 @@ type ExecResult = (ExitCode, StdOut, StdErr)
 type Env = [(String, String)]
 
 data CraftDSL next
-  = Exec Env Command Args (ExecResult -> next)
+  = Exec  Env Command Args (ExecResult -> next)
   | Exec_ Env Command Args next
   | FileRead FilePath (ByteString -> next)
   | FileWrite FilePath ByteString next

@@ -81,6 +81,7 @@ library
                      , bytestring
                      , extra
                      , free
+                     , split
 
 test-suite craft-test
   type:                exitcode-stdio-1.0
