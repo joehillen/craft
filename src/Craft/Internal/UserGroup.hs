@@ -11,7 +11,7 @@ import           Craft.Internal.Helpers
 import           Control.Exception (tryJust)
 import           Control.Monad (guard)
 import           Data.List (intercalate)
-import           Data.Maybe (catMaybes)
+import           Data.Maybe (catMaybes, fromJust)
 import           System.IO.Error (isDoesNotExistError)
 import           System.Posix
 
@@ -35,10 +35,25 @@ data User
  deriving (Eq, Show)
 
 userFromName :: UserName -> Craft (Maybe User)
-userFromName name =
-  exec "id" ["-u", name] >>= \case
-    (ExitFailure _,      _, _) -> return Nothing
-    (ExitSuccess  , stdout, _) -> userFromID $ read stdout
+userFromName name = do
+  r <- exec "id" ["-u", name]
+  case exitcode r of
+    ExitFailure _ -> return Nothing
+    ExitSuccess   -> do
+      grpr <- exec "id" ["-ng", name]
+      grp <- fromJust <$> groupFromName (stdout grpr)
+      grps <- words . stdout <$> exec "id" ["-nG", name]
+      return . Just
+             $ User { username     = name
+                    , uid          = read $ stdout r
+                    , group        = grp
+                    , groups       = grps
+                    , passwordHash = "a7sydna87sdn7ayd8asd"
+                    , home         = "/home/" ++ name
+                    , shell        = "/bin/bash"
+                    , comment      = ""
+                    }
+
 
 
 -- userFromName :: UserName -> Craft (Maybe User)
@@ -50,7 +65,11 @@ userFromName name =
 --     Right ue -> Just <$> userEntryToUser ue
 
 userFromID :: UserID -> Craft (Maybe User)
-userFromID = notImplemented "userFromID"
+userFromID uid = do
+  r <- exec "id" ["-nu", show uid]
+  case exitcode r of
+    ExitFailure _ -> return Nothing
+    ExitSuccess   -> userFromName $ stdout r
 
 -- userFromID ui = do
 --   eue <- tryJust (guard . isDoesNotExistError)
@@ -127,7 +146,7 @@ data Group
   deriving (Eq, Show)
 
 groupFromName :: GroupName -> Craft (Maybe Group)
-groupFromName = notImplemented "groupFromName"
+groupFromName gname = notImplemented "groupFromName"
 
 {-
 groupFromName :: GroupName -> Craft (Maybe Group)
@@ -140,7 +159,7 @@ groupFromName gn = do
 -}
 
 groupFromID :: GroupID -> Craft (Maybe Group)
-groupFromID = notImplemented "groupFromID"
+groupFromID gid' = notImplemented "groupFromID"
 
 {-
 groupFromID :: GroupID -> Craft (Maybe Group)

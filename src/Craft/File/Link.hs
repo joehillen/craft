@@ -11,15 +11,14 @@ data Link
   deriving (Eq, Show)
 
 exists :: File.Path -> Craft Bool
-exists lp = do
-  (ec, _, _) <- exec "/usr/bin/test" ["-L", lp]
-  return $ isSuccess ec
+exists lp = isSuccess . exitcode <$> exec "/usr/bin/test" ["-L", lp]
+
 
 readLink :: File.Path -> Craft File.Path
 readLink lp = do
-  (ec, stdout, _) <- exec "/bin/readlink" [lp]
-  if isSuccess ec then
-    return $ trimTrailing stdout
+  r <- exec "/bin/readlink" [lp]
+  if isSuccess (exitcode r) then
+    return . trimTrailing $ stdout r
   else
     error $ "readLink `" ++ lp ++ "` failed."
 

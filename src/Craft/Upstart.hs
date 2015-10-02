@@ -16,12 +16,12 @@ data Service
 
 get :: ServiceName -> Craft (Maybe Service)
 get sn = do
-  (exitcode, stdout, _stderr) <- exec "/sbin/status" [sn]
-  case exitcode of
-    ExitSuccess -> do
-      let stat = errorLeft $ parse (statusParser sn) "Upstart status" stdout
-      return . Just $ Service sn stat
-    ExitFailure _ -> return Nothing
+  r <- exec "/sbin/status" [sn]
+  return $ case (exitcode r) of
+    ExitSuccess -> Just . Service sn
+                        . errorLeft
+                        $ parse (statusParser sn) "Upstart status" (stdout r)
+    ExitFailure _ -> Nothing
 
 statusParser :: String -> Parser String
 statusParser sn = do

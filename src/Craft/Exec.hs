@@ -35,19 +35,20 @@ fileWrite fp content = lift $ fileWriteF fp content
 -- | better than grep
 parseExec :: Parser a -> Command -> Args -> Craft a
 parseExec parser command args = do
-  (exit, stdout, stderr) <- exec command args
-  let exitStr = case exit of ExitSuccess   -> "0"
-                             ExitFailure c -> show c
-  case parse parser (unwords $ command:args) stdout of
+  r <- exec command args
+  let exitStr = case (exitcode r) of
+                  ExitSuccess   -> "0"
+                  ExitFailure c -> show c
+  case parse parser (unwords $ command:args) (stdout r) of
+    Right x -> return x
     Left err -> error $
       "parseExec failed!\n"
       ++ show err ++ "\n"
       ++ "stdout:\n"
-      ++ stdout ++ "\n" ++
-      if not (null stderr) then "stderr:\n"   ++ stderr ++ "\n"
+      ++ (stdout r) ++ "\n" ++
+      if not (null (stderr r)) then "stderr:\n"   ++ (stderr r) ++ "\n"
                            else ""
       ++ "exit code: " ++ exitStr
-    Right r -> return r
 
 
 craftExecPath :: CraftEnv a -> [FilePath]
@@ -66,7 +67,6 @@ withPath paths go = do
   env <- asks craftExecEnv
   let env' = map (replaceKey "PATH" paths') env
   withEnv env' go
-  local (\r -> r {craftExecEnv = env'}) go
  where
   paths' = intercalate ":" paths
 
@@ -102,8 +102,8 @@ runCraftLocal e = iterM runCraftLocal' . flip runReaderT e
 runCraftLocal' :: CraftDSL (IO a) -> IO a
 runCraftLocal' (Exec env command args next) = do
   let p = craftProc env command args
-  result <- readCreateProcessWithExitCode p "" {- stdin -}
-  next result
+  (exit', stdout', stderr') <- readCreateProcessWithExitCode p "" {- stdin -}
+  next $ ExecResult exit' stdout' stderr'
 runCraftLocal' (Exec_ env command args next) = do
   let p = craftProc env command args
   (_, _, _, ph) <- liftIO $ createProcess p

@@ -90,10 +90,9 @@ userMod un args =
 getUID :: UserName -> Craft (Maybe UserID)
 getUID "root" = return . Just $ 0
 getUID un = do
-  (ec, stdout, _stderr) <-
-    exec "/usr/bin/id" ["--user", un]
-  return $ case ec of
-    ExitSuccess    -> Just $ read stdout
+  r <- exec "/usr/bin/id" ["--user", un]
+  return $ case exitcode r of
+    ExitSuccess    -> Just . read $ stdout r
     ExitFailure _  -> Nothing
 
 setUID :: UserName -> UserID -> Craft ()

@@ -23,7 +23,10 @@ type StdOut = String
 type StdErr = String
 type Args = [String]
 type Command = FilePath
-type ExecResult = (ExitCode, StdOut, StdErr)
+data ExecResult = ExecResult { exitcode :: ExitCode
+                             , stdout   :: StdOut
+                             , stderr   :: StdErr
+                             }
 type Env = [(String, String)]
 
 data CraftDSL next

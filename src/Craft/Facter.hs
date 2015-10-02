@@ -7,12 +7,12 @@ setup = craft_ $ package "facter"
 
 fact :: String -> Craft String
 fact f = do
-  (exitcode, stdout, stderr) <- exec "/usr/bin/facter" [f]
-  case exitcode of
-    ExitSuccess   -> return $ rmTrailingNL stdout
+  r <- exec "/usr/bin/facter" [f]
+  case (exitcode r) of
+    ExitSuccess   -> return $ rmTrailingNL (stdout r)
     ExitFailure _ -> error $
       "Failed to get fact `" ++ f ++ "`. "
-      ++ "Facter failed with error: " ++ stderr
+      ++ "Facter failed with error: " ++ (stderr r)
 
 rmTrailingNL :: String -> String
 rmTrailingNL = reverse . dropWhile (=='\n') . reverse

@@ -22,17 +22,14 @@ setGroup RootGroup path = exec_ "/bin/chgrp" ["0", path]
 setGroup Group{..} path = exec_ "/bin/chgrp" [show gid, path]
 
 getMode :: FilePath -> Craft Mode
-getMode p = do
-  (ec, stdout, strerr) <- exec "/usr/bin/stat" ["-c", "%a", p]
-  return $ fromString stdout
+getMode p = fromString . stdout <$> exec "/usr/bin/stat" ["-c", "%a", p]
 
 getOwner :: FilePath -> Craft User
 getOwner p = do
   uid <- parseExec (read <$> many1 digit) "/usr/bin/stat" ["-c", "%u", p]
   User.fromID uid >>= \case
-    Nothing -> error $
-      "No such owner with id `" ++ show uid ++ "` for: " ++ p
-    Just g -> return g
+    Nothing -> error $ "No such owner with id `" ++ show uid ++ "` for: " ++ p
+    Just g  -> return g
 
 getGroup :: FilePath -> Craft Group
 getGroup p = do

@@ -84,9 +84,7 @@ write :: Path -> ByteString -> Craft ()
 write = fileWrite
 
 exists :: Path -> Craft Bool
-exists fp = do
-  (code, _, _) <- exec "/usr/bin/test" ["-f", fp]
-  return $ isSuccess code
+exists fp = isSuccess . exitcode <$> exec "/usr/bin/test" ["-f", fp]
 
 get :: Path -> Craft (Maybe File)
 get fp = do
@@ -100,13 +98,11 @@ get fp = do
     content <- fileRead fp
     return . Just $
       File { path    = fp
-            , mode    = m
-            , owner   = o
-            , group   = g
-            , content = Just content
-            }
+           , mode    = m
+           , owner   = o
+           , group   = g
+           , content = Just content
+           }
 
 md5sum :: Path -> Craft String
-md5sum fp = do
-  (_, stdout, _) <- exec "/usr/bin/md5sum" [fp]
-  return $ head $ words stdout
+md5sum fp = head . words . stdout <$> exec "/usr/bin/md5sum" [fp]

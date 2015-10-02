@@ -55,9 +55,7 @@ multipleRootOwned paths mode = map go paths
   go path = (directory path) { mode = mode }
 
 exists :: Path -> Craft Bool
-exists p = do
-  (code, _, _) <- exec "/usr/bin/test" ["-d", p]
-  return $ isSuccess code
+exists p = isSuccess . exitcode <$> exec "/usr/bin/test" ["-d", p]
 
 instance Craftable Directory where
   checker = get . path

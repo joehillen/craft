@@ -30,23 +30,18 @@ aptGet args = exec_ "/usr/bin/apt-get" $ ["-q", "-y"] ++ args
 update :: Craft ()
 update = aptGet ["update"]
 
-dpkgQuery :: [String] -> Craft (ExitCode, String, String)
-dpkgQuery args = do
-  (exit, stdout, stderr) <-
-    exec "/usr/bin/dpkg-query" args
-  return (exit, stdout, stderr)
+dpkgQuery :: [String] -> Craft ExecResult
+dpkgQuery = exec "/usr/bin/dpkg-query"
 
 
 getAptPackage :: PackageName -> Craft (Maybe Package)
 getAptPackage pn = do
-  (exit, stdout, _stderr) <-
-    dpkgQuery ["--show", "--showformat", "${Version}", pn]
-  case exit of
-    ExitFailure _ -> return Nothing
-    ExitSuccess -> return . Just $
-      Package { pkgName = pn
-              , pkgVersion = Version stdout
-              }
+  r <- dpkgQuery ["--show", "--showformat", "${Version}", pn]
+  return $ case exitcode r of
+    ExitFailure _ -> Nothing
+    ExitSuccess -> Just $ Package { pkgName = pn
+                                  , pkgVersion = Version $ stdout r
+                                  }
 
 aptInstallArgs :: [String]
 aptInstallArgs = ["-o", "DPkg::Options::=--force-confold", "install"]
@@ -83,8 +78,10 @@ dpkgDebBin = "/usr/bin/dpkg-deb"
 
 packageFromDeb :: Deb -> Craft Package
 packageFromDeb (Deb fp) = do
-  (_, name, _) <- exec dpkgDebBin ["--show", "--showformat", "${Package}", fp]
-  (_, version, _) <- exec dpkgDebBin ["--show", "--showformat", "${Version}", fp]
+  let dpkgExec pattern = stdout <$> exec dpkgDebBin ["--show", "--showformat"
+                                                    , pattern, fp]
+  name    <- dpkgExec "${Package}"
+  version <- dpkgExec "${Version}"
   return Package { pkgName = name
                  , pkgVersion = Version version
                  }
@@ -95,5 +92,5 @@ instance Craftable Deb where
     checker pkg >>= \case
       Nothing -> return Nothing
       Just  _ -> return $ Just deb
-  crafter r@(Deb fp) = dpkgInstall fp
+  crafter (Deb fp) = dpkgInstall fp
   remover deb = notImplemented "remover Deb"

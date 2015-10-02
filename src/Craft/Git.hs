@@ -55,9 +55,7 @@ git :: String -> [String] -> Craft ()
 git cmd args = exec_ gitBin $ cmd : args
 
 remotes :: Craft [String]
-remotes = do
-  (_exit, stdout, _stderr) <- exec gitBin ["remote"]
-  return $ lines stdout
+remotes = lines . stdout <$> exec gitBin ["remote"]
 
 setURL :: URL -> Craft ()
 setURL url = do
