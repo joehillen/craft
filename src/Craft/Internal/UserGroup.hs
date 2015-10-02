@@ -35,7 +35,11 @@ data User
  deriving (Eq, Show)
 
 userFromName :: UserName -> Craft (Maybe User)
-userFromName = notImplemented "userFromName"
+userFromName name =
+  exec "id" ["-u", name] >>= \case
+    (ExitFailure _,      _, _) -> return Nothing
+    (ExitSuccess  , stdout, _) -> userFromID $ read stdout
+
 
 -- userFromName :: UserName -> Craft (Maybe User)
 -- userFromName un = do
