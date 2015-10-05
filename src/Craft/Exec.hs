@@ -13,6 +13,7 @@ import           Text.Parsec
 import           Text.Parsec.String (Parser)
 
 import           Craft.Types
+import           Craft.Helpers
 
 
 -- | Craft DSL
@@ -102,9 +103,11 @@ runCraftLocal e = iterM runCraftLocal' . flip runReaderT e
 runCraftLocal' :: CraftDSL (IO a) -> IO a
 runCraftLocal' (Exec env command args next) = do
   let p = craftProc env command args
+  msg "exec" $ unwords [command, unwords args]
   (exit', stdout', stderr') <- readCreateProcessWithExitCode p "" {- stdin -}
   next $ ExecResult exit' stdout' stderr'
 runCraftLocal' (Exec_ env command args next) = do
+  msg "exec_" $ unwords [command, unwords args]
   let p = craftProc env command args
   (_, _, _, ph) <- liftIO $ createProcess p
   liftIO (waitForProcess ph) >>= \case

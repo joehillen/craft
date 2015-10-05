@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Craft.Internal.Helpers where
 
-import           System.Posix (UserID, GroupID)
-
 indent :: Int -> String -> String
 indent len text =
   unlines $ map (replicate len ' ' ++) $ lines text
@@ -24,12 +22,6 @@ instance ToArg a => ToArg (Maybe a) where
   toArg arg (Just v) = toArg arg v
 
 instance ToArg Int where
-  toArg = showArg
-
-instance ToArg UserID where
-  toArg = showArg
-
-instance ToArg GroupID where
   toArg = showArg
 
 toArgBool :: String -> String -> Bool -> [String]

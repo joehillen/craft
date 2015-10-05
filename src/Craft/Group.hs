@@ -55,6 +55,3 @@ fromName = groupFromName
 
 fromID :: GroupID -> Craft (Maybe Group)
 fromID = groupFromID
-
-idToName :: GroupID -> Craft GroupName
-idToName = toGroupName

@@ -1,9 +1,4 @@
-module Craft.Internal.UserGroup
-( module Craft.Internal.UserGroup
-, UserID
-, GroupID
-)
-where
+module Craft.Internal.UserGroup where
 
 import           Craft
 import           Craft.Internal.Helpers
@@ -11,11 +6,13 @@ import           Craft.Internal.Helpers
 import           Control.Exception (tryJust)
 import           Control.Monad (guard)
 import           Data.List (intercalate)
+import           Data.List.Split (splitOn)
 import           Data.Maybe (catMaybes, fromJust)
 import           System.IO.Error (isDoesNotExistError)
-import           System.Posix
 
 type UserName = String
+type UserID = Int
+type GroupID = Int
 
 data User
   = Root
@@ -36,67 +33,37 @@ data User
 
 userFromName :: UserName -> Craft (Maybe User)
 userFromName name = do
-  r <- exec "id" ["-u", name]
+  r <- getent "passwd" name
   case exitcode r of
     ExitFailure _ -> return Nothing
     ExitSuccess   -> do
-      grpr <- exec "id" ["-ng", name]
-      grp <- fromJust <$> groupFromName (stdout grpr)
-      grps <- words . stdout <$> exec "id" ["-nG", name]
+      let [_, _, uidS, gidS, comment', home', shell'] = parsePasswd $ stdout r
+      grp <- fromJust <$> groupFromID (read gidS)
+      grps <- getGroups name
+      passwordHash' <- (!! 1) . splitOn ":" . stdout <$> getent "shadow" name
       return . Just
              $ User { username     = name
-                    , uid          = read $ stdout r
+                    , uid          = read uidS
                     , group        = grp
                     , groups       = grps
-                    , passwordHash = "a7sydna87sdn7ayd8asd"
-                    , home         = "/home/" ++ name
-                    , shell        = "/bin/bash"
-                    , comment      = ""
+                    , passwordHash = passwordHash'
+                    , home         = home'
+                    , shell        = shell'
+                    , comment      = comment'
                     }
 
+getGroups :: UserName -> Craft [GroupName]
+getGroups name = words . stdout <$> exec "id" ["-nG", name]
 
+parsePasswd :: String -> [String]
+parsePasswd = splitOn ":"
 
--- userFromName :: UserName -> Craft (Maybe User)
--- userFromName un = do
---   eue <- tryJust (guard . isDoesNotExistError)
---                  (getUserEntryForName un)
---   case eue of
---     Left  _  -> return Nothing
---     Right ue -> Just <$> userEntryToUser ue
+getent :: String -> String -> Craft ExecResult
+getent dbase key = exec "getent" [dbase, key]
+
 
 userFromID :: UserID -> Craft (Maybe User)
-userFromID uid = do
-  r <- exec "id" ["-nu", show uid]
-  case exitcode r of
-    ExitFailure _ -> return Nothing
-    ExitSuccess   -> userFromName $ stdout r
-
--- userFromID ui = do
---   eue <- tryJust (guard . isDoesNotExistError)
---                  (getUserEntryForID ui)
---   case eue of
---     Left  _  -> return Nothing
---     Right ue -> Just <$> userEntryToUser ue
-
-userEntryToUser :: UserEntry -> Craft User
-userEntryToUser ue =
-  groupFromID (userGroupID ue) >>= \case
-    Nothing -> error $
-      "User `" ++ userName ue ++ "` found, "
-      ++ "but user's group does not exist!"
-    Just g -> do
-      let un = userName ue
-      gs <- mapM groupFromName =<< memberOf un
-      return
-        User { username = un
-             , uid = userID ue
-             , group = g
-             , groups = groupname <$> catMaybes gs
-             , passwordHash = userPassword ue
-             , home = homeDirectory ue
-             , shell = userShell ue
-             , comment = userGecos ue
-             }
+userFromID = userFromName . show
 
 
 memberOf :: UserName -> Craft [GroupName]
@@ -111,7 +78,7 @@ instance Craftable User where
   checker = userFromName . username
 
   crafter Root = return ()
-  crafter user@User{..} = do
+  crafter User{..} = do
     g <- groupFromName (groupname group) >>= \case
       Nothing -> craft group
       Just g  -> return g
@@ -130,12 +97,6 @@ instance Craftable User where
 
 type GroupName = String
 
-toGroupName :: GroupID -> Craft GroupName
-toGroupName = notImplemented "toGroupName"
-
--- toGroupName :: GroupID -> Craft GroupName
--- toGroupName i = groupName <$> getGroupEntryForID i
-
 data Group
   = RootGroup
   | Group
@@ -145,38 +106,26 @@ data Group
     }
   deriving (Eq, Show)
 
-groupFromName :: GroupName -> Craft (Maybe Group)
-groupFromName gname = notImplemented "groupFromName"
 
-{-
 groupFromName :: GroupName -> Craft (Maybe Group)
-groupFromName gn = do
-  ege <- tryJust (guard . isDoesNotExistError)
-                      (getGroupEntryForName gn)
-  case ege of
-    Left  _  -> return Nothing
-    Right ge -> return . Just $ groupEntryToGroup ge
--}
+groupFromName gname = do
+  r <- getent "group" gname
+  return $ case exitcode r of
+    ExitFailure _ -> Nothing
+    ExitSuccess   -> Just . groupFromGetent $ stdout r
+
+
+groupFromGetent :: String -> Group
+groupFromGetent s =
+  let [name, _, gidS, membersS] = splitOn ":" s
+  in Group { groupname = name
+           , gid       = read gidS
+           , members   = splitOn "," membersS
+           }
 
 groupFromID :: GroupID -> Craft (Maybe Group)
-groupFromID gid' = notImplemented "groupFromID"
+groupFromID = groupFromName . show
 
-{-
-groupFromID :: GroupID -> Craft (Maybe Group)
-groupFromID gi = do
-  ege <- tryJust (guard . isDoesNotExistError)
-                 (getGroupEntryForID gi)
-  case ege of
-    Left  _  -> return Nothing
-    Right ge -> return . Just $ groupEntryToGroup ge
--}
-
-groupEntryToGroup :: GroupEntry -> Group
-groupEntryToGroup ge =
-  Group { groupname = groupName ge
-        , gid       = groupID ge
-        , members   = groupMembers ge
-        }
 
 instance Craftable Group where
   checker = groupFromName . groupname

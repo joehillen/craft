@@ -10,7 +10,6 @@ import           Control.Monad (when, unless)
 import qualified Data.Set as S
 import           Data.List (intercalate)
 import           System.Exit
-import           System.Posix hiding (setGroups)
 
 import           Craft
 import           Craft.Internal.Helpers
@@ -196,12 +195,6 @@ createUser' un Options{..} = do
 
 lock :: UserName -> Craft ()
 lock un = userMod un ["--lock"]
-
-idToName :: UserID -> Craft Name
-idToName = notImplemented "idToName"
-
--- idToName :: UserID -> Craft Name
--- idToName i = userName <$> getUserEntryForID i
 
 fromName :: Name -> Craft (Maybe User)
 fromName = userFromName
