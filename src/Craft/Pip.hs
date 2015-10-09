@@ -2,8 +2,7 @@ module Craft.Pip where
 
 import           Craft hiding (package, latest)
 
-import           Text.Parsec
-import           Text.Parsec.String (Parser)
+import           Text.Megaparsec
 
 newtype PipPackage = PipPackage Package
   deriving (Eq, Show)
@@ -27,13 +26,13 @@ get pn = do
         Just . PipPackage $ Package pn $ Version version
 
 -- TESTME
-pipShowParser :: Parser [(String, String)]
-pipShowParser = many $ kv <* many endOfLine
+pipShowParser :: Parsec String [(String, String)]
+pipShowParser = many $ kv <* many eol
  where
-  kv :: Parser (String, String)
+  kv :: Parsec String (String, String)
   kv = do
-    key <- many1 $ noneOf ":"
-    char ':' >> spaces
+    key <- some $ noneOf ":"
+    char ':' >> space
     value <- many $ noneOf "\n"
     return (key, value)
 

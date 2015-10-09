@@ -19,11 +19,11 @@ import           Craft.Internal.Helpers
 import           Craft.User (User)
 import qualified Craft.User as User
 
+import           Control.Monad (void)
 import           Control.Monad.Extra (unlessM)
 import           Data.List (intercalate)
 import           Data.Maybe (catMaybes)
-import           Text.Parsec
-import           Text.Parsec.String (Parser)
+import           Text.Megaparsec
 
 type Path = FilePath
 
@@ -84,15 +84,15 @@ get dp = do
                 , group = Just g
                 }
 
-getFilesParser :: Parser [String]
-getFilesParser = stuff `sepEndBy` newline
+getFilesParser :: Parsec String [String]
+getFilesParser = stuff `sepBy` newline <* optional newline
  where
-  stuff :: Parser String
+  stuff :: Parsec String String
   stuff = do
-    optional $ string "." >> newline
-    optional $ string ".." >> newline
+    void $ optional $ string "." >> newline
+    void $ optional $ string ".." >> newline
     line
-  line :: Parser String
+  line :: Parsec String String
   line = many $ noneOf "\n"
 
 testGetFilesParser :: IO Bool

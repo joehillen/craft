@@ -71,7 +71,7 @@ library
                      , transformers
                      , unix
                      , string-qq
-                     , parsec
+                     , megaparsec
                      , async
                      , mtl
                      , optparse-applicative

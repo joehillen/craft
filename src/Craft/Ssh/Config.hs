@@ -56,3 +56,4 @@ showBody body = indent 4 . unlines $ map (\(n, v) -> n ++ " " ++ v) body
 instance Show Section where
   show (Host hostname body)  = "Host " ++ hostname ++ "\n" ++ showBody body
   show (Match match body)    = "Match " ++ match ++ "\n" ++ showBody body
+

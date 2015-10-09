@@ -3,8 +3,7 @@ module Craft.Upstart where
 import           Craft
 
 import           Control.Monad
-import           Text.Parsec
-import           Text.Parsec.String (Parser)
+import           Text.Megaparsec
 
 type ServiceName = String
 
@@ -23,10 +22,10 @@ get sn = do
                         $ parse (statusParser sn) "Upstart status" (stdout r)
     ExitFailure _ -> Nothing
 
-statusParser :: String -> Parser String
+statusParser :: String -> Parsec String String
 statusParser sn = do
-  void $ string sn >> space >> many1 (noneOf "/") >> char '/'
-  many1 $ noneOf ","
+  void $ string sn >> space >> some (noneOf "/") >> char '/'
+  some $ noneOf ","
 
 errorLeft :: Show a => Either a b -> b
 errorLeft (Left m) = error $ "Upstart status parse: " ++ show m

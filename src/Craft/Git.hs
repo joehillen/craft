@@ -1,8 +1,7 @@
 module Craft.Git where
 
 import           Control.Monad.Extra (unlessM)
-import           Text.Parsec
-import           Text.Parsec.String (Parser)
+import           Text.Megaparsec
 
 import           Craft hiding (Version(..))
 import qualified Craft.Directory as Directory
@@ -73,19 +72,19 @@ getURL = do
     Just url -> url
 
 -- TESTME
-repoURLParser :: Parser [((String, String), String)]
-repoURLParser = many1 $ do
+repoURLParser :: Parsec String [((String, String), String)]
+repoURLParser = some $ do
   remote <- word
   url <- word
-  direction <- char '(' *> many1 alphaNum <* char ')' <* newline
+  direction <- char '(' *> some alphaNumChar <* char ')' <* newline
   return ((remote, direction), url)
  where
-  word = many1 (noneOf " \t") <* many1 (space <|> tab)
+  word = some (noneOf " \t") <* some (spaceChar <|> tab)
 
 getVersion :: Craft Version
 getVersion = Commit <$> parseExec parser gitBin ["rev-parse", "HEAD"]
  where
-  parser = many1 alphaNum
+  parser = some alphaNumChar
 
 get :: Directory.Path -> Craft (Maybe Repo)
 get path = do

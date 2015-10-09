@@ -9,8 +9,7 @@ import           System.Exit
 import           System.Process hiding ( readCreateProcessWithExitCode
                                        , readProcessWithExitCode)
 import           System.Process.ListLike
-import           Text.Parsec
-import           Text.Parsec.String (Parser)
+import           Text.Megaparsec
 
 import           Craft.Types
 import           Craft.Helpers
@@ -34,7 +33,7 @@ fileWrite :: FilePath -> BS.ByteString -> Craft ()
 fileWrite fp content = lift $ fileWriteF fp content
 
 -- | better than grep
-parseExec :: Parser a -> Command -> Args -> Craft a
+parseExec :: Parsec String a -> Command -> Args -> Craft a
 parseExec parser command args = do
   r <- exec command args
   let exitStr = case (exitcode r) of
