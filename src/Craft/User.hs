@@ -21,9 +21,6 @@ type Name = UserName
 name :: User -> Name
 name = username
 
-root :: User
-root = Root
-
 data Options =
   Options
   { optUID        :: Maybe UserID
@@ -126,7 +123,6 @@ createUser un uopts@Options{..} = do
 
   case user' of
     Nothing   -> notfound
-    Just Root -> return ()
     Just user -> do
       handleOpt optUID (uid user) $
         setUID un

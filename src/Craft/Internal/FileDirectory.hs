@@ -13,13 +13,11 @@ import qualified Craft.User as User
 import           Text.Parsec
 
 
-setOwner :: User -> FilePath -> Craft ()
-setOwner Root path = exec_ "/bin/chown" ["0", path]
-setOwner User{..} path = exec_ "/bin/chown" [show uid, path]
+setOwner :: FilePath -> User -> Craft ()
+setOwner path User{..} = exec_ "/bin/chown" [show uid, path]
 
-setGroup :: Group -> FilePath -> Craft ()
-setGroup RootGroup path = exec_ "/bin/chgrp" ["0", path]
-setGroup Group{..} path = exec_ "/bin/chgrp" [show gid, path]
+setGroup :: FilePath -> Group -> Craft ()
+setGroup path Group{..} = exec_ "/bin/chgrp" [show gid, path]
 
 getMode :: FilePath -> Craft Mode
 getMode p = fromString . stdout <$> exec "/usr/bin/stat" ["-c", "%a", p]

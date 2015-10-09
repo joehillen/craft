@@ -33,3 +33,7 @@ showArg arg v = [arg, show v]
 
 toArgs :: ToArg a => String -> [a] -> [String]
 toArgs arg = Prelude.concatMap (toArg arg)
+
+whenJust :: Monad m => Maybe a -> (a -> m ()) -> m ()
+whenJust Nothing  _   = return ()
+whenJust (Just v) act = act v

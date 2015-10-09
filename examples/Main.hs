@@ -86,8 +86,8 @@ normalUser name fullname sshPubKey UserOptions{..} = do
   -- create the user's home directory
   craft_ $ Directory homepath
                      (Mode RWX RX RX)
-                     user
-                     (User.group user)
+                     (Just $ user)
+                     (Just $ User.group user)
 
   -- add the user's public key
   void $ Ssh.addAuthorizedKey user $ Ssh.PublicKey sshPubKey optSshPubKeyType
@@ -99,8 +99,8 @@ normalUser name fullname sshPubKey UserOptions{..} = do
     craft_ $
       File (homepath </> ".bashrc")
            (Mode RW R R)
-           user
-           (User.group user)
+           (Just user)
+           (Just $ User.group user)
            bashrc
 
   return user

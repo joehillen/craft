@@ -15,8 +15,7 @@ type UserID = Int
 type GroupID = Int
 
 data User
-  = Root
-  | User
+  = User
     { username     :: UserName
     , uid          :: UserID
     , comment      :: String
@@ -66,18 +65,9 @@ userFromID :: UserID -> Craft (Maybe User)
 userFromID = userFromName . show
 
 
-memberOf :: UserName -> Craft [GroupName]
-memberOf = notImplemented "memberOf"
-
--- memberOf :: UserName -> Craft [GroupName]
--- memberOf un = do
---   ges <- getAllGroupEntries
---   return $ groupName <$> filter (elem un . groupMembers) ges
-
 instance Craftable User where
   checker = userFromName . username
 
-  crafter Root = return ()
   crafter User{..} = do
     g <- groupFromName (groupname group) >>= \case
       Nothing -> craft group
@@ -98,8 +88,7 @@ instance Craftable User where
 type GroupName = String
 
 data Group
-  = RootGroup
-  | Group
+  = Group
     { groupname :: GroupName
     , gid       :: GroupID
     , members   :: [UserName]
@@ -130,7 +119,6 @@ groupFromID = groupFromName . show
 instance Craftable Group where
   checker = groupFromName . groupname
 
-  crafter RootGroup = return ()
   crafter g@Group{..} = do
     exec_ "/usr/sbin/groupadd" $ toArg "--gid" gid ++ [groupname]
     exec_  "/usr/bin/gpasswd" ["--members", intercalate "," members, groupname]

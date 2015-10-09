@@ -15,6 +15,7 @@ import           Craft.File.Mode
 import           Craft.Group (Group)
 import qualified Craft.Group as Group
 import           Craft.Internal.FileDirectory
+import           Craft.Internal.Helpers
 import           Craft.User (User)
 import qualified Craft.User as User
 
@@ -30,8 +31,8 @@ data Directory =
   Directory
   { path  :: Path
   , mode  :: Mode
-  , owner :: User
-  , group :: Group
+  , owner :: Maybe User
+  , group :: Maybe Group
   }
   deriving (Eq, Show)
 
@@ -40,14 +41,14 @@ directory dp =
   Directory
   { path  = dp
   , mode  = Mode RWX RX RX
-  , owner = User.root
-  , group = Group.root
+  , owner = Nothing
+  , group = Nothing
   }
 
 multiple :: [Path] -> Mode -> User -> Group -> [Directory]
 multiple paths mode owner group = map go paths
  where
-  go path = Directory path mode owner group
+  go path = Directory path mode (Just owner) (Just group)
 
 multipleRootOwned :: [Path] -> Mode -> [Directory]
 multipleRootOwned paths mode = map go paths
@@ -63,8 +64,8 @@ instance Craftable Directory where
     unlessM (exists path) $
       exec_ "mkdir" ["-p", path]
     setMode mode path
-    setOwner owner path
-    setGroup group path
+    whenJust owner $ setOwner path
+    whenJust group $ setGroup path
   remover = notImplemented "remover Directory"
 
 get :: Path -> Craft (Maybe Directory)
@@ -79,8 +80,8 @@ get dp = do
     return . Just $
       Directory { path  = dp
                 , mode  = m
-                , owner = o
-                , group = g
+                , owner = Just o
+                , group = Just g
                 }
 
 getFilesParser :: Parser [String]

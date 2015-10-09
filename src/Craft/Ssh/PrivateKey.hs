@@ -29,8 +29,8 @@ instance Craftable PrivateKey where
     craft_ $ userDir user
     craft_ $ File (Craft.Ssh.PrivateKey.path pk)
                    (Mode RW O O)
-                   user
-                   (User.group user)
+                   (Just user)
+                   (Just $ User.group user)
                    (File.strContent content)
 
   remover = notImplemented "remover PrivateKey"

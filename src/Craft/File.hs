@@ -15,6 +15,7 @@ import qualified Craft.User as User
 import           Craft.Group (Group)
 import qualified Craft.Group as Group
 import           Craft.Internal.FileDirectory
+import           Craft.Internal.Helpers
 
 import           Control.Monad.Extra (unlessM)
 import           Data.ByteString (ByteString)
@@ -27,8 +28,8 @@ data File
   = File
     { path  :: Path
     , mode  :: Mode
-    , owner :: User
-    , group :: Group
+    , owner :: Maybe User
+    , group :: Maybe Group
     , content :: Maybe ByteString
     }
    deriving (Eq, Show)
@@ -47,15 +48,15 @@ file fp =
   File
   { path  = fp
   , mode  = Mode RW R R
-  , owner = User.root
-  , group = Group.root
+  , owner = Nothing
+  , group = Nothing
   , content = Nothing
   }
 
 multiple :: [Path] -> Mode -> User -> Group -> Maybe ByteString -> [File]
 multiple paths mode owner group content = map go paths
  where
-  go path = File path mode owner group content
+  go path = File path mode (Just owner) (Just group) content
 
 
 multipleRootOwned :: [Path] -> Mode -> Maybe ByteString -> [File]
@@ -67,14 +68,14 @@ multipleRootOwned paths mode content = map go paths
 
 instance Craftable File where
   checker = get . path
-  remover = notImplemented "File.remover"
+  remover = notImplemented "remover File"
   crafter File{..} = do
     unlessM (exists path) $
       write path ""
 
     setMode mode path
-    setOwner owner path
-    setGroup group path
+    whenJust owner $ setOwner path
+    whenJust group $ setGroup path
 
     case content of
       Nothing -> return ()
@@ -99,8 +100,8 @@ get fp = do
     return . Just $
       File { path    = fp
            , mode    = m
-           , owner   = o
-           , group   = g
+           , owner   = Just o
+           , group   = Just g
            , content = Just content
            }
 

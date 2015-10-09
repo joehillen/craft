@@ -38,8 +38,8 @@ instance Craftable Config where
     craft_ $
       File (path config)
            (Mode RW O O)
-           user
-           (User.group user)
+           (Just user)
+           (Just $ User.group user)
            (File.strContent $ show config)
 
   remover = notImplemented "checker Ssh.Config"

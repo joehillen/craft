@@ -5,6 +5,7 @@ import           Craft.File (File)
 import qualified Craft.File as File
 import           Craft.File.Mode
 import           Craft.Internal.FileDirectory
+import           Craft.Internal.Helpers
 
 import           Control.Lens
 import           Control.Monad (unless)
@@ -66,7 +67,7 @@ instance Craftable S3File where
       Version verStr -> unless (exists && curSum == verStr) downloadFile
 
     setMode (File.mode file) path
-    setOwner (File.owner file) path
-    setGroup (File.group file) path
+    whenJust (File.owner file) $ setOwner path
+    whenJust (File.group file) $ setGroup path
 
   remover S3File{..} = remover file

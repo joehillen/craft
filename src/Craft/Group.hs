@@ -16,9 +16,6 @@ type Name = GroupName
 name :: Group -> Name
 name = groupname
 
-root :: Group
-root = RootGroup
-
 data Options =
   Options
   { optGID :: Maybe GroupID

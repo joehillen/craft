@@ -21,14 +21,14 @@ addAuthorizedKey user pk = do
   craft $
     File (User.home user </> ".ssh" </> "authorized_keys")
          (Mode RW O O)
-         user
-         (User.group user)
+         (Just user)
+         (Just $ User.group user)
          (File.strContent $ publicKeyType pk ++ " " ++ publicKey pk)
 
 userDir :: User -> Directory
 userDir user =
   Directory (User.home user </> ".ssh")
             (Mode RWX O O)
-            user
-            (User.group user)
+            (Just user)
+            (Just $ User.group user)
 
