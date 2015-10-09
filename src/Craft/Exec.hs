@@ -78,13 +78,13 @@ replaceKey k'  v' (k, v)
   | otherwise = (k, v)
 
 
-withEnv :: Env -> Craft a -> Craft a
+withEnv :: ExecEnv -> Craft a -> Craft a
 withEnv env = local (\r -> r { craftExecEnv = env })
 
 
 -- TESTME
 withEnvVar :: String -> String -> Craft a -> Craft a
-withEnvVar name val go = undefined
+withEnvVar name val go = notImplemented "withEnvVar"
 
 
 withCWD :: FilePath -> Craft a -> Craft a
@@ -102,13 +102,13 @@ runCraftLocal e = iterM runCraftLocal' . flip runReaderT e
 -- | runCraftLocal implementation
 runCraftLocal' :: CraftDSL (IO a) -> IO a
 runCraftLocal' (Exec env command args next) = do
-  let p = craftProc env command args
+  let p = localProc env command args
   msg "exec" $ unwords [command, unwords args]
   (exit', stdout', stderr') <- readCreateProcessWithExitCode p "" {- stdin -}
   next $ ExecResult exit' stdout' stderr'
 runCraftLocal' (Exec_ env command args next) = do
   msg "exec_" $ unwords [command, unwords args]
-  let p = craftProc env command args
+  let p = localProc env command args
   (_, _, _, ph) <- liftIO $ createProcess p
   liftIO (waitForProcess ph) >>= \case
     ExitFailure n -> error $ "exec_ failed with code: " ++ show n
@@ -120,8 +120,8 @@ runCraftLocal' (FileWrite fp content next) = do
   BS.writeFile fp content
   next
 
-craftProc :: Env -> Command -> Args -> CreateProcess
-craftProc env prog args =
+localProc :: ExecEnv -> Command -> Args -> CreateProcess
+localProc env prog args =
   (proc prog args) { env           = Just env
                    , close_fds     = True
                    , create_group  = True
@@ -129,10 +129,10 @@ craftProc env prog args =
                    }
 
 -- | Free CraftDSL functions
-execF :: Env -> Command -> Args -> Free CraftDSL ExecResult
+execF :: ExecEnv -> Command -> Args -> Free CraftDSL ExecResult
 execF env cmd args = liftF $ Exec env cmd args id
 
-execF_ :: Env -> Command -> Args -> Free CraftDSL ()
+execF_ :: ExecEnv -> Command -> Args -> Free CraftDSL ()
 execF_ env cmd args = liftF $ Exec_ env cmd args ()
 
 fileReadF :: FilePath -> Free CraftDSL BS.ByteString
@@ -141,3 +141,57 @@ fileReadF fp = liftF $ FileRead fp id
 fileWriteF :: FilePath -> BS.ByteString -> Free CraftDSL ()
 fileWriteF fp content = liftF $ FileWrite fp content ()
 
+
+data SSHEnv
+  = SSHEnv
+    { sshEnvUser :: String
+    , sshEnvKey  :: FilePath
+    , sshEnvAddr :: String
+    , sshSudo    :: Bool
+    }
+
+-- | runCraftSSH
+runCraftSSH :: SSHEnv -> r -> ReaderT r (Free CraftDSL) a -> IO a
+runCraftSSH sshEnv e = iterM (runCraftSSH' sshEnv) . flip runReaderT e
+
+-- | runCraftSSH implementation
+runCraftSSH' :: SSHEnv -> CraftDSL (IO a) -> IO a
+runCraftSSH' sshEnv (Exec env command args next) = do
+  let p = sshProc sshEnv env command args
+  msg "exec" $ showProc p
+  (exit', stdout', stderr') <- readCreateProcessWithExitCode p "" {- stdin -}
+  next $ ExecResult exit' stdout' stderr'
+runCraftSSH' sshEnv (Exec_ env command args next) = do
+  let p = sshProc sshEnv env command args
+  msg "exec_" $ showProc p
+  (_, _, _, ph) <- liftIO $ createProcess p
+  liftIO (waitForProcess ph) >>= \case
+    ExitFailure n -> error $ "exec_ failed with code: " ++ show n
+    ExitSuccess   -> next
+runCraftSSH' sshEnv (FileRead fp next) = do
+  next ""
+runCraftSSH' sshEnv (FileWrite fp content next) = do
+  next
+
+
+showProc :: CreateProcess -> String
+showProc p =
+  case cmdspec p of
+    ShellCommand s -> s
+    RawCommand fp args -> unwords [fp, unwords args]
+
+
+sshProc :: SSHEnv -> ExecEnv -> Command -> Args -> CreateProcess
+sshProc SSHEnv{..} env command args =
+  proc "ssh" ([ "-i", sshEnvKey, sshEnvUser ++ "@" ++ sshEnvAddr
+              , unwords cmd])
+ where
+  cmd = sudo ++ map quote (renderEnv env) ++ command : map quote args
+  sudo = if sshSudo then ["sudo"] else []
+  quote "" = "\"\""
+  quote v
+    | ' ' `elem` v = "\"" ++ v ++ "\""
+    | otherwise    = v
+
+renderEnv :: ExecEnv -> [String]
+renderEnv = map (\(k, v) -> k ++ "=" ++ v)

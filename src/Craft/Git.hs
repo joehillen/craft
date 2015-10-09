@@ -72,7 +72,7 @@ getURL = do
     Nothing -> error $ "git remote `" ++ origin ++ "` not found."
     Just url -> url
 
--- TODO: TEST ME!!!
+-- TESTME
 repoURLParser :: Parser [((String, String), String)]
 repoURLParser = many1 $ do
   remote <- word
@@ -105,7 +105,7 @@ get path = do
 instance Craftable Repo where
   checker = get . directory
 
-  crafter r@Repo{..} = do
+  crafter Repo{..} = do
     unlessM (Directory.exists directory) $
       git "clone" [url, directory]
     withCWD directory $ do

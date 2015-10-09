@@ -71,7 +71,7 @@ instance Craftable File where
   remover = notImplemented "remover File"
   crafter File{..} = do
     unlessM (exists path) $
-      write path ""
+      exec_ "touch" [path]
 
     setMode mode path
     whenJust owner $ setOwner path

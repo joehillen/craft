@@ -21,11 +21,18 @@ import qualified Craft.Pip as Pip
 
 
 main :: IO ()
-main = runCraftLocal craftEnv { craftPackageManager = Apt
-                              } $ do
-  Apt.update
-  void addAdmins
-  packages
+main =
+  runCraftSSH
+    (SSHEnv { sshEnvUser = "vagrant"
+            , sshEnvAddr = "10.0.3.10"
+            , sshEnvKey  = "/home/joe/elastic/craft/.vagrant/machines/default/lxc/private_key"
+            , sshSudo    = True
+            })
+    (craftEnv { craftPackageManager = Apt
+              }) $ do
+      Apt.update
+      void addAdmins
+      packages
 
 
 bash,zsh :: FilePath

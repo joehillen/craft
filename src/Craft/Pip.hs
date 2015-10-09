@@ -26,7 +26,7 @@ get pn = do
       Just version ->
         Just . PipPackage $ Package pn $ Version version
 
--- TODO: TEST ME!!!
+-- TESTME
 pipShowParser :: Parser [(String, String)]
 pipShowParser = many $ kv <* many endOfLine
  where

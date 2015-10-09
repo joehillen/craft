@@ -15,7 +15,7 @@ data CraftEnv pm
   = CraftEnv
     { craftSourcePaths    :: [FilePath]
     , craftPackageManager :: PackageManager pm => pm
-    , craftExecEnv        :: Env
+    , craftExecEnv        :: ExecEnv
     , craftExecCWD        :: FilePath
     }
 
@@ -27,11 +27,11 @@ data ExecResult = ExecResult { exitcode :: ExitCode
                              , stdout   :: StdOut
                              , stderr   :: StdErr
                              }
-type Env = [(String, String)]
+type ExecEnv = [(String, String)]
 
 data CraftDSL next
-  = Exec  Env Command Args (ExecResult -> next)
-  | Exec_ Env Command Args next
+  = Exec  ExecEnv Command Args (ExecResult -> next)
+  | Exec_ ExecEnv Command Args next
   | FileRead FilePath (ByteString -> next)
   | FileWrite FilePath ByteString next
  deriving Functor

@@ -108,6 +108,7 @@ setGroup un gn =
     Just g  -> userMod un ["--gid", show $ gid g]
 
 setGroups :: UserName -> [GroupName] -> Craft ()
+setGroups _  []  = return ()
 setGroups un gns = userMod un ["--groups", intercalate "," gns]
 
 setHome :: UserName -> FilePath -> Craft ()

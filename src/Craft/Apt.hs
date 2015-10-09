@@ -36,7 +36,7 @@ dpkgQuery = exec "/usr/bin/dpkg-query"
 
 getAptPackage :: PackageName -> Craft (Maybe Package)
 getAptPackage pn = do
-  r <- dpkgQuery ["--show", "--showformat", "${Version}", pn]
+  r <- dpkgQuery ["--show", "--showformat", "'${Version}'", pn]
   return $ case exitcode r of
     ExitFailure _ -> Nothing
     ExitSuccess -> Just $ Package { pkgName = pn
