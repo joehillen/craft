@@ -6,6 +6,7 @@ module Main where
 import           Control.Monad
 import qualified Data.ByteString.Char8 as B8
 import           Data.Maybe
+import           Data.Char (toLower)
 
 import           Craft
 import           Craft.Apt (Apt(..))
@@ -15,19 +16,40 @@ import           Craft.File (File(..), file)
 import qualified Craft.File as File
 import           Craft.File.Mode
 import qualified Craft.Ssh as Ssh
+import qualified Craft.Ssh.Config as Ssh.Config
 import           Craft.User (User(..), createUser)
 import qualified Craft.User as User
 import qualified Craft.Pip as Pip
+import System.Environment (getEnvironment)
+
+
+sshConfigLookup :: String -> [(String, String)] -> String
+sshConfigLookup key body =
+  fromJust $ lookup key' $ map ((,) <$> map toLower . fst <*> snd) body
+ where
+   key' = map toLower key
+
+runCraftVagrant :: PackageManager pm => CraftEnv pm -> Craft a -> IO a
+runCraftVagrant env configs = do
+  sysEnv <- getEnvironment
+  sections <- runCraftLocal (craftEnv { craftExecEnv = sysEnv }) $
+     parseExec Ssh.Config.parser "vagrant" ["ssh-config"]
+
+  let (Ssh.Config.Host _ body) = head sections
+
+  runCraftSSH
+    (SSHEnv { sshEnvUser = sshConfigLookup "user" body
+            , sshEnvAddr = sshConfigLookup "hostname" body
+            , sshEnvKey  = sshConfigLookup "identityfile" body
+            , sshSudo    = True
+            })
+    env
+    configs
 
 
 main :: IO ()
-main =
-  runCraftSSH
-    (SSHEnv { sshEnvUser = "vagrant"
-            , sshEnvAddr = "10.0.3.10"
-            , sshEnvKey  = "/home/joe/elastic/craft/.vagrant/machines/default/lxc/private_key"
-            , sshSudo    = True
-            })
+main = do
+  runCraftVagrant
     (craftEnv { craftPackageManager = Apt
               }) $ do
       Apt.update
