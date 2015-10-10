@@ -1,9 +1,15 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Craft.Internal.Helpers where
 
+import Data.Char (isSpace)
+
 indent :: Int -> String -> String
 indent len text =
   unlines $ map (replicate len ' ' ++) $ lines text
+
+trim :: String -> String
+trim = f . f
+   where f = reverse . dropWhile isSpace
 
 class ToArg a where
   toArg :: String -> a -> [String]
@@ -37,3 +43,4 @@ toArgs arg = Prelude.concatMap (toArg arg)
 whenJust :: Monad m => Maybe a -> (a -> m ()) -> m ()
 whenJust Nothing  _   = return ()
 whenJust (Just v) act = act v
+

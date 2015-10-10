@@ -88,8 +88,9 @@ bodyLine = do
   name <- someTill anyChar spaceChar
   notFollowedBy eol
   space
-  val <- someTill anyChar eol
-  return (name, val)
+  val <- someTill anyChar (void eol <|> eof)
+  void $ optional $ (space <|> void (many eol))
+  return (name, trim val)
 
 parseSection :: Parsec String Section
 parseSection = do
