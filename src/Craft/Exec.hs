@@ -2,13 +2,16 @@ module Craft.Exec where
 
 import           Control.Monad.Reader
 import           Control.Monad.Free
+import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as B8
 import           Data.List (intercalate)
 import           Data.List.Split (splitOn)
 import           System.Exit
 import           System.Process hiding ( readCreateProcessWithExitCode
                                        , readProcessWithExitCode)
 import           System.Process.ListLike
+import qualified System.Process.ByteString as Proc.BS
 import           Text.Megaparsec
 
 import           Craft.Types
@@ -105,6 +108,7 @@ runCraftLocal' (Exec env command args next) = do
   msg "exec" $ unwords [command, unwords args]
   (exit', stdout', stderr') <- readCreateProcessWithExitCode p "" {- stdin -}
   next $ ExecResult exit' stdout' stderr'
+
 runCraftLocal' (Exec_ env command args next) = do
   msg "exec_" $ unwords [command, unwords args]
   let p = localProc env command args
@@ -112,9 +116,11 @@ runCraftLocal' (Exec_ env command args next) = do
   liftIO (waitForProcess ph) >>= \case
     ExitFailure n -> error $ "exec_ failed with code: " ++ show n
     ExitSuccess   -> next
+
 runCraftLocal' (FileRead fp next) = do
   content <- BS.readFile fp
   next content
+
 runCraftLocal' (FileWrite fp content next) = do
   BS.writeFile fp content
   next
@@ -160,6 +166,7 @@ runCraftSSH' sshEnv (Exec env command args next) = do
   msg "exec" $ showProc p
   (exit', stdout', stderr') <- readCreateProcessWithExitCode p "" {- stdin -}
   next $ ExecResult exit' stdout' stderr'
+
 runCraftSSH' sshEnv (Exec_ env command args next) = do
   let p = sshProc sshEnv env command args
   msg "exec_" $ showProc p
@@ -167,9 +174,21 @@ runCraftSSH' sshEnv (Exec_ env command args next) = do
   liftIO (waitForProcess ph) >>= \case
     ExitFailure n -> error $ "exec_ failed with code: " ++ show n
     ExitSuccess   -> next
+
 runCraftSSH' sshEnv (FileRead fp next) = do
-  next ""
+  let p = sshProc sshEnv [] "cat" [fp]
+  msg "exec_" $ showProc p
+  (ec, content, stderr) <- liftIO $ Proc.BS.readCreateProcessWithExitCode p ""
+  unless (isSuccess ec) $
+    error $ "Failed to read file '"++ fp ++"': " ++ B8.unpack stderr
+  next content
+
 runCraftSSH' sshEnv (FileWrite fp content next) = do
+  let p = sshProc sshEnv [] "tee" [fp]
+  msg "exec_" $ showProc p
+  (ec, _, stderr) <- liftIO $ Proc.BS.readCreateProcessWithExitCode p content
+  unless (isSuccess ec) $
+    error $ "Failed to write file '"++ fp ++"': " ++ B8.unpack stderr
   next
 
 
