@@ -51,6 +51,7 @@ library
                      , Craft.Types
                      , Craft.Upstart
                      , Craft.User
+                     , Craft.Vagrant
                      , Craft.Watch
 
   default-language:    Haskell2010

@@ -6,3 +6,4 @@ dist/
 bin/
 .stack-work/
 main
+examples/basic

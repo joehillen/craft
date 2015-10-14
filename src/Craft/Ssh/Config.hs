@@ -2,6 +2,7 @@ module Craft.Ssh.Config where
 
 import           Control.Monad (void)
 import           Data.Char (toLower)
+import           Data.Maybe (catMaybes)
 import           Text.Megaparsec
 
 import           Craft
@@ -30,7 +31,27 @@ data Section
   | Match String Body
   deriving Eq
 
+type Sections = [Section]
+
 type Body = [(String, String)]
+
+bodyLookup :: String -> Body -> Maybe String
+bodyLookup key body =
+  lookup (map toLower key) $ map ((,) <$> map toLower . fst <*> snd) body
+
+cfgLookup :: String -> String -> Sections -> Maybe String
+cfgLookup sectionName key sections' =
+  case body of
+    Just b -> bodyLookup key b
+    Nothing -> Nothing
+ where
+  body = maybeHead . catMaybes $ map f sections'
+  f (Host name b) | name == sectionName = Just b
+                  | otherwise           = Nothing
+  f             _                       = Nothing
+  maybeHead []    = Nothing
+  maybeHead (x:_) = Just x
+
 
 instance Craftable Config where
   checker cfg = File.get (path cfg) >>= \case

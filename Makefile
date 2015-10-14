@@ -1,4 +1,10 @@
-all: examples/Main.hs
+.PHONY: examples all
+
+all: build examples
+
+build:
 	stack build
-	stack ghc -- -o main $^
+
+examples: build
+	stack ghc -- -o examples/basic examples/Basic.hs
 
