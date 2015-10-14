@@ -8,11 +8,8 @@ module Craft
 where
 
 import           Control.Monad.Reader
-import           System.FilePath
-import           System.Directory
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
 import           System.Exit (ExitCode(..))
+import           System.FilePath
 
 import           Craft.Types as X
 import           Craft.Actions as X
@@ -29,13 +26,3 @@ craftEnv =
   , craftExecCWD        = "/"
   }
 
-readSourceFile :: FilePath -> IO ByteString
-readSourceFile name = do
-  --fps <- asks craftSourcePaths
-  let fps = [] :: [FilePath]
-  files <- filterM (\fp -> doesFileExist $ fp </> name) fps
-  if null files then
-    error $ "Source file `" ++ name ++ "` not found in file sources: "
-            ++ show fps
-  else
-    BS.readFile $ head files </> name

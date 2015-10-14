@@ -34,6 +34,7 @@ data CraftDSL next
   | Exec_ ExecEnv Command Args next
   | FileRead FilePath (ByteString -> next)
   | FileWrite FilePath ByteString next
+  | ReadSourceFile [FilePath] FilePath (ByteString -> next)
  deriving Functor
 
 class (Eq a, Show a) => Craftable a where

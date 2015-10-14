@@ -5,8 +5,10 @@ import           Control.Monad.Free
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
+import           System.FilePath
 import           Data.List (intercalate)
 import           Data.List.Split (splitOn)
+import           System.Directory
 import           System.Exit
 import           System.Process hiding ( readCreateProcessWithExitCode
                                        , readProcessWithExitCode)
@@ -34,6 +36,11 @@ fileRead fp = lift $ fileReadF fp
 
 fileWrite :: FilePath -> BS.ByteString -> Craft ()
 fileWrite fp content = lift $ fileWriteF fp content
+
+readSourceFile :: FilePath -> Craft ByteString
+readSourceFile fp = do
+  fps <- asks craftSourcePaths
+  lift $ readSourceFileF fps fp
 
 -- | better than grep
 parseExec :: Parsec String a -> Command -> Args -> Craft a
@@ -125,6 +132,10 @@ runCraftLocal' (FileWrite fp content next) = do
   BS.writeFile fp content
   next
 
+runCraftLocal' (ReadSourceFile fps fp next) = do
+  content <- readSourceFileIO fps fp
+  next content
+
 localProc :: ExecEnv -> Command -> Args -> CreateProcess
 localProc env prog args =
   (proc prog args) { env           = Just env
@@ -142,6 +153,9 @@ execF_ env cmd args = liftF $ Exec_ env cmd args ()
 
 fileReadF :: FilePath -> Free CraftDSL BS.ByteString
 fileReadF fp = liftF $ FileRead fp id
+
+readSourceFileF :: [FilePath] -> FilePath -> Free CraftDSL BS.ByteString
+readSourceFileF fps fp = liftF $ ReadSourceFile fps fp id
 
 fileWriteF :: FilePath -> BS.ByteString -> Free CraftDSL ()
 fileWriteF fp content = liftF $ FileWrite fp content ()
@@ -191,6 +205,10 @@ runCraftSSH' sshEnv (FileWrite fp content next) = do
     error $ "Failed to write file '"++ fp ++"': " ++ B8.unpack stderr
   next
 
+runCraftSSH' _ (ReadSourceFile fps fp next) = do
+  content <- readSourceFileIO fps fp
+  next content
+
 
 showProc :: CreateProcess -> String
 showProc p =
@@ -213,3 +231,12 @@ sshProc SSHEnv{..} env command args =
 
 renderEnv :: ExecEnv -> [String]
 renderEnv = map (\(k, v) -> k ++ "=" ++ v)
+
+readSourceFileIO :: [FilePath] -> FilePath -> IO BS.ByteString
+readSourceFileIO fps name = do
+  files <- filterM (\fp -> doesFileExist $ fp </> name) fps
+  if null files then
+    error $ "Source file `" ++ name ++ "` not found in file sources: "
+            ++ show fps
+  else
+    BS.readFile $ head files </> name
