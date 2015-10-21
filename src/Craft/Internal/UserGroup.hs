@@ -4,11 +4,13 @@ import           Craft
 import           Craft.Internal.Helpers
 
 import           Control.Exception (tryJust)
-import           Control.Monad (guard)
+import           Control.Monad (guard, void)
 import           Data.List (intercalate)
-import           Data.List.Split (splitOn)
 import           Data.Maybe (catMaybes, fromJust)
 import           System.IO.Error (isDoesNotExistError)
+
+import           Text.Megaparsec
+import           Text.Megaparsec.String
 
 type UserName = String
 type UserID = Int
@@ -30,19 +32,41 @@ data User
     }
  deriving (Eq, Show)
 
+colon = char ':'
+
+-- TESTME
+passwdParser :: Parser (UserName, UserID, GroupID, String, FilePath, FilePath)
+passwdParser = do
+  name <- someTill anyChar colon
+  _ <- manyTill anyChar colon
+  uid <- read <$> someTill digitChar colon
+  gid <- read <$> someTill digitChar colon
+  comment <- manyTill anyChar colon
+  home <- manyTill anyChar colon
+  shell <- manyTill anyChar (void eol <|> eof)
+  return (name, uid, gid, comment, home, shell)
+
+-- TESTME
+shadowParser :: Parser String
+shadowParser = do
+  _name <- someTill anyChar colon
+  manyTill anyChar colon
+
+
 userFromName :: UserName -> Craft (Maybe User)
 userFromName name = do
   r <- getent "passwd" name
   case exitcode r of
     ExitFailure _ -> return Nothing
     ExitSuccess   -> do
-      let [_, _, uidS, gidS, comment', home', shell'] = parsePasswd $ stdout r
-      grp <- fromJust <$> groupFromID (read gidS)
-      grps <- getGroups name
-      passwordHash' <- (!! 1) . splitOn ":" . stdout <$> getent "shadow" name
+      (nameS, uid', gid', comment', home', shell') <-
+           parseGetent passwdParser "passwd" name
+      grp <- fromJust <$> groupFromID gid'
+      grps <- getGroups nameS
+      passwordHash' <- parseGetent shadowParser "shadow" nameS
       return . Just
-             $ User { username     = name
-                    , uid          = read uidS
+             $ User { username     = nameS
+                    , uid          = uid'
                     , group        = grp
                     , groups       = grps
                     , passwordHash = passwordHash'
@@ -54,11 +78,13 @@ userFromName name = do
 getGroups :: UserName -> Craft [GroupName]
 getGroups name = words . stdout <$> exec "id" ["-nG", name]
 
-parsePasswd :: String -> [String]
-parsePasswd = splitOn ":"
-
 getent :: String -> String -> Craft ExecResult
-getent dbase key = exec "getent" [dbase, key]
+getent dbase key = do
+  r <- exec "getent" [dbase, key]
+  return $ r { stdout = trim $ stdout r }
+
+parseGetent :: Parsec String a -> String -> String -> Craft a
+parseGetent parser dbase key = parseExec parser "getent" [dbase, key]
 
 
 userFromID :: UserID -> Craft (Maybe User)
@@ -96,21 +122,23 @@ data Group
   deriving (Eq, Show)
 
 
+-- TESTME
+groupParser :: Parser Group
+groupParser = do
+  name <- someTill anyChar colon
+  _ <- manyTill anyChar colon
+  gid <- read <$> someTill digitChar colon
+  members <- some alphaNumChar `sepBy` char ','
+  return $ Group name gid members
+
+
 groupFromName :: GroupName -> Craft (Maybe Group)
 groupFromName gname = do
   r <- getent "group" gname
-  return $ case exitcode r of
-    ExitFailure _ -> Nothing
-    ExitSuccess   -> Just . groupFromGetent $ stdout r
+  case exitcode r of
+    ExitFailure _ -> return Nothing
+    ExitSuccess   -> Just <$> parseGetent groupParser "group" gname
 
-
-groupFromGetent :: String -> Group
-groupFromGetent s =
-  let [name, _, gidS, membersS] = splitOn ":" s
-  in Group { groupname = name
-           , gid       = read gidS
-           , members   = splitOn "," membersS
-           }
 
 groupFromID :: GroupID -> Craft (Maybe Group)
 groupFromID = groupFromName . show
