@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Craft.Watch where
 
+import             Control.Monad (when)
 import             Craft.Types
 import             Craft.Actions
 
@@ -43,7 +44,7 @@ watchCraft w = do
                                       else Updated after
 
 watchRemove :: Craftable a => a -> Craft (WatchResult a)
-watchRemove a = do
+watchRemove a =
   checker a >>= \case
     Nothing -> return $ Unchanged a
     Just before -> do
@@ -82,3 +83,6 @@ watchCompare       Nothing (Just     _) = Created
 watchCompare (Just before) (Just after)
                       | before == after = Unchanged
                       |       otherwise = Updated
+
+whenChanged :: WatchResult a -> (a -> Craft ()) -> Craft ()
+whenChanged v f = when (changed v) $ f (unwatch v)
