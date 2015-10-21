@@ -6,7 +6,7 @@ import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
 import           System.FilePath
-import           Data.List (intercalate)
+import           Data.List (intercalate, intersperse)
 import           Data.List.Split (splitOn)
 import           System.Directory
 import           System.Exit
@@ -18,6 +18,7 @@ import           Text.Megaparsec
 
 import           Craft.Types
 import           Craft.Helpers
+
 
 
 -- | Craft DSL
@@ -46,7 +47,7 @@ readSourceFile fp = do
 parseExec :: Parsec String a -> Command -> Args -> Craft a
 parseExec parser command args = do
   r <- exec command args
-  let exitStr = case (exitcode r) of
+  let exitStr = case exitcode r of
                   ExitSuccess   -> "0"
                   ExitFailure c -> show c
   case parse parser (unwords $ command:args) (stdout r) of
@@ -55,9 +56,11 @@ parseExec parser command args = do
       "parseExec failed!\n"
       ++ show err ++ "\n"
       ++ "stdout:\n"
-      ++ (stdout r) ++ "\n" ++
-      if not (null (stderr r)) then "stderr:\n"   ++ (stderr r) ++ "\n"
-                           else ""
+      ++ stdout r ++ "\n" ++
+      if not (null (stderr r)) then
+        "stderr:\n" ++ stderr r ++ "\n"
+      else
+        ""
       ++ "exit code: " ++ exitStr
 
 
@@ -154,51 +157,65 @@ execF_ env cmd args = liftF $ Exec_ env cmd args ()
 fileReadF :: FilePath -> Free CraftDSL BS.ByteString
 fileReadF fp = liftF $ FileRead fp id
 
-readSourceFileF :: [FilePath] -> FilePath -> Free CraftDSL BS.ByteString
-readSourceFileF fps fp = liftF $ ReadSourceFile fps fp id
-
 fileWriteF :: FilePath -> BS.ByteString -> Free CraftDSL ()
 fileWriteF fp content = liftF $ FileWrite fp content ()
+
+readSourceFileF :: [FilePath] -> FilePath -> Free CraftDSL BS.ByteString
+readSourceFileF fps fp = liftF $ ReadSourceFile fps fp id
 
 
 data SSHEnv
   = SSHEnv
-    { sshEnvUser :: String
-    , sshEnvKey  :: FilePath
-    , sshEnvAddr :: String
+    { sshKey     :: FilePath
+    , sshAddr    :: String
+    , sshUser    :: String
     , sshSudo    :: Bool
+    , sshOptions :: [String]
     }
+
+sshEnv :: String -> FilePath -> SSHEnv
+sshEnv addr key =
+  SSHEnv
+  { sshAddr = addr
+  , sshKey  = key
+  , sshUser = "root"
+  , sshSudo = False
+  , sshOptions = [ "UserKnownHostsFile=/dev/null"
+                 , "StrictHostKeyChecking=no"
+                 , "LogLevel=ERROR"
+                 ]
+  }
 
 -- | runCraftSSH
 runCraftSSH :: SSHEnv -> r -> ReaderT r (Free CraftDSL) a -> IO a
-runCraftSSH sshEnv e = iterM (runCraftSSH' sshEnv) . flip runReaderT e
+runCraftSSH sshenv e = iterM (runCraftSSH' sshenv) . flip runReaderT e
 
 -- | runCraftSSH implementation
 runCraftSSH' :: SSHEnv -> CraftDSL (IO a) -> IO a
-runCraftSSH' sshEnv (Exec env command args next) = do
-  let p = sshProc sshEnv env command args
+runCraftSSH' sshenv (Exec env command args next) = do
+  let p = sshProc sshenv env command args
   msg "exec" $ showProc p
   (exit', stdout', stderr') <- readCreateProcessWithExitCode p "" {- stdin -}
   next $ ExecResult exit' stdout' stderr'
 
-runCraftSSH' sshEnv (Exec_ env command args next) = do
-  let p = sshProc sshEnv env command args
+runCraftSSH' sshenv (Exec_ env command args next) = do
+  let p = sshProc sshenv env command args
   msg "exec_" $ showProc p
   (_, _, _, ph) <- liftIO $ createProcess p
   liftIO (waitForProcess ph) >>= \case
     ExitFailure n -> error $ "exec_ failed with code: " ++ show n
     ExitSuccess   -> next
 
-runCraftSSH' sshEnv (FileRead fp next) = do
-  let p = sshProc sshEnv [] "cat" [fp]
+runCraftSSH' sshenv (FileRead fp next) = do
+  let p = sshProc sshenv [] "cat" [fp]
   msg "exec_" $ showProc p
   (ec, content, stderr) <- liftIO $ Proc.BS.readCreateProcessWithExitCode p ""
   unless (isSuccess ec) $
     error $ "Failed to read file '"++ fp ++"': " ++ B8.unpack stderr
   next content
 
-runCraftSSH' sshEnv (FileWrite fp content next) = do
-  let p = sshProc sshEnv [] "tee" [fp]
+runCraftSSH' sshenv (FileWrite fp content next) = do
+  let p = sshProc sshenv [] "tee" [fp]
   msg "exec_" $ showProc p
   (ec, _, stderr) <- liftIO $ Proc.BS.readCreateProcessWithExitCode p content
   unless (isSuccess ec) $
@@ -219,11 +236,14 @@ showProc p =
 
 sshProc :: SSHEnv -> ExecEnv -> Command -> Args -> CreateProcess
 sshProc SSHEnv{..} env command args =
-  proc "ssh" ([ "-i", sshEnvKey, sshEnvUser ++ "@" ++ sshEnvAddr
+  proc "ssh" ([ "-i", sshKey ] ++
+              ["-o" | not (null sshOptions)] ++
+              intersperse "-o" sshOptions ++
+              [ sshUser ++ "@" ++ sshAddr
               , unwords cmd])
  where
   cmd = sudo ++ map quote (renderEnv env) ++ command : map quote args
-  sudo = if sshSudo then ["sudo"] else []
+  sudo = ["sudo" | sshSudo ]
   quote "" = "\"\""
   quote v
     | ' ' `elem` v = "\"" ++ v ++ "\""

@@ -3,6 +3,7 @@ module Craft.Vagrant where
 import Craft
 import Craft.Ssh.Config
 import System.Environment
+import Data.Maybe (fromMaybe)
 
 runCraftVagrant :: PackageManager pm => CraftEnv pm -> Craft a -> IO a
 runCraftVagrant env configs = do
@@ -11,16 +12,16 @@ runCraftVagrant env configs = do
      parseExec parser "vagrant" ["ssh-config"]
 
   runCraftSSH
-    (SSHEnv { sshEnvUser = cfgLookupOrError "user" sections
-            , sshEnvAddr = cfgLookupOrError "hostname" sections
-            , sshEnvKey  = cfgLookupOrError "identityfile" sections
-            , sshSudo    = True
-            })
+    (sshEnv (cfgLookupOrError "hostname" sections)
+            (cfgLookupOrError "identityfile" sections))
+      { sshUser = cfgLookupOrError "user" sections
+      , sshSudo    = True
+      }
     env
     configs
 
 cfgLookupOrError :: String -> Sections -> String
 cfgLookupOrError name sections =
-  case cfgLookup "default" name sections of
-    Nothing -> error $ "'" ++ name ++ "' not found in output of 'vagrant ssh-config'"
-    Just x  -> x
+  fromMaybe
+    (error $ "'" ++ name ++ "' not found in output of 'vagrant ssh-config'")
+    (cfgLookup "default" name sections)
