@@ -2,13 +2,17 @@ module Craft.Vagrant where
 
 import Craft
 import Craft.Ssh.Config
-import System.Environment
+import qualified System.Environment
+import qualified System.Directory
 import Data.Maybe (fromMaybe)
 
 runCraftVagrant :: PackageManager pm => CraftEnv pm -> Craft a -> IO a
 runCraftVagrant env configs = do
-  sysEnv <- getEnvironment
-  sections <- runCraftLocal (craftEnv { craftExecEnv = sysEnv }) $
+  sysEnv <- System.Environment.getEnvironment
+  cwd <- System.Directory.getCurrentDirectory
+  sections <- runCraftLocal (craftEnv { craftExecEnv = sysEnv
+                                      , craftExecCWD = cwd
+                                      }) $
      parseExec parser "vagrant" ["ssh-config"]
 
   runCraftSSH

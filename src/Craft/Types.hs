@@ -28,10 +28,11 @@ data ExecResult = ExecResult { exitcode :: ExitCode
                              , stderr   :: StdErr
                              }
 type ExecEnv = [(String, String)]
+type CWD = FilePath
 
 data CraftDSL next
-  = Exec  ExecEnv Command Args (ExecResult -> next)
-  | Exec_ ExecEnv Command Args next
+  = Exec  CWD ExecEnv Command Args (ExecResult -> next)
+  | Exec_ CWD ExecEnv Command Args next
   | FileRead FilePath (ByteString -> next)
   | FileWrite FilePath ByteString next
   | ReadSourceFile [FilePath] FilePath (ByteString -> next)
