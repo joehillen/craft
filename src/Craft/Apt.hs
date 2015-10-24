@@ -1,6 +1,7 @@
 module Craft.Apt where
 
 import           Craft
+import Craft.File (File)
 import qualified Craft.File as File
 
 import           Control.Monad
@@ -66,23 +67,27 @@ purge :: Package -> Craft ()
 purge Package{..} =
   aptGet ["remove", pkgName, "--purge"]
 
-data Deb = Deb File.Path
+data Deb = Deb File
   deriving (Eq, Show)
 
-dpkgInstall :: FilePath -> Craft ()
-dpkgInstall fp =
-  exec_ "/usr/bin/dpkg" ["-i", fp]
+dpkgInstall :: File -> Craft ()
+dpkgInstall f =
+  exec_ "/usr/bin/dpkg" ["-i", File.path f]
 
 dpkgDebBin :: File.Path
 dpkgDebBin = "/usr/bin/dpkg-deb"
 
 packageFromDeb :: Deb -> Craft Package
-packageFromDeb (Deb fp) = do
-  let dpkgExec pattern = stdout <$> exec dpkgDebBin ["--show", "--showformat"
-                                                    , pattern, fp]
+packageFromDeb (Deb f) = do
+  let dpkgExec pattern = stdout <$> exec dpkgDebBin
+                                         [ "--show", "--showformat"
+                                         , pattern, File.path f
+                                         ]
   name    <- dpkgExec "${Package}"
+  when (null name) $ error "packageFromDeb 'name' is empty"
   version <- dpkgExec "${Version}"
-  return Package { pkgName = name
+  when (null version) $ error "packageFromDeb 'version' is empty"
+  return Package { pkgName    = name
                  , pkgVersion = Version version
                  }
 
@@ -92,5 +97,5 @@ instance Craftable Deb where
     checker pkg >>= \case
       Nothing -> return Nothing
       Just  _ -> return $ Just deb
-  crafter (Deb fp) = dpkgInstall fp
+  crafter (Deb f) = dpkgInstall f
   remover deb = notImplemented "remover Deb"
