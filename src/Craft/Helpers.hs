@@ -1,9 +1,7 @@
 module Craft.Helpers where
 
-import qualified Data.String.QQ as SQQ
 import qualified System.IO as IO
 import           System.Console.ANSI
-import           Language.Haskell.TH.Quote (QuasiQuoter, quoteFile)
 
 
 color :: Color -> IO a -> IO a
@@ -19,11 +17,6 @@ msg name m = do
   putStrLn m
   IO.hFlush IO.stdout
 
-multiline :: QuasiQuoter
-multiline = SQQ.s
-
-raw_f :: QuasiQuoter
-raw_f = quoteFile SQQ.s
 
 notImplemented :: String -> a
 notImplemented m = error $ "ERROR: Not Implemented! " ++ m

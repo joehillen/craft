@@ -2,6 +2,5 @@ flags: {}
 packages:
 - '.'
 extra-deps:
-- string-qq-0.0.2
 - megaparsec-4.1.1
 resolver: lts-3.9

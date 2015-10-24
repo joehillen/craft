@@ -71,7 +71,6 @@ library
                      , process-extras
                      , transformers
                      , unix
-                     , string-qq
                      , megaparsec
                      , async
                      , mtl
