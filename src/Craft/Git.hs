@@ -6,9 +6,11 @@ import           Text.Megaparsec
 import           Craft hiding (Version(..))
 import qualified Craft.Directory as Directory
 
+
 type BranchName = String
 type TagName    = String
 type SHA        = String
+
 
 data Version
   = Branch BranchName
@@ -17,19 +19,24 @@ data Version
   | Commit SHA
  deriving (Eq)
 
+
 instance Show Version where
   show (Branch name) = name
   show (Latest name) = name
   show (Tag    name) = "tags/" ++ name
   show (Commit sha)  = sha
 
+
 master :: Version
 master = Latest "master"
+
 
 origin :: String
 origin = "origin"
 
+
 type URL = String
+
 
 data Repo
   = Repo
@@ -39,6 +46,7 @@ data Repo
     }
   deriving (Eq, Show)
 
+
 repo :: URL -> Directory.Path -> Repo
 repo url directory =
   Repo
@@ -47,14 +55,18 @@ repo url directory =
   , version   = master
   }
 
+
 gitBin :: FilePath
 gitBin = "/usr/bin/git"
+
 
 git :: String -> [String] -> Craft ()
 git cmd args = exec_ gitBin $ cmd : args
 
+
 remotes :: Craft [String]
-remotes = lines . stdout <$> exec gitBin ["remote"]
+remotes = lines . stdout . errorOnFail <$> exec gitBin ["remote"]
+
 
 setURL :: URL -> Craft ()
 setURL url = do
@@ -64,12 +76,14 @@ setURL url = do
   else
     git "remote" ["add", origin, url]
 
+
 getURL :: Craft URL
 getURL = do
-  results <- parseExec repoURLParser gitBin ["remote", "-v"]
+  results <- parseExec repoURLParser stdout gitBin ["remote", "-v"]
   return $ case lookup (origin, "fetch") results of
     Nothing -> error $ "git remote `" ++ origin ++ "` not found."
     Just url -> url
+
 
 -- TESTME
 repoURLParser :: Parsec String [((String, String), String)]
@@ -81,10 +95,12 @@ repoURLParser = some $ do
  where
   word = some (noneOf " \t") <* some (spaceChar <|> tab)
 
+
 getVersion :: Craft Version
-getVersion = Commit <$> parseExec parser gitBin ["rev-parse", "HEAD"]
+getVersion = Commit <$> parseExec parser stdout gitBin ["rev-parse", "HEAD"]
  where
   parser = some alphaNumChar
+
 
 get :: Directory.Path -> Craft (Maybe Repo)
 get path = do
@@ -100,6 +116,7 @@ get path = do
               , url       = url'
               , version   = version'
               }
+
 
 instance Craftable Repo where
   checker = get . directory

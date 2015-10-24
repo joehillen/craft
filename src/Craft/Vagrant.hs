@@ -13,7 +13,7 @@ runCraftVagrant env configs = do
   sections <- runCraftLocal (craftEnv { craftExecEnv = sysEnv
                                       , craftExecCWD = cwd
                                       }) $
-     parseExec parser "vagrant" ["ssh-config"]
+     parseExec parser stdout "vagrant" ["ssh-config"]
 
   runCraftSSH
     (sshEnv (cfgLookupOrError "hostname" sections)

@@ -25,7 +25,9 @@ import           Data.List (intercalate)
 import           Data.Maybe (catMaybes)
 import           Text.Megaparsec
 
+
 type Path = FilePath
+
 
 data Directory =
   Directory
@@ -36,6 +38,7 @@ data Directory =
   }
   deriving (Eq, Show)
 
+
 directory :: Path -> Directory
 directory dp =
   Directory
@@ -45,18 +48,22 @@ directory dp =
   , group = Nothing
   }
 
+
 multiple :: [Path] -> Mode -> User -> Group -> [Directory]
 multiple paths mode owner group = map go paths
  where
   go path = Directory path mode (Just owner) (Just group)
+
 
 multipleRootOwned :: [Path] -> Mode -> [Directory]
 multipleRootOwned paths mode = map go paths
  where
   go path = (directory path) { mode = mode }
 
+
 exists :: Path -> Craft Bool
-exists p = isSuccess . exitcode <$> exec "/usr/bin/test" ["-d", p]
+exists p = isExecSucc <$> exec "/usr/bin/test" ["-d", p]
+
 
 instance Craftable Directory where
   checker = get . path
@@ -67,6 +74,7 @@ instance Craftable Directory where
     whenJust owner $ setOwner path
     whenJust group $ setGroup path
   remover = notImplemented "remover Directory"
+
 
 get :: Path -> Craft (Maybe Directory)
 get dp = do
@@ -84,6 +92,7 @@ get dp = do
                 , group = Just g
                 }
 
+
 getFilesParser :: Parsec String [String]
 getFilesParser = stuff `sepBy` newline <* optional newline
  where
@@ -94,6 +103,7 @@ getFilesParser = stuff `sepBy` newline <* optional newline
     line
   line :: Parsec String String
   line = many $ noneOf "\n"
+
 
 testGetFilesParser :: IO Bool
 testGetFilesParser = do
@@ -111,7 +121,8 @@ testGetFilesParser = do
       else
         return True
 
+
 getFiles :: Path -> Craft [File]
 getFiles dp = do
-  fns <- parseExec getFilesParser "/bin/ls" ["-a", "-1", dp]
+  fns <- parseExec getFilesParser stdout "/bin/ls" ["-a", "-1", dp]
   catMaybes <$> mapM (File.get . (</> dp)) fns

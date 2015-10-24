@@ -55,17 +55,18 @@ shadowParser = do
 
 userFromName :: UserName -> Craft (Maybe User)
 userFromName name = do
-  r <- getent "passwd" name
-  case exitcode r of
-    ExitFailure _ -> return Nothing
-    ExitSuccess   -> do
-      (nameS, uid', gid', comment', home', shell') <-
-           parseGetent passwdParser "passwd" name
+  getent "passwd" name >>= \case
+    ExecFail _ -> return Nothing
+    ExecSucc r -> do
+      let (nameS, uid', gid', comment', home', shell') =
+            parseGetent passwdParser "passwd" name (stdout r)
       grp <- fromJust <$> groupFromID gid'
       grps <- getGroups nameS
-      passwordHash' <- parseGetent shadowParser "shadow" nameS
+      shadowResult <- errorOnFail <$> getent "shadow" nameS
+      let passwordHash' = parseGetent shadowParser "shadow" nameS
+                            $ stdout shadowResult
       return . Just
-             $ User { username     = nameS
+            $ User { username     = nameS
                     , uid          = uid'
                     , group        = grp
                     , groups       = grps
@@ -76,15 +77,16 @@ userFromName name = do
                     }
 
 getGroups :: UserName -> Craft [GroupName]
-getGroups name = words . stdout <$> exec "id" ["-nG", name]
+getGroups name = words . stdout . errorOnFail <$> exec "id" ["-nG", name]
 
 getent :: String -> String -> Craft ExecResult
-getent dbase key = do
-  r <- exec "getent" [dbase, key]
-  return $ r { stdout = trim $ stdout r }
+getent dbase key = exec "getent" [dbase, key]
 
-parseGetent :: Parsec String a -> String -> String -> Craft a
-parseGetent parser dbase key = parseExec parser "getent" [dbase, key]
+parseGetent :: Parsec String a -> String -> String -> String -> a
+parseGetent parser dbase key input =
+  case parse parser (unwords ["getent", dbase, key]) input of
+    Left  err -> error $ show err
+    Right r   -> r
 
 
 userFromID :: UserID -> Craft (Maybe User)
@@ -134,10 +136,11 @@ groupParser = do
 
 groupFromName :: GroupName -> Craft (Maybe Group)
 groupFromName gname = do
-  r <- getent "group" gname
-  case exitcode r of
-    ExitFailure _ -> return Nothing
-    ExitSuccess   -> Just <$> parseGetent groupParser "group" gname
+  getent "group" gname >>= \case
+    ExecFail _ -> return Nothing
+    ExecSucc r -> return
+                  . Just
+                  $ parseGetent groupParser "group" gname (stdout r)
 
 
 groupFromID :: GroupID -> Craft (Maybe Group)

@@ -11,6 +11,7 @@ import           Craft.User (User(..))
 import qualified Craft.User as User
 
 import           Text.Megaparsec
+import           Text.Megaparsec.String
 
 
 setOwner :: FilePath -> User -> Craft ()
@@ -20,18 +21,22 @@ setGroup :: FilePath -> Group -> Craft ()
 setGroup path Group{..} = exec_ "/bin/chgrp" [show gid, path]
 
 getMode :: FilePath -> Craft Mode
-getMode p = fromString . stdout <$> exec "/usr/bin/stat" ["-c", "%a", p]
+getMode p = fromString . stdout . errorOnFail
+            <$> exec "/usr/bin/stat" ["-c", "%a", p]
+
+digitParser :: Parser Int
+digitParser = read <$> some digitChar
 
 getOwner :: FilePath -> Craft User
 getOwner p = do
-  uid <- parseExec (read <$> some digitChar) "/usr/bin/stat" ["-c", "%u", p]
+  uid <- parseExec digitParser stdout "/usr/bin/stat" ["-c", "%u", p]
   User.fromID uid >>= \case
     Nothing -> error $ "No such owner with id `" ++ show uid ++ "` for: " ++ p
     Just g  -> return g
 
 getGroup :: FilePath -> Craft Group
 getGroup p = do
-  gid <- parseExec (read <$> some digitChar) "/usr/bin/stat" ["-c", "%g", p]
+  gid <- parseExec digitParser stdout "/usr/bin/stat" ["-c", "%g", p]
   Group.fromID gid >>= \case
     Nothing -> error $
       "No such group with id `" ++ show gid ++ "` for: " ++ p

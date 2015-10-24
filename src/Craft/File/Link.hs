@@ -11,16 +11,12 @@ data Link
   deriving (Eq, Show)
 
 exists :: File.Path -> Craft Bool
-exists lp = isSuccess . exitcode <$> exec "/usr/bin/test" ["-L", lp]
+exists lp = isExecSucc <$> exec "/usr/bin/test" ["-L", lp]
 
 
 readLink :: File.Path -> Craft File.Path
-readLink lp = do
-  r <- exec "/bin/readlink" [lp]
-  if isSuccess (exitcode r) then
-    return . trimTrailing $ stdout r
-  else
-    error $ "readLink `" ++ lp ++ "` failed."
+readLink lp =
+  trimTrailing . stdout . errorOnFail <$> exec "/bin/readlink" [lp]
 
 get :: File.Path -> Craft (Maybe Link)
 get lp = do
@@ -29,14 +25,13 @@ get lp = do
     return Nothing
   else do
     target' <- readLink lp
-    return . Just $
-      Link { target  = target'
-           , path = lp
-           }
+    return . Just
+           $ Link { target  = target'
+                  , path = lp
+                  }
 
 instance Craftable Link where
   checker = get . path
-  crafter Link{..} =
-    exec_ "/bin/ln" ["-snf", target, path]
+  crafter Link{..} = exec_ "/bin/ln" ["-snf", target, path]
   remover = notImplemented "remover Link"
 

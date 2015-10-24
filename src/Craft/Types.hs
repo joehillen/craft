@@ -23,10 +23,18 @@ type StdOut = String
 type StdErr = String
 type Args = [String]
 type Command = FilePath
-data ExecResult = ExecResult { exitcode :: ExitCode
-                             , stdout   :: StdOut
-                             , stderr   :: StdErr
+
+data ExecResult = ExecFail FailResult | ExecSucc SuccResult
+
+data SuccResult = SuccResult { stdout :: StdOut
+                             , stderr :: StdErr
                              }
+
+data FailResult = FailResult { exitcode   :: Int
+                             , failStdout :: StdOut
+                             , failStderr :: StdErr
+                             }
+
 type ExecEnv = [(String, String)]
 type CWD = FilePath
 

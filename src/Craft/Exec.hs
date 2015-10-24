@@ -45,25 +45,20 @@ readSourceFile fp = do
   fps <- asks craftSourcePaths
   lift $ readSourceFileF fps fp
 
+
 -- | better than grep
-parseExec :: Parsec String a -> Command -> Args -> Craft a
-parseExec parser command args = do
-  r <- exec command args
-  let exitStr = case exitcode r of
-                  ExitSuccess   -> "0"
-                  ExitFailure c -> show c
-  case parse parser (unwords $ command:args) (stdout r) of
+parseExec :: Parsec String a -> (SuccResult -> String)
+          -> Command -> Args -> Craft a
+parseExec parser accessor cmd args = do
+  r <- errorOnFail <$> exec cmd args
+  case parse parser (unwords $ cmd:args) (accessor r) of
     Right x -> return x
     Left err -> error $
       "parseExec failed!\n"
       ++ show err ++ "\n"
       ++ "stdout:\n"
-      ++ stdout r ++ "\n" ++
-      if not (null (stderr r)) then
-        "stderr:\n" ++ stderr r ++ "\n"
-      else
-        ""
-      ++ "exit code: " ++ exitStr
+      ++ stdout r ++ "\n"
+      ++ "stderr:\n" ++ stderr r ++ "\n"
 
 
 craftExecPath :: CraftEnv a -> [FilePath]
@@ -108,6 +103,10 @@ withCWD path = local (\r -> r { craftExecCWD = path })
 isSuccess :: ExitCode -> Bool
 isSuccess ExitSuccess     = True
 isSuccess (ExitFailure _) = False
+
+isExecSucc :: ExecResult -> Bool
+isExecSucc (ExecSucc _) = True
+isExecSucc (ExecFail _) = False
 
 
 -- | runCraftLocal
@@ -158,7 +157,22 @@ execProc_ p next = do
 execProc p next = do
   msg "exec" $ showProc p
   (exit', stdout', stderr') <- readCreateProcessWithExitCode p "" {- stdin -}
-  next $ ExecResult exit' stdout' stderr'
+  next $ case exit' of
+           ExitSuccess      -> ExecSucc $ SuccResult stdout' stderr'
+           ExitFailure code -> ExecFail $ FailResult code stdout' stderr'
+
+
+errorOnFail :: ExecResult -> SuccResult
+errorOnFail (ExecSucc r) = r
+errorOnFail (ExecFail r) =
+  error $ "exec failed!\n"
+          ++ "exit code: " ++ show (exitcode r) ++ "\n"
+          ++ "stdout:\n"
+          ++ failStdout r ++ "\n" ++
+          if not (null (failStderr r)) then
+            "stderr:\n" ++ failStderr r ++ "\n"
+          else
+            ""
 
 
 -- | Free CraftDSL functions

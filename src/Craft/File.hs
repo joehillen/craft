@@ -97,7 +97,7 @@ write :: Path -> ByteString -> Craft ()
 write = fileWrite
 
 exists :: Path -> Craft Bool
-exists fp = isSuccess . exitcode <$> exec "/usr/bin/test" ["-f", fp]
+exists fp = isExecSucc <$> exec "/usr/bin/test" ["-f", fp]
 
 get :: Path -> Craft (Maybe File)
 get fp = do
@@ -118,4 +118,4 @@ get fp = do
            }
 
 md5sum :: Path -> Craft String
-md5sum fp = head . words . stdout <$> exec "/usr/bin/md5sum" [fp]
+md5sum fp = head . words . stdout . errorOnFail <$> exec "/usr/bin/md5sum" [fp]

@@ -16,7 +16,7 @@ latest pn = PipPackage $ Package pn Latest
 get :: PackageName -> Craft (Maybe PipPackage)
 get pn = do
   results <- withPath ["/usr/local/bin", "/usr/bin"] $
-                parseExec pipShowParser "pip" ["show", pn]
+               parseExec pipShowParser stdout "pip" ["show", pn]
   if null results then
     return Nothing
   else return $
