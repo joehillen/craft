@@ -19,6 +19,7 @@ import           Craft.Internal.Helpers
 
 import           Control.Monad.Extra (unlessM)
 import           Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
 import           Data.Maybe (fromJust)
 
@@ -26,13 +27,24 @@ type Path = FilePath
 
 data File
   = File
-    { path  :: Path
-    , mode  :: Mode
-    , owner :: Maybe User
-    , group :: Maybe Group
+    { path    :: Path
+    , mode    :: Mode
+    , owner   :: Maybe User
+    , group   :: Maybe Group
     , content :: Maybe ByteString
     }
-   deriving (Eq, Show)
+   deriving (Eq)
+
+instance Show File where
+  show f = "File { path = " ++ show (path f) ++
+                ", mode = " ++ show (mode f) ++
+                ", owner = " ++ show (owner f) ++
+                ", group = " ++ show (group f) ++
+                ", content = " ++ showContent (content f) ++
+               " }"
+    where
+      showContent Nothing  = "Nothing"
+      showContent (Just c) = "Just " ++ show (BS.take 30 c) ++ "..."
 
 name :: File -> String
 name f = takeFileName $ path f
