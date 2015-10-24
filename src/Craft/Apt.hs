@@ -31,18 +31,46 @@ aptGet args = exec_ "/usr/bin/apt-get" $ ["-q", "-y"] ++ args
 update :: Craft ()
 update = aptGet ["update"]
 
+
 dpkgQuery :: [String] -> Craft ExecResult
-dpkgQuery = exec "/usr/bin/dpkg-query"
+dpkgQuery = exec dpkgQueryBin
+
+
+dpkgQueryBin :: String
+dpkgQueryBin = "/usr/bin/dpkg-query"
+
+
+dpkgQueryStatus :: String -> Craft ExecResult
+dpkgQueryStatus pn = dpkgQuery ["-s", pn]
+
+
+dpkgQueryShow :: String -> String -> Craft String
+dpkgQueryShow pattern n = do
+  let args = [ "--show", "--showformat", pattern, n ]
+  r <- stdout . errorOnFail
+         <$> dpkgQuery args
+  when (null r) $ error $ "'" ++ (unwords (dpkgQueryBin:args))
+                          ++ "' returned an empty result!"
+  return r
+
+
+dpkgQueryVersion :: String -> Craft String
+dpkgQueryVersion = dpkgQueryShow "${Version}"
+
+
+dpkgQueryPackage :: String -> Craft String
+dpkgQueryPackage = dpkgQueryShow "${Package}"
 
 
 getAptPackage :: PackageName -> Craft (Maybe Package)
 getAptPackage pn = do
-  dpkgQuery ["--show", "--showformat", "'${Version}'", pn] >>= \case
+  dpkgQueryStatus pn >>= \case
     ExecFail _ -> return Nothing
-    ExecSucc r -> return . Just
-                         $ Package { pkgName = pn
-                                   , pkgVersion = Version $ stdout r
-                                   }
+    ExecSucc _ -> Just <$> do
+      r <- dpkgQueryVersion pn
+      return $ Package { pkgName = pn
+                       , pkgVersion = Version r
+                       }
 
 
 aptInstallArgs :: [String]
@@ -87,16 +115,28 @@ dpkgDebBin :: File.Path
 dpkgDebBin = "/usr/bin/dpkg-deb"
 
 
+dpkgDebShow :: String -> File -> Craft String
+dpkgDebShow pattern f = do
+  let args = [ "--show", "--showformat", pattern, File.path f ]
+  r <- stdout . errorOnFail
+         <$> exec dpkgDebBin args
+  when (null r) $ error $ "'" ++ (unwords (dpkgDebBin:args))
+                          ++ "' returned an empty result!"
+  return r
+
+
+dpkgDebVersion :: File -> Craft String
+dpkgDebVersion = dpkgDebShow "${Version}"
+
+
+dpkgDebPackage :: File -> Craft String
+dpkgDebPackage = dpkgDebShow "${Package}"
+
+
 packageFromDeb :: Deb -> Craft Package
 packageFromDeb (Deb f) = do
-  let dpkgExec pattern = stdout . errorOnFail
-                        <$> exec dpkgDebBin [ "--show", "--showformat"
-                                            , pattern, File.path f
-                                            ]
-  name    <- dpkgExec "${Package}"
-  when (null name) $ error "packageFromDeb 'name' is empty"
-  version <- dpkgExec "${Version}"
-  when (null version) $ error "packageFromDeb 'version' is empty"
+  name    <- dpkgDebPackage f
+  version <- dpkgDebVersion f
   return Package { pkgName    = name
                  , pkgVersion = Version version
                  }
