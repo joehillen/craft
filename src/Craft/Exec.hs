@@ -14,6 +14,7 @@ import           System.Process hiding ( readCreateProcessWithExitCode
                                        , readProcessWithExitCode)
 import           System.Process.ListLike
 import qualified System.Process.ByteString as Proc.BS
+import           Data.String.Utils (replace)
 import           Text.Megaparsec
 
 import           Craft.Types
@@ -265,14 +266,15 @@ sshProc cwd SSHEnv{..} env command args =
               , unwords cmd])
  where
   cmd = sudo ++
-        ["sh", "-c", "'", "cd", quote cwd, ";"] ++
-        map quote (renderEnv env) ++ (command : map quote args) ++
+        ["sh", "-c", "'", "cd", escape cwd, ";"] ++
+        map escape (renderEnv env) ++ (command : map escape args) ++
         ["'"]
   sudo = ["sudo" | sshSudo ]
-  quote "" = "\"\""
-  quote v
-    | ' ' `elem` v = "\"" ++ v ++ "\""
-    | otherwise    = v
+  escape :: String -> String
+  escape = recur backslash [" ", "$", "'"]
+  recur _ []     s = s
+  recur f (a:as) s = recur f as $ f a s
+  backslash x = replace x ('\\':x)
 
 renderEnv :: ExecEnv -> [String]
 renderEnv = map (\(k, v) -> k ++ "=" ++ v)

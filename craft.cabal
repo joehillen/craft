@@ -64,6 +64,7 @@ library
 
   build-depends:       base >= 4.8 && < 4.9
                      , ansi-terminal
+                     , async
                      , containers
                      , directory
                      , filepath
@@ -72,7 +73,7 @@ library
                      , transformers
                      , unix
                      , megaparsec
-                     , async
+                     , MissingH
                      , mtl
                      , optparse-applicative
                      , template-haskell
