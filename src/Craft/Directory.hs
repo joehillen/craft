@@ -73,7 +73,7 @@ instance Craftable Directory where
     setMode mode path
     whenJust owner $ setOwner path
     whenJust group $ setGroup path
-  remover = notImplemented "remover Directory"
+  destroyer = notImplemented "destroyer Directory"
 
 
 get :: Path -> Craft (Maybe Directory)

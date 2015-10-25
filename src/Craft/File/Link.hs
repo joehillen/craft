@@ -33,5 +33,5 @@ get lp = do
 instance Craftable Link where
   checker = get . path
   crafter Link{..} = exec_ "/bin/ln" ["-snf", target, path]
-  remover = notImplemented "remover Link"
+  destroyer = notImplemented "destroyer Link"
 

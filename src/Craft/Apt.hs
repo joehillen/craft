@@ -148,4 +148,4 @@ instance Craftable Deb where
       Nothing -> return Nothing
       Just  _ -> return $ Just deb
   crafter (Deb f) = dpkgInstall f
-  remover deb = notImplemented "remover Deb"
+  destroyer deb = notImplemented "destroyer Deb"

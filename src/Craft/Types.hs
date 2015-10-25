@@ -48,7 +48,7 @@ data CraftDSL next
 
 class (Eq a, Show a) => Craftable a where
   crafter :: a -> Craft ()
-  remover :: a -> Craft ()
+  destroyer :: a -> Craft ()
   checker :: a -> Craft (Maybe a)
 
 type PackageName = String
@@ -117,6 +117,6 @@ instance Craftable Package where
     pkgGetter pm (pkgName pkg) >>= \case
       Nothing -> installer pm pkg
       Just  _ -> when (pkgVersion pkg == Latest) $ upgrader pm pkg
-  remover pkg = do
+  destroyer pkg = do
     pm <- asks craftPackageManager
     uninstaller pm pkg

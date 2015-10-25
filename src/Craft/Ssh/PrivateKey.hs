@@ -33,4 +33,4 @@ instance Craftable PrivateKey where
                    (Just $ User.group user)
                    (File.strContent content)
 
-  remover = notImplemented "remover PrivateKey"
+  destroyer = notImplemented "destroyer PrivateKey"

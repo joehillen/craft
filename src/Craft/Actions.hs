@@ -26,7 +26,7 @@ destroy a =
   checker a >>= \case
     Nothing -> return a
     Just  _ -> do
-      remover a
+      destroyer a
       checker a >>= \case
         Nothing -> return a
         Just  r -> error $ "remove failed for: " ++ show a ++

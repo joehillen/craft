@@ -70,4 +70,4 @@ instance Craftable S3File where
     whenJust (File.owner file) $ setOwner path
     whenJust (File.group file) $ setGroup path
 
-  remover S3File{..} = remover file
+  destroyer S3File{..} = destroyer file

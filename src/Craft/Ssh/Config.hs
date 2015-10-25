@@ -71,7 +71,7 @@ instance Craftable Config where
            (Just $ User.group user)
            (File.strContent $ show config)
 
-  remover = notImplemented "remover Ssh.Config"
+  destroyer = notImplemented "destroyer Ssh.Config"
 
 parse :: String -> String -> [Section]
 parse fp s =

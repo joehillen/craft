@@ -55,4 +55,4 @@ instance Craftable PipPackage where
   crafter pkg = do
     pipInstall pkg
 
-  remover = notImplemented "remover PipPackage"
+  destroyer = notImplemented "destroyer PipPackage"

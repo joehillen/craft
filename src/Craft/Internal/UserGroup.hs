@@ -111,7 +111,7 @@ instance Craftable User where
       , toArg "--shell"       shell
       ]
 
-  remover _ = notImplemented "remover User"
+  destroyer _ = notImplemented "destroyer User"
 
 type GroupName = String
 
@@ -154,4 +154,4 @@ instance Craftable Group where
     exec_ "/usr/sbin/groupadd" $ toArg "--gid" gid ++ [groupname]
     exec_  "/usr/bin/gpasswd" ["--members", intercalate "," members, groupname]
 
-  remover _ = notImplemented "remover Group"
+  destroyer _ = notImplemented "destroyer Group"

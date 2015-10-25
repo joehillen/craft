@@ -48,7 +48,7 @@ watchRemove a =
   checker a >>= \case
     Nothing -> return $ Unchanged a
     Just before -> do
-      remover a
+      destroyer a
       checker a >>= \case
         Nothing -> return $ Removed before
         Just  r -> error $ "remove failed for: " ++ show a ++

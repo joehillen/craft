@@ -114,4 +114,4 @@ instance Craftable Service where
 
     when (restarts && updated runW) $ restart s
 
-  remover = notImplemented "remover Daemontools"
+  destroyer = notImplemented "destroyer Daemontools"

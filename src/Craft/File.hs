@@ -80,7 +80,7 @@ multipleRootOwned paths mode content = map go paths
 
 instance Craftable File where
   checker = get . path
-  remover = notImplemented "remover File"
+  destroyer = notImplemented "destroyer File"
   crafter File{..} = do
     unlessM (exists path) $
       exec_ "touch" [path]

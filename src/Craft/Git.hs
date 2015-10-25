@@ -133,4 +133,4 @@ instance Craftable Repo where
         Latest branchName -> git "pull" [origin, branchName]
         _                 -> return ()
 
-  remover = notImplemented "remover Git"
+  destroyer = notImplemented "destroyer Git"
