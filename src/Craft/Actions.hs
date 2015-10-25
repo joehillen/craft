@@ -1,19 +1,22 @@
 module Craft.Actions where
 
-import           Control.Monad (void)
-import           Data.Maybe (isJust)
+import Control.Monad (void)
+import Data.Maybe (isJust)
 
-import          Craft.Types
+import Craft.Types
 
 isPresent :: Craftable a => a -> Craft Bool
 isPresent a = isJust <$> checker a
 
 craft :: Craftable a => a -> Craft a
-craft a = do
-  crafter a
+craft a =
   checker a >>= \case
-    Nothing -> error $ "craft failed for: " ++ show a
-    Just  r -> return r
+    Just r  -> return r
+    Nothing -> do
+      crafter a
+      checker a >>= \case
+        Nothing -> error $ "craft failed for: " ++ show a
+        Just  r -> return r
 
 craft_ :: Craftable a => a -> Craft ()
 craft_ = void . craft

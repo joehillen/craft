@@ -83,6 +83,7 @@ library
                      , extra
                      , free
                      , split
+                     , cond
 
 test-suite craft-test
   type:                exitcode-stdio-1.0
