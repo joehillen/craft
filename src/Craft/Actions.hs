@@ -21,8 +21,8 @@ craft a =
 craft_ :: Craftable a => a -> Craft ()
 craft_ = void . craft
 
-remove :: Craftable a => a -> Craft a
-remove a =
+destroy :: Craftable a => a -> Craft a
+destroy a =
   checker a >>= \case
     Nothing -> return a
     Just  _ -> do
@@ -32,6 +32,6 @@ remove a =
         Just  r -> error $ "remove failed for: " ++ show a ++
                            " Found: " ++ show r
 
-remove_ :: Craftable a => a -> Craft ()
-remove_ = void . remove
+destroy_ :: Craftable a => a -> Craft ()
+destroy_ = void . destroy
 
