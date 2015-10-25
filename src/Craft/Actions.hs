@@ -11,12 +11,12 @@ isPresent a = isJust <$> checker a
 craft :: Craftable a => a -> Craft a
 craft a =
   checker a >>= \case
-    Just r  -> return r
+    Just  r -> return r
     Nothing -> do
       crafter a
       checker a >>= \case
-        Nothing -> error $ "craft failed for: " ++ show a
         Just  r -> return r
+        Nothing -> error $ "craft failed for: " ++ show a
 
 craft_ :: Craftable a => a -> Craft ()
 craft_ = void . craft
@@ -29,7 +29,7 @@ destroy a =
       destroyer a
       checker a >>= \case
         Nothing -> return a
-        Just  r -> error $ "remove failed for: " ++ show a ++
+        Just  r -> error $ "destroy failed for: " ++ show a ++
                            " Found: " ++ show r
 
 destroy_ :: Craftable a => a -> Craft ()
