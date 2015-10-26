@@ -10,10 +10,21 @@ isPresent a = isJust <$> checker a
 
 craft :: Craftable a => a -> Craft a
 craft a = do
-  crafter a =<< checker a
-  checker a >>= \case
-    Just  r -> return r
-    Nothing -> error $ "craft failed for: " ++ show a
+  mb <- checker a
+  case mb of
+    Nothing -> go mb
+    Just r ->
+      if r /= a then
+        go mb
+      else
+        return r
+
+ where
+  go mb = do
+    crafter a mb
+    checker a >>= \case
+      Nothing -> error $ "craft failed (not found) for: " ++ show a
+      Just  r -> return r
 
 craft_ :: Craftable a => a -> Craft ()
 craft_ = void . craft

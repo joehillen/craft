@@ -20,7 +20,7 @@ import           Control.Monad (unless)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
-import           Data.Maybe (fromJust, isJust)
+import           Data.Maybe (fromJust, isJust, isNothing)
 
 
 type Path = FilePath
@@ -34,7 +34,16 @@ data File
     , groupID :: GroupID
     , content :: Maybe ByteString
     }
-   deriving (Eq)
+
+
+instance Eq File where
+  (==) a b = (path a == path b)
+          && (mode a == mode b)
+          && (ownerID a == ownerID b)
+          && (groupID a == groupID b)
+          && (  isNothing (content a)
+             || isNothing (content b)
+             || (content a == content b))
 
 
 owner :: File -> Craft User

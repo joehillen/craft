@@ -65,17 +65,26 @@ data Version
   = Version String
   | AnyVersion
   | Latest
-  deriving (Show, Eq)
+  deriving (Show)
+
+
+instance Eq Version where
+  (==) AnyVersion  _           = True
+  (==) _           AnyVersion  = True
+  (==) Latest      (Version _) = False
+  (==) (Version _) Latest      = False
+  (==) (Version a) (Version b) = a == b
+
 
 -- Note: This may or may not make sense.
 -- Open to suggestions if any of this seems incorrect.
 instance Ord Version where
-  compare AnyVersion AnyVersion   = EQ
-  compare AnyVersion Latest       = LT
-  compare AnyVersion (Version _)  = EQ
-  compare Latest AnyVersion       = GT
-  compare Latest Latest           = EQ
-  compare Latest (Version _)      = GT
+  compare AnyVersion  AnyVersion  = EQ
+  compare AnyVersion  Latest      = LT
+  compare AnyVersion  (Version _) = EQ
+  compare Latest      AnyVersion  = GT
+  compare Latest      Latest      = EQ
+  compare Latest      (Version _) = GT
   compare (Version _) AnyVersion  = EQ
   compare (Version _) Latest      = LT
   compare (Version a) (Version b) = compareVersions a b
