@@ -8,6 +8,7 @@ import qualified Craft.File as File
 import           Craft.File.Mode
 import           Craft.User (User)
 import qualified Craft.User as User
+import qualified Craft.Group as Group
 
 data PrivateKey
   = PrivateKey
@@ -29,8 +30,8 @@ instance Craftable PrivateKey where
     craft_ $ userDir user
     craft_ $ File (Craft.Ssh.PrivateKey.path pk)
                    (Mode RW O O)
-                   (Just user)
-                   (Just $ User.group user)
+                   (User.uid user)
+                   (Group.gid $ User.group user)
                    (File.strContent content)
 
   destroyer = notImplemented "destroyer PrivateKey"

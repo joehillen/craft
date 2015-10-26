@@ -104,8 +104,8 @@ instance Craftable Service where
     nobody  <- fromJust <$> User.fromName "nobody"
     nogroup <- fromJust <$> Group.fromName "nogroup"
     craft_ $ (directory logDest)
-                { Directory.owner = Just nobody
-                , Directory.group = Just nogroup
+                { Directory.ownerID = User.uid nobody
+                , Directory.groupID = Group.gid nogroup
                 }
 
     let envDir = svcdir </> "env"

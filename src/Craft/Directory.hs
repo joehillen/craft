@@ -1,9 +1,9 @@
 module Craft.Directory
 ( module Craft.Directory
-, setGroup
-, setOwner
-, getOwner
-, getGroup
+, setGroupID
+, setOwnerID
+, getOwnerID
+, getGroupID
 , getMode
 )
 where
@@ -12,11 +12,11 @@ import           Craft
 import           Craft.File (File)
 import qualified Craft.File as File
 import           Craft.File.Mode
-import           Craft.Group (Group)
+import           Craft.Group (Group, GroupID)
 import qualified Craft.Group as Group
 import           Craft.Internal.FileDirectory
 import           Craft.Internal.Helpers
-import           Craft.User (User)
+import           Craft.User (User, UserID)
 import qualified Craft.User as User
 
 import           Control.Monad (void, unless)
@@ -32,28 +32,44 @@ type Path = FilePath
 
 data Directory =
   Directory
-  { path  :: Path
-  , mode  :: Mode
-  , owner :: Maybe User
-  , group :: Maybe Group
+  { path    :: Path
+  , mode    :: Mode
+  , ownerID :: UserID
+  , groupID :: GroupID
   }
   deriving (Eq, Show)
+
+
+owner :: Directory -> Craft User
+owner d =
+  User.fromID (ownerID d) >>= \case
+    Nothing -> error $ "No such owner with id `" ++ show (ownerID d)
+                       ++ "` for: " ++ show d
+    Just g  -> return g
+
+
+group :: Directory -> Craft Group
+group d =
+  Group.fromID (groupID d) >>= \case
+    Nothing -> error $ "No such group with id `" ++ show (groupID d)
+                       ++ "` for: " ++ show d
+    Just g -> return g
 
 
 directory :: Path -> Directory
 directory dp =
   Directory
-  { path  = dp
-  , mode  = Mode RWX RX RX
-  , owner = Nothing
-  , group = Nothing
+  { path    = dp
+  , mode    = Mode RWX RX RX
+  , ownerID = 0
+  , groupID = 0
   }
 
 
 multiple :: [Path] -> Mode -> User -> Group -> [Directory]
-multiple paths mode owner group = map go paths
+multiple paths mode owner' group' = map go paths
  where
-  go path = Directory path mode (Just owner) (Just group)
+  go path = Directory path mode (User.uid owner') (Group.gid group')
 
 
 multipleRootOwned :: [Path] -> Mode -> [Directory]
@@ -73,19 +89,17 @@ instance Craftable Directory where
       exec_ "mkdir" ["-p", path d]
 
     let setMode'  = setMode (mode d) $ path d
-    let setOwner' = whenJust (owner d) $ setOwner $ path d
-    let setGroup' = whenJust (group d) $ setGroup $ path d
+    let setOwner' = setOwnerID (ownerID d) $ path d
+    let setGroup' = setGroupID (groupID d) $ path d
     case md of
       Nothing -> do
         setMode'
         setOwner'
         setGroup'
       Just oldd -> do
-        unless (mode d == mode oldd) $ setMode'
-        unless ((User.name <$> (owner d))
-                == (User.name <$> (owner oldd))) $ setOwner'
-        unless ((Group.name <$> (group d))
-                == (Group.name <$> (group oldd))) $ setGroup'
+        unless (mode d == mode oldd) setMode'
+        unless (ownerID d == ownerID oldd) setOwner'
+        unless (groupID d == groupID oldd) setGroup'
 
   destroyer = notImplemented "destroyer Directory"
 
@@ -97,13 +111,13 @@ get dp = do
       return Nothing
   else do
     m <- getMode dp
-    o <- getOwner dp
-    g <- getGroup dp
+    o <- getOwnerID dp
+    g <- getGroupID dp
     return . Just $
-      Directory { path  = dp
-                , mode  = m
-                , owner = Just o
-                , group = Just g
+      Directory { path    = dp
+                , mode    = m
+                , ownerID = o
+                , groupID = g
                 }
 
 

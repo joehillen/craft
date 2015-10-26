@@ -22,6 +22,7 @@ data S3File
     }
     deriving (Eq, Show)
 
+
 s3file :: File.Path -> String -> S3File
 s3file path source =
   S3File
@@ -30,6 +31,7 @@ s3file path source =
   , source  = source
   , version = AnyVersion
   }
+
 
 getS3Sum :: String -> Craft (Maybe String)
 getS3Sum = notImplemented "getS3Sum"
@@ -50,7 +52,7 @@ instance Craftable S3File where
             , version = Version v
             }
 
-  crafter s3f@S3File{..} ms3f = do
+  crafter S3File{..} ms3f = do
     let path = File.path file
     let url = "https://" ++ domain ++ "/" ++ source
     let downloadFile = do
@@ -66,8 +68,6 @@ instance Craftable S3File where
         Latest         -> unless (s3Sum == curSum)  downloadFile
         Version verStr -> unless (curSum == verStr) downloadFile
 
-    setMode (File.mode file) path
-    whenJust (File.owner file) $ setOwner path
-    whenJust (File.group file) $ setGroup path
+    craft_ $ file { File.content = Nothing }
 
   destroyer S3File{..} = destroyer file

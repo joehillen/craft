@@ -1,23 +1,22 @@
 module Craft.File
 ( module Craft.File
-, setGroup
-, setOwner
-, getOwner
-, getGroup
+, setGroupID
+, setOwnerID
+, getOwnerID
+, getGroupID
 , getMode
 )
 where
 
 import           Craft
 import           Craft.File.Mode
-import           Craft.User (User)
+import           Craft.User (User, UserID)
 import qualified Craft.User as User
-import           Craft.Group (Group)
+import           Craft.Group (Group, GroupID)
 import qualified Craft.Group as Group
 import           Craft.Internal.FileDirectory
-import           Craft.Internal.Helpers
 
-import           Control.Monad (when, unless)
+import           Control.Monad (unless)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
@@ -31,18 +30,34 @@ data File
   = File
     { path    :: Path
     , mode    :: Mode
-    , owner   :: Maybe User
-    , group   :: Maybe Group
+    , ownerID :: UserID
+    , groupID :: GroupID
     , content :: Maybe ByteString
     }
    deriving (Eq)
 
 
+owner :: File -> Craft User
+owner f =
+  User.fromID (ownerID f) >>= \case
+    Nothing -> error $ "No such owner with id `" ++ show (ownerID f)
+                       ++ "` for: " ++ show f
+    Just g  -> return g
+
+
+group :: File -> Craft Group
+group f =
+  Group.fromID (groupID f) >>= \case
+    Nothing -> error $ "No such group with id `" ++ show (groupID f)
+                       ++ "` for: " ++ show f
+    Just g -> return g
+
+
 instance Show File where
   show f = "File { path = " ++ show (path f) ++
                 ", mode = " ++ show (mode f) ++
-                ", owner = " ++ show (owner f) ++
-                ", group = " ++ show (group f) ++
+                ", owner = " ++ show (ownerID f) ++
+                ", group = " ++ show (groupID f) ++
                 ", content = " ++ showContent (content f) ++
                " }"
     where
@@ -65,10 +80,10 @@ contentAsString = B8.unpack . fromJust . content
 file :: Path -> File
 file fp =
   File
-  { path  = fp
-  , mode  = Mode RW R R
-  , owner = Nothing
-  , group = Nothing
+  { path    = fp
+  , mode    = Mode RW R R
+  , ownerID = 0
+  , groupID = 0
   , content = Nothing
   }
 
@@ -76,7 +91,7 @@ file fp =
 multiple :: [Path] -> Mode -> User -> Group -> Maybe ByteString -> [File]
 multiple paths mode owner group content = map go paths
  where
-  go path = File path mode (Just owner) (Just group) content
+  go path = File path mode (User.uid owner) (Group.gid group) content
 
 
 multipleRootOwned :: [Path] -> Mode -> Maybe ByteString -> [File]
@@ -95,8 +110,8 @@ instance Craftable File where
 
     let fp = path f
     let setMode' = setMode (mode f) fp
-    let setOwner' = whenJust (owner f) $ setOwner $ path f
-    let setGroup' = whenJust (group f) $ setGroup $ path f
+    let setOwner' = setOwnerID (ownerID f) $ path f
+    let setGroup' = setGroupID (groupID f) $ path f
 
     case mf of
       Nothing -> do
@@ -105,10 +120,8 @@ instance Craftable File where
         setGroup'
       Just oldf -> do
         unless (mode f == mode oldf) $ setMode'
-        unless ((User.name <$> (owner f))
-                == (User.name <$> (owner oldf))) $ setOwner'
-        unless ((Group.name <$> (group f))
-                == (Group.name <$> (group oldf))) $ setOwner'
+        unless (ownerID f == ownerID oldf) $ setOwner'
+        unless (groupID f == groupID oldf) $ setGroup'
 
     case content f of
       Nothing -> return ()
@@ -130,14 +143,14 @@ get fp = do
     return Nothing
   else do
     m <- getMode fp
-    o <- getOwner fp
-    g <- getGroup fp
+    o <- getOwnerID fp
+    g <- getGroupID fp
     content <- fileRead fp
     return . Just $
       File { path    = fp
            , mode    = m
-           , owner   = Just o
-           , group   = Just g
+           , ownerID = o
+           , groupID = g
            , content = Just content
            }
 

@@ -14,6 +14,7 @@ import           Craft.Internal.Helpers
 import           Craft.Ssh
 import           Craft.User (User)
 import qualified Craft.User as User
+import qualified Craft.Group as Group
 
 
 data Config
@@ -67,8 +68,8 @@ instance Craftable Config where
     craft_ $
       File (path config)
            (Mode RW O O)
-           (Just user)
-           (Just $ User.group user)
+           (User.uid user)
+           (Group.gid $ User.group user)
            (File.strContent $ show config)
 
   destroyer = notImplemented "destroyer Ssh.Config"

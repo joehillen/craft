@@ -17,6 +17,7 @@ import           Craft.File.Mode
 import qualified Craft.Ssh as Ssh
 import           Craft.User (User(..), createUser)
 import qualified Craft.User as User
+import qualified Craft.Group as Group
 import qualified Craft.Pip as Pip
 import           Craft.Vagrant
 
@@ -41,6 +42,7 @@ addAdmins = sequence
   [ admin "bob"
           "Bob"
           "AAAAB3NzaC1yc2EAAAADAQABAAABAQDVG0Ouvaf1gLUL7i/bH2er5NASDYUIUYuuyuiyasidy qwlejU879as4l00x14ikzbV2a5KqVkluUuBevPqzbYsScK5m5zq1vnlwE2vub8/+6deoNtZ/0NmydSpkadmQmzzotPIC8gGf0O6Y+N39NnJz+XVJmPWY+7mzGWEc39i7p9H59RFuBZMeb7zoRMDquAeLmBQIs3JK95SahKd1zrs1/uWFrGNeKaK1W5DM4rhh4v3/4GhHPozMmCO4wqjcm/HihfI2b+j7V8RIflyFReGPQQA/uxS2OAbkSv3Ax2xj0OE/THr8IWbOEcZwStob+Hh8UZw0iw/kk5mdULxV1t"
+
           userOpts { optShell = zsh }
 
   , admin "joehillen"
@@ -89,8 +91,8 @@ normalUser name fullname sshPubKey UserOptions{..} = do
   -- create the user's home directory
   craft_ $ Directory homepath
                      (Mode RWX RX RX)
-                     (Just $ user)
-                     (Just $ User.group user)
+                     (User.uid user)
+                     (Group.gid $ User.group user)
 
   -- add the user's public key
   void $ Ssh.addAuthorizedKey user $ Ssh.PublicKey sshPubKey optSshPubKeyType
@@ -102,8 +104,8 @@ normalUser name fullname sshPubKey UserOptions{..} = do
     craft_ $
       File (homepath </> ".bashrc")
            (Mode RW R R)
-           (Just user)
-           (Just $ User.group user)
+           (User.uid user)
+           (Group.gid $ User.group user)
            bashrc
 
   return user
