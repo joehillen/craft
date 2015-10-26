@@ -9,14 +9,11 @@ isPresent :: Craftable a => a -> Craft Bool
 isPresent a = isJust <$> checker a
 
 craft :: Craftable a => a -> Craft a
-craft a =
+craft a = do
+  crafter a =<< checker a
   checker a >>= \case
     Just  r -> return r
-    Nothing -> do
-      crafter a
-      checker a >>= \case
-        Just  r -> return r
-        Nothing -> error $ "craft failed for: " ++ show a
+    Nothing -> error $ "craft failed for: " ++ show a
 
 craft_ :: Craftable a => a -> Craft ()
 craft_ = void . craft

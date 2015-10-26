@@ -17,13 +17,15 @@ import qualified Craft.Group as Group
 import           Craft.Internal.FileDirectory
 import           Craft.Internal.Helpers
 
-import           Control.Monad.Extra (unlessM)
+import           Control.Monad (when, unless)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
-import           Data.Maybe (fromJust)
+import           Data.Maybe (fromJust, isJust)
+
 
 type Path = FilePath
+
 
 data File
   = File
@@ -34,6 +36,7 @@ data File
     , content :: Maybe ByteString
     }
    deriving (Eq)
+
 
 instance Show File where
   show f = "File { path = " ++ show (path f) ++
@@ -46,14 +49,18 @@ instance Show File where
       showContent Nothing  = "Nothing"
       showContent (Just c) = "Just " ++ show (BS.take 30 c) ++ "..."
 
+
 name :: File -> String
 name f = takeFileName $ path f
+
 
 strContent :: String -> Maybe ByteString
 strContent = Just . B8.pack
 
+
 contentAsString :: File -> String
 contentAsString = B8.unpack . fromJust . content
+
 
 file :: Path -> File
 file fp =
@@ -64,6 +71,7 @@ file fp =
   , group = Nothing
   , content = Nothing
   }
+
 
 multiple :: [Path] -> Mode -> User -> Group -> Maybe ByteString -> [File]
 multiple paths mode owner group content = map go paths
@@ -78,26 +86,42 @@ multipleRootOwned paths mode content = map go paths
                         , content = content
                         }
 
+
 instance Craftable File where
   checker = get . path
   destroyer = notImplemented "destroyer File"
-  crafter File{..} = do
-    unlessM (exists path) $
-      exec_ "touch" [path]
+  crafter f mf = do
+    unless (isJust mf) $ exec_ "touch" [path f]
 
-    setMode mode path
-    whenJust owner $ setOwner path
-    whenJust group $ setGroup path
+    let fp = path f
+    let setMode' = setMode (mode f) fp
+    let setOwner' = whenJust (owner f) $ setOwner $ path f
+    let setGroup' = whenJust (group f) $ setGroup $ path f
 
-    case content of
+    case mf of
+      Nothing -> do
+        setMode'
+        setOwner'
+        setGroup'
+      Just oldf -> do
+        unless (mode f == mode oldf) $ setMode'
+        unless ((User.name <$> (owner f))
+                == (User.name <$> (owner oldf))) $ setOwner'
+        unless ((Group.name <$> (group f))
+                == (Group.name <$> (group oldf))) $ setOwner'
+
+    case content f of
       Nothing -> return ()
-      Just c -> write path c
+      Just c -> write (path f) c
+
 
 write :: Path -> ByteString -> Craft ()
 write = fileWrite
 
+
 exists :: Path -> Craft Bool
 exists fp = isExecSucc <$> exec "/usr/bin/test" ["-f", fp]
+
 
 get :: Path -> Craft (Maybe File)
 get fp = do
@@ -116,6 +140,7 @@ get fp = do
            , group   = Just g
            , content = Just content
            }
+
 
 md5sum :: Path -> Craft String
 md5sum fp = head . words . stdout . errorOnFail <$> exec "/usr/bin/md5sum" [fp]

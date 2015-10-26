@@ -1,6 +1,7 @@
 module Craft.Git where
 
-import           Control.Monad.Extra (unlessM)
+import           Control.Monad (unless)
+import           Data.Maybe (isJust)
 import           Text.Megaparsec
 
 import           Craft hiding (Version(..))
@@ -121,9 +122,10 @@ get path = do
 instance Craftable Repo where
   checker = get . directory
 
-  crafter Repo{..} = do
-    unlessM (Directory.exists directory) $
+  crafter Repo{..} mrepo = do
+    unless (isJust mrepo) $
       git "clone" [url, directory]
+
     withCWD directory $ do
       setURL url
       git "fetch" [origin]

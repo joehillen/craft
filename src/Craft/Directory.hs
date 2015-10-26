@@ -19,11 +19,12 @@ import           Craft.Internal.Helpers
 import           Craft.User (User)
 import qualified Craft.User as User
 
-import           Control.Monad (void)
+import           Control.Monad (void, unless)
 import           Control.Monad.Extra (unlessM)
 import           Data.List (intercalate)
 import           Data.Maybe (catMaybes)
 import           Text.Megaparsec
+import           Data.Maybe (isJust)
 
 
 type Path = FilePath
@@ -67,12 +68,25 @@ exists p = isExecSucc <$> exec "/usr/bin/test" ["-d", p]
 
 instance Craftable Directory where
   checker = get . path
-  crafter Directory{..} = do
-    unlessM (exists path) $
-      exec_ "mkdir" ["-p", path]
-    setMode mode path
-    whenJust owner $ setOwner path
-    whenJust group $ setGroup path
+  crafter d md = do
+    unless (isJust md) $
+      exec_ "mkdir" ["-p", path d]
+
+    let setMode'  = setMode (mode d) $ path d
+    let setOwner' = whenJust (owner d) $ setOwner $ path d
+    let setGroup' = whenJust (group d) $ setGroup $ path d
+    case md of
+      Nothing -> do
+        setMode'
+        setOwner'
+        setGroup'
+      Just oldd -> do
+        unless (mode d == mode oldd) $ setMode'
+        unless ((User.name <$> (owner d))
+                == (User.name <$> (owner oldd))) $ setOwner'
+        unless ((Group.name <$> (group d))
+                == (Group.name <$> (group oldd))) $ setGroup'
+
   destroyer = notImplemented "destroyer Directory"
 
 

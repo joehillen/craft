@@ -84,7 +84,7 @@ instance Craftable Service where
             , env = env'
             }
 
-  crafter s@Service{..} = do
+  crafter s@Service{..} _ = do
     craft_ $ directory home
 
     let svcdir = path s

@@ -51,8 +51,5 @@ pipInstall pkg = pip $ "install" : pkgArgs pkg
 
 instance Craftable PipPackage where
   checker (PipPackage name) = get $ pkgName name
-
-  crafter pkg = do
-    pipInstall pkg
-
+  crafter pkg _ = pipInstall pkg
   destroyer = notImplemented "destroyer PipPackage"

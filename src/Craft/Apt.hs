@@ -8,8 +8,10 @@ import           Control.Monad
 import           Data.Maybe
 import           Data.List (union, (\\))
 
+
 data Apt = Apt
   deriving (Eq, Show)
+
 
 instance PackageManager Apt where
   pkgGetter      _ = getAptPackage
@@ -18,6 +20,7 @@ instance PackageManager Apt where
   uninstaller    _ = aptRemove
   multiInstaller _ = aptMultiInstaller
 
+
 aptMultiInstaller :: [Package] -> Craft ()
 aptMultiInstaller []    = return ()
 aptMultiInstaller pkgs  = do
@@ -25,8 +28,10 @@ aptMultiInstaller pkgs  = do
   rest <- filterM (\x -> isNothing <$> getAptPackage (pkgName x)) (pkgs \\ latests)
   aptInstallMult $ latests `union` rest
 
+
 aptGet :: [String] -> Craft ()
 aptGet args = exec_ "/usr/bin/apt-get" $ ["-q", "-y"] ++ args
+
 
 update :: Craft ()
 update = aptGet ["update"]
@@ -102,8 +107,26 @@ purge Package{..} =
   aptGet ["remove", pkgName, "--purge"]
 
 
-data Deb = Deb File
+data Deb = Deb { debFile :: File
+               , debPkg  :: Package
+               }
   deriving (Eq, Show)
+
+
+deb :: File -> Craft Deb
+deb f = do
+  pkg <- packageFromDebFile f
+  return $ Deb f pkg
+
+
+packageFromDebFile :: File -> Craft Package
+packageFromDebFile f = do
+  name    <- dpkgDebPackage f
+  version <- dpkgDebVersion f
+  return Package { pkgName    = name
+                 , pkgVersion = Version version
+                 }
+
 
 
 dpkgInstall :: File -> Craft ()
@@ -133,19 +156,17 @@ dpkgDebPackage :: File -> Craft String
 dpkgDebPackage = dpkgDebShow "${Package}"
 
 
-packageFromDeb :: Deb -> Craft Package
-packageFromDeb (Deb f) = do
-  name    <- dpkgDebPackage f
-  version <- dpkgDebVersion f
-  return Package { pkgName    = name
-                 , pkgVersion = Version version
-                 }
-
 instance Craftable Deb where
-  checker deb = do
-    pkg <- packageFromDeb deb
+  checker (Deb f pkg) = do
     checker pkg >>= \case
-      Nothing -> return Nothing
-      Just  _ -> return $ Just deb
-  crafter (Deb f) = dpkgInstall f
+      Nothing  -> return Nothing
+      Just pkg -> return . Just $ Deb f pkg
+
+  crafter (Deb f pkg) mdeb =
+    case mdeb of
+      Nothing             -> dpkgInstall f
+      Just (Deb _ oldpkg) ->
+        when (pkgVersion oldpkg /= pkgVersion pkg) $
+          dpkgInstall f
+
   destroyer deb = notImplemented "destroyer Deb"

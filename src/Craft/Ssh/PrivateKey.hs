@@ -25,7 +25,7 @@ instance Craftable PrivateKey where
     Nothing -> return Nothing
     Just  f -> return . Just $ pk { content = File.contentAsString f }
 
-  crafter pk@PrivateKey{..} = do
+  crafter pk@PrivateKey{..} _ = do
     craft_ $ userDir user
     craft_ $ File (Craft.Ssh.PrivateKey.path pk)
                    (Mode RW O O)

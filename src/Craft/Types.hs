@@ -47,9 +47,9 @@ data CraftDSL next
  deriving Functor
 
 class (Eq a, Show a) => Craftable a where
-  crafter :: a -> Craft ()
-  destroyer :: a -> Craft ()
   checker :: a -> Craft (Maybe a)
+  crafter :: a -> Maybe a -> Craft ()
+  destroyer :: a -> Craft ()
 
 type PackageName = String
 
@@ -112,11 +112,15 @@ instance Craftable Package where
   checker pkg = do
     pm <- asks craftPackageManager
     pkgGetter pm $ pkgName pkg
-  crafter pkg = do
+  crafter pkg mpkg = do
     pm <- asks craftPackageManager
-    pkgGetter pm (pkgName pkg) >>= \case
+    case mpkg of
       Nothing -> installer pm pkg
-      Just  _ -> when (pkgVersion pkg == Latest) $ upgrader pm pkg
+      Just oldpkg ->
+        when (pkgVersion pkg /= AnyVersion
+              && (pkgVersion pkg == Latest
+                  || pkgVersion oldpkg /= pkgVersion pkg)) $
+          upgrader pm pkg
   destroyer pkg = do
     pm <- asks craftPackageManager
     uninstaller pm pkg

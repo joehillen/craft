@@ -96,7 +96,7 @@ userFromID = userFromName . show
 instance Craftable User where
   checker = userFromName . username
 
-  crafter User{..} = do
+  crafter User{..} _ = do
     g <- groupFromName (groupname group) >>= \case
       Nothing -> craft group
       Just g  -> return g
@@ -150,7 +150,7 @@ groupFromID = groupFromName . show
 instance Craftable Group where
   checker = groupFromName . groupname
 
-  crafter g@Group{..} = do
+  crafter g@Group{..} _ = do
     exec_ "/usr/sbin/groupadd" $ toArg "--gid" gid ++ [groupname]
     exec_  "/usr/bin/gpasswd" ["--members", intercalate "," members, groupname]
 

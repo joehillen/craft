@@ -1,7 +1,10 @@
 module Craft.File.Link where
 
+import Control.Monad (when)
+
 import           Craft
 import qualified Craft.File as File
+
 
 data Link
  = Link
@@ -32,6 +35,11 @@ get lp = do
 
 instance Craftable Link where
   checker = get . path
-  crafter Link{..} = exec_ "/bin/ln" ["-snf", target, path]
+  crafter l ml = do
+    let mkLink = exec_ "/bin/ln" ["-snf", (target l), (path l)]
+    case ml of
+      Nothing   -> mkLink
+      Just oldl -> when (target oldl /= target l) $ mkLink
+
   destroyer = notImplemented "destroyer Link"
 

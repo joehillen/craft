@@ -62,7 +62,7 @@ instance Craftable Config where
                          (File.contentAsString f)
           }
 
-  crafter config@Config{..} = do
+  crafter config@Config{..} _ = do
     craft_ $ userDir user
     craft_ $
       File (path config)

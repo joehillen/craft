@@ -50,21 +50,21 @@ instance Craftable S3File where
             , version = Version v
             }
 
-  crafter s3f@S3File{..} = do
+  crafter s3f@S3File{..} ms3f = do
     let path = File.path file
     let url = "https://" ++ domain ++ "/" ++ source
     let downloadFile = do
           craft_ $ package "curl"
           exec_ "/usr/bin/curl" ["-s", "-L", "-o", path, url]
 
-    exists <- File.exists path
     curSum <- File.md5sum path
     s3Sum <- fromJust <$> getS3Sum url
 
-    case version of
-      AnyVersion     -> unless  exists                      downloadFile
-      Latest         -> unless (exists && s3Sum == curSum)  downloadFile
-      Version verStr -> unless (exists && curSum == verStr) downloadFile
+    unless (isJust ms3f) $
+      case version of
+        AnyVersion     -> downloadFile
+        Latest         -> unless (s3Sum == curSum)  downloadFile
+        Version verStr -> unless (curSum == verStr) downloadFile
 
     setMode (File.mode file) path
     whenJust (File.owner file) $ setOwner path
