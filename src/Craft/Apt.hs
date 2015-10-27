@@ -113,6 +113,14 @@ data Deb = Deb { debFile :: File
   deriving (Eq, Show)
 
 
+debName :: Deb -> String
+debName = pkgName . debPkg
+
+
+debVersion :: Deb -> Version
+debVersion = pkgVersion . debPkg
+
+
 deb :: File -> Craft Deb
 deb f = do
   pkg <- packageFromDebFile f
