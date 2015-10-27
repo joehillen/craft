@@ -1,6 +1,7 @@
 module Craft.Exec where
 
 import           Control.Monad.Reader
+import           Control.Monad ((<$!>))
 import           Control.Monad.Free
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
@@ -9,6 +10,7 @@ import           System.FilePath
 import           Data.List (intercalate, intersperse)
 import           Data.List.Split (splitOn)
 import           System.Directory
+import qualified System.IO as Sys.IO
 import           System.Exit
 import           System.Process hiding ( readCreateProcessWithExitCode
                                        , readProcessWithExitCode)
@@ -19,7 +21,6 @@ import           Text.Megaparsec
 
 import           Craft.Types
 import           Craft.Helpers
-
 
 
 -- | Craft DSL
@@ -55,11 +56,14 @@ parseExec parser accessor cmd args = do
   case parse parser (unwords $ cmd:args) (accessor r) of
     Right x -> return x
     Left err -> error $
-      "parseExec failed!\n"
-      ++ show err ++ "\n"
-      ++ "stdout:\n"
-      ++ stdout r ++ "\n"
-      ++ "stderr:\n" ++ stderr r ++ "\n"
+      concatMap appendNL [ "parseExec failed!"
+                         , "<<<< process >>>>"
+                         , showProc (succProc r)
+                         , "<<<< output >>>>"
+                         , accessor r
+                         , "<<<< parse error >>>>"
+                         , show err
+                         ]
 
 
 craftExecPath :: CraftEnv a -> [FilePath]
@@ -105,6 +109,7 @@ isSuccess :: ExitCode -> Bool
 isSuccess ExitSuccess     = True
 isSuccess (ExitFailure _) = False
 
+
 isExecSucc :: ExecResult -> Bool
 isExecSucc (ExecSucc _) = True
 isExecSucc (ExecFail _) = False
@@ -113,6 +118,7 @@ isExecSucc (ExecFail _) = False
 -- | runCraftLocal
 runCraftLocal :: r -> ReaderT r (Free CraftDSL) a -> IO a
 runCraftLocal e = iterM runCraftLocal' . flip runReaderT e
+
 
 -- | runCraftLocal implementation
 runCraftLocal' :: CraftDSL (IO a) -> IO a
@@ -146,48 +152,63 @@ localProc cwd env prog args =
                    , delegate_ctlc = False
                    }
 
+flushStdout :: IO ()
+flushStdout = do
+  Sys.IO.hFlush Sys.IO.stdout
+
 
 execProc_ p next = do
   msg "exec_" $ showProc p
   (_, _, _, ph) <- liftIO $ createProcess p
   liftIO (waitForProcess ph) >>= \case
-    ExitFailure n -> error $ "exec_ failed with code: " ++ show n
-    ExitSuccess   -> next
+    ExitFailure n -> do
+      flushStdout
+      error $ "exec_ failed with code: " ++ show n
+    ExitSuccess   -> do
+      flushStdout
+      next
 
 
 execProc p next = do
   msg "exec" $ showProc p
-  (exit', stdout', stderr') <- readCreateProcessWithExitCode p "" {- stdin -}
+  (exit', stdoutRaw, stderrRaw) <- readCreateProcessWithExitCode p "" {- stdin -}
+  let stdout' = trimNL stdoutRaw
+  let stderr' = trimNL stderrRaw
   next $ case exit' of
-           ExitSuccess      -> ExecSucc $ SuccResult stdout' stderr'
-           ExitFailure code -> ExecFail $ FailResult code stdout' stderr'
+           ExitSuccess      -> ExecSucc $ SuccResult stdout' stderr' p
+           ExitFailure code -> ExecFail $ FailResult code stdout' stderr' p
+
+-- | Remove a single trailing newline character from the end of the String
+trimNL :: String -> String
+trimNL = reverse . rmNL . reverse
+ where
+  rmNL [] = []
+  rmNL ('\n':xs) = xs
+  rmNL xs = xs
+
 
 
 errorOnFail :: ExecResult -> SuccResult
 errorOnFail (ExecSucc r) = r
-errorOnFail (ExecFail r) =
-  error $ "exec failed!\n"
-          ++ "exit code: " ++ show (exitcode r) ++ "\n"
-          ++ "stdout:\n"
-          ++ failStdout r ++ "\n" ++
-          if not (null (failStderr r)) then
-            "stderr:\n" ++ failStderr r ++ "\n"
-          else
-            ""
+errorOnFail (ExecFail r) = error $ show r
 
 
 -- | Free CraftDSL functions
 execF :: CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ExecResult
 execF cwd env cmd args = liftF $ Exec cwd env cmd args id
 
+
 execF_ :: CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ()
 execF_ cwd env cmd args = liftF $ Exec_ cwd env cmd args ()
+
 
 fileReadF :: FilePath -> Free CraftDSL BS.ByteString
 fileReadF fp = liftF $ FileRead fp id
 
+
 fileWriteF :: FilePath -> BS.ByteString -> Free CraftDSL ()
 fileWriteF fp content = liftF $ FileWrite fp content ()
+
 
 readSourceFileF :: [FilePath] -> FilePath -> Free CraftDSL BS.ByteString
 readSourceFileF fps fp = liftF $ ReadSourceFile fps fp id
@@ -202,6 +223,7 @@ data SSHEnv
     , sshOptions :: [String]
     }
 
+
 sshEnv :: String -> FilePath -> SSHEnv
 sshEnv addr key =
   SSHEnv
@@ -214,6 +236,7 @@ sshEnv addr key =
                  , "LogLevel=ERROR"
                  ]
   }
+
 
 -- | runCraftSSH
 runCraftSSH :: SSHEnv -> r -> ReaderT r (Free CraftDSL) a -> IO a
@@ -250,13 +273,6 @@ runCraftSSH' _ (ReadSourceFile fps fp next) = do
   next content
 
 
-showProc :: CreateProcess -> String
-showProc p =
-  case cmdspec p of
-    ShellCommand s -> s
-    RawCommand fp args -> unwords [fp, unwords args]
-
-
 sshProc :: CWD -> SSHEnv -> ExecEnv -> Command -> Args -> CreateProcess
 sshProc cwd SSHEnv{..} env command args =
   proc "ssh" ([ "-i", sshKey ] ++
@@ -276,8 +292,10 @@ sshProc cwd SSHEnv{..} env command args =
   recur f (a:as) s = recur f as $ f a s
   backslash x = replace x ('\\':x)
 
+
 renderEnv :: ExecEnv -> [String]
 renderEnv = map (\(k, v) -> k ++ "=" ++ v)
+
 
 readSourceFileIO :: [FilePath] -> FilePath -> IO BS.ByteString
 readSourceFileIO fps name = do

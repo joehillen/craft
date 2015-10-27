@@ -1,12 +1,12 @@
 module Craft.Apt where
 
-import           Craft
+import Craft
 import Craft.File (File)
 import qualified Craft.File as File
 
-import           Control.Monad
-import           Data.Maybe
-import           Data.List (union, (\\))
+import Control.Monad
+import Data.Maybe
+import Data.List (union, (\\))
 
 
 data Apt = Apt
@@ -22,8 +22,8 @@ instance PackageManager Apt where
 
 
 aptMultiInstaller :: [Package] -> Craft ()
-aptMultiInstaller []    = return ()
-aptMultiInstaller pkgs  = do
+aptMultiInstaller []   = return ()
+aptMultiInstaller pkgs = do
   let latests = filter ((Latest ==) . pkgVersion) pkgs
   rest <- filterM (\x -> isNothing <$> getAptPackage (pkgName x)) (pkgs \\ latests)
   aptInstallMult $ latests `union` rest

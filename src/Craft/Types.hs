@@ -4,6 +4,7 @@ module Craft.Types where
 import           Control.Monad.Reader
 import           Control.Monad.Free
 import           System.Exit
+import           System.Process
 import           Data.ByteString (ByteString)
 
 import           Craft.Helpers
@@ -26,14 +27,37 @@ type Command = FilePath
 
 data ExecResult = ExecFail FailResult | ExecSucc SuccResult
 
-data SuccResult = SuccResult { stdout :: StdOut
-                             , stderr :: StdErr
+data SuccResult = SuccResult { stdout   :: StdOut
+                             , stderr   :: StdErr
+                             , succProc :: CreateProcess
                              }
 
 data FailResult = FailResult { exitcode   :: Int
                              , failStdout :: StdOut
                              , failStderr :: StdErr
+                             , failProc   :: CreateProcess
                              }
+
+instance Show FailResult where
+  show r = concatMap appendNL [ "exec failed!"
+                              , "<<<< process >>>>"
+                              , showProc (failProc r)
+                              , "<<<< exit code >>>>"
+                              , show (exitcode r)
+                              , "<<<< stdout >>>>"
+                              , failStdout r
+                              , "<<<< stderr >>>>"
+                              , failStderr r
+                              ]
+
+
+
+showProc :: CreateProcess -> String
+showProc p =
+  case cmdspec p of
+    ShellCommand s -> s
+    RawCommand fp args -> unwords [fp, unwords args]
+
 
 type ExecEnv = [(String, String)]
 type CWD = FilePath
