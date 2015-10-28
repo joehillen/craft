@@ -112,6 +112,6 @@ instance Craftable Service where
     craft_ $ directory envDir
     mapM_ (craft . envFile envDir) env
 
-    when (restarts && updated runW) $ restart s
+    when (restarts && isJust (updated runW)) $ restart s
 
   destroyer = notImplemented "destroyer Daemontools"

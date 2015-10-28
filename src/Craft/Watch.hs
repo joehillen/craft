@@ -12,21 +12,23 @@ data WatchResult a
   | Removed a
   deriving (Show, Functor)
 
-changed :: WatchResult a -> Bool
-changed (Unchanged _) = False
-changed _             = True
+changed :: WatchResult a -> Maybe a
+changed (Unchanged _) = Nothing
+changed (Created a)   = Just a
+changed (Updated a)   = Just a
+changed (Removed a)   = Just a
 
-created :: WatchResult a -> Bool
-created (Created _) = True
-created _           = False
+created :: WatchResult a -> Maybe a
+created (Created a) = Just a
+created _           = Nothing
 
-updated :: WatchResult a -> Bool
-updated (Updated _) = True
-updated _           = False
+updated :: WatchResult a -> Maybe a
+updated (Updated a) = Just a
+updated _           = Nothing
 
-removed :: WatchResult a -> Bool
-removed (Removed _) = True
-removed _           = False
+removed :: WatchResult a -> Maybe a
+removed (Removed a) = Just a
+removed _           = Nothing
 
 unwatch :: WatchResult a -> a
 unwatch (Unchanged a) = a
@@ -37,21 +39,21 @@ unwatch (Removed a)   = a
 watchCraft :: Craftable a => a -> Craft (WatchResult a)
 watchCraft w = do
   !mb_before <- checker w
-  !after <- craft w
+  !after <- craftWithoutChecker w mb_before
   return $ case mb_before of
     Nothing     -> Created after
     Just before -> if before == after then Unchanged after
                                       else Updated after
 
-watchRemove :: Craftable a => a -> Craft (WatchResult a)
-watchRemove a =
+watchDestroy :: Craftable a => a -> Craft (WatchResult a)
+watchDestroy a =
   checker a >>= \case
     Nothing -> return $ Unchanged a
     Just before -> do
       destroyer a
       checker a >>= \case
         Nothing -> return $ Removed before
-        Just  r -> error $ "remove failed for: " ++ show a ++
+        Just  r -> error $ "destroy failed for: " ++ show a ++
                            " Found: " ++ show r
 
 watch :: Eq b
@@ -83,6 +85,3 @@ watchCompare       Nothing (Just     _) = Created
 watchCompare (Just before) (Just after)
                       | before == after = Unchanged
                       |       otherwise = Updated
-
-whenChanged :: WatchResult a -> (a -> Craft ()) -> Craft ()
-whenChanged v f = when (changed v) $ f (unwatch v)

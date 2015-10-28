@@ -29,3 +29,8 @@ trimTrailing = reverse . dropWhile (`elem` ("\n\r\t " :: String)) . reverse
 appendNL :: String -> String
 appendNL s =
   s ++ if not (null s) then "\n" else ""
+
+
+whenJust :: Monad m => Maybe a -> (a -> m ()) -> m ()
+whenJust Nothing  _   = return ()
+whenJust (Just v) act = act v

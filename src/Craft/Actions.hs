@@ -12,19 +12,19 @@ craft :: Craftable a => a -> Craft a
 craft a = do
   mb <- checker a
   case mb of
-    Nothing -> go mb
+    Nothing -> craftWithoutChecker a mb
     Just r ->
       if r /= a then
-        go mb
+        craftWithoutChecker a mb
       else
         return r
 
- where
-  go mb = do
-    crafter a mb
-    checker a >>= \case
-      Nothing -> error $ "craft failed (not found) for: " ++ show a
-      Just  r -> return r
+craftWithoutChecker :: Craftable a => a -> Maybe a -> Craft a
+craftWithoutChecker a mb = do
+  crafter a mb
+  checker a >>= \case
+    Nothing -> error $ "craft failed (not found) for: " ++ show a
+    Just  r -> return r
 
 craft_ :: Craftable a => a -> Craft ()
 craft_ = void . craft

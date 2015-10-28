@@ -165,10 +165,10 @@ dpkgDebPackage = dpkgDebShow "${Package}"
 
 
 instance Craftable Deb where
-  checker (Deb f pkg) = do
-    checker pkg >>= \case
+  checker (Deb f pkg) =
+    getAptPackage (pkgName pkg) >>= \case
       Nothing  -> return Nothing
-      Just pkg -> return . Just $ Deb f pkg
+      Just pkg' -> return . Just $ Deb f pkg'
 
   crafter (Deb f pkg) mdeb =
     case mdeb of
