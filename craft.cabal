@@ -47,7 +47,7 @@ library
                      , Craft.Ssh
                      , Craft.Ssh.Config
                      , Craft.Ssh.PrivateKey
-                     , Craft.SysVinit
+                     , Craft.SysV
                      , Craft.Types
                      , Craft.Upstart
                      , Craft.User

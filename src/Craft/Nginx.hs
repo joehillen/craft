@@ -4,7 +4,7 @@ import           Craft
 import           Craft.Internal.Helpers
 import           Craft.File (File, file)
 import qualified Craft.File as File
-import qualified Craft.SysVinit as SysVinit
+import qualified Craft.SysV as SysV
 
 import qualified Data.ByteString.Char8 as B8
 
@@ -150,4 +150,4 @@ toFile c@Config{..} =
     { File.content = Just . B8.pack $ show c }
 
 reload :: Craft ()
-reload = SysVinit.reload "/etc/init.d/nginx"
+reload = SysV.reload $ SysV.service "nginx"
