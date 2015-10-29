@@ -1,7 +1,6 @@
 module Craft.Exec where
 
 import           Control.Monad.Reader
-import           Control.Monad ((<$!>))
 import           Control.Monad.Free
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
@@ -157,6 +156,7 @@ flushStdout = do
   Sys.IO.hFlush Sys.IO.stdout
 
 
+execProc_ :: CreateProcess -> IO a -> IO a
 execProc_ p next = do
   msg "exec_" $ showProc p
   (_, _, _, ph) <- liftIO $ createProcess p
@@ -169,6 +169,7 @@ execProc_ p next = do
       next
 
 
+execProc :: CreateProcess -> (ExecResult -> IO a) -> IO a
 execProc p next = do
   msg "exec" $ showProc p
   (exit', stdoutRaw, stderrRaw) <- readCreateProcessWithExitCode p "" {- stdin -}
@@ -178,6 +179,7 @@ execProc p next = do
            ExitSuccess      -> ExecSucc $ SuccResult stdout' stderr' p
            ExitFailure code -> ExecFail $ FailResult code stdout' stderr' p
 
+
 -- | Remove a single trailing newline character from the end of the String
 trimNL :: String -> String
 trimNL = reverse . rmNL . reverse
@@ -185,7 +187,6 @@ trimNL = reverse . rmNL . reverse
   rmNL [] = []
   rmNL ('\n':xs) = xs
   rmNL xs = xs
-
 
 
 errorOnFail :: ExecResult -> SuccResult
