@@ -1,4 +1,4 @@
-module Craft.Ssh.Config where
+module Craft.Config.Ssh where
 
 import           Control.Monad (void)
 import           Data.Char (toLower)
@@ -58,7 +58,7 @@ instance Craftable Config where
   checker cfg = File.get (path cfg) >>= \case
     Nothing -> return Nothing
     Just  f -> return . Just $
-      cfg { sections = Craft.Ssh.Config.parse
+      cfg { sections = Craft.Config.Ssh.parse
                          (path cfg)
                          (File.contentAsString f)
           }

@@ -1,7 +1,7 @@
 module Craft.Vagrant where
 
 import Craft
-import Craft.Ssh.Config
+import Craft.Config.Ssh
 import qualified System.Environment
 import qualified System.Directory
 import Data.Maybe (fromMaybe)
