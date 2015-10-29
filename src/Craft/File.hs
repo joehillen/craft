@@ -65,8 +65,8 @@ group f =
 instance Show File where
   show f = "File { path = " ++ show (path f) ++
                 ", mode = " ++ show (mode f) ++
-                ", owner = " ++ show (ownerID f) ++
-                ", group = " ++ show (groupID f) ++
+                ", ownerID = " ++ show (ownerID f) ++
+                ", groupID = " ++ show (groupID f) ++
                 ", content = " ++ showContent (content f) ++
                " }"
     where

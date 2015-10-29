@@ -53,6 +53,7 @@ library
                      , Craft.User
                      , Craft.Vagrant
                      , Craft.Watch
+                     , Craft.Config.ShellFormat
 
   default-language:    Haskell2010
   default-extensions:  RankNTypes
