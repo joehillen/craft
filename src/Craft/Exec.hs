@@ -287,7 +287,7 @@ sshProc cwd SSHEnv{..} env command args =
         ["'"]
   sudo = ["sudo" | sshSudo ]
   escape :: String -> String
-  escape = recur backslash [" ", "$", "'"]
+  escape = recur backslash [" ", "*", "$", "'"]
   recur _ []     s = s
   recur f (a:as) s = recur f as $ f a s
   backslash x = replace x ('\\':x)

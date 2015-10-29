@@ -20,7 +20,7 @@ import           Control.Monad (unless)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
-import           Data.Maybe (fromJust, isJust, isNothing)
+import           Data.Maybe
 
 
 type Path = FilePath
@@ -166,3 +166,13 @@ get fp = do
 
 md5sum :: Path -> Craft String
 md5sum fp = head . words . stdout . errorOnFail <$> exec "/usr/bin/md5sum" [fp]
+
+
+-- | A thin wrapper over the Unix find program.
+find :: FilePath -> Args -> Craft [File]
+find dir args = do
+  filenames <- filter (`notElem` [".", "..", ""])
+               . lines . stdout . errorOnFail
+               <$> (exec "find" $ [dir, "-type", "f"] ++ args)
+  catMaybes <$> mapM get filenames
+
