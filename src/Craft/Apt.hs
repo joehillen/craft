@@ -7,6 +7,7 @@ import qualified Craft.File as File
 import Control.Monad
 import Data.Maybe
 import Data.List (union, (\\))
+import Data.String.Utils (replace)
 
 
 data Apt = Apt
@@ -178,3 +179,31 @@ instance Craftable Deb where
           dpkgInstall f
 
   destroyer deb = notImplemented "destroyer Deb"
+
+
+data PPA = PPA { ppaURL :: String }
+  deriving (Eq, Show)
+
+
+ppaURLToFilename :: String -> String
+ppaURLToFilename = replace "/" "-"
+
+instance Craftable PPA where
+  checker (PPA url) = do
+    fs <- filter ((> 0) . length . File.contentAsString)
+          <$> File.find "/etc/apt/sources.list.d"
+              ["-name", "*" ++ ppaURLToFilename url ++ "*.list"]
+    if length fs > 0 then
+      return . Just $ PPA url
+    else
+      return Nothing
+
+  crafter _      (Just _) = return ()
+  crafter (PPA url) Nothing = do
+    craft_ $ package "software-properties-common"
+    exec_ "add-apt-repository" ["-y", "ppa:" ++ url]
+    update
+
+  destroyer (PPA url) = do
+    exec_ "add-apt-repository" ["-y", "-r", "ppa:" ++ url]
+    update
