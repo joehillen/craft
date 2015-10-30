@@ -55,6 +55,7 @@ library
                      , Craft.Config.ShellFormat
                      , Craft.Config.Ssh
                      , Craft.Config.Yaml
+                     , Craft.Config.Json
 
   default-language:    Haskell2010
   default-extensions:  RankNTypes
@@ -87,6 +88,7 @@ library
                      , split
                      , cond
                      , yaml
+                     , aeson
 
 test-suite craft-test
   type:                exitcode-stdio-1.0
