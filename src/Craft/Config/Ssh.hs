@@ -42,12 +42,13 @@ data Config
 
 
 instance Show Config where
-  show f = "Config { path = " ++ show (path f) ++
-                  ", mode = " ++ show (mode f) ++
-                  ", ownerID = " ++ show (ownerID f) ++
-                  ", groupID = " ++ show (groupID f) ++
-                  ", configs = \"" ++ show (configs f) ++ "\"" ++
-                  "}"
+  show f = "Ssh.Config " ++
+           "{ path = " ++ show (path f) ++
+           ", mode = " ++ show (mode f) ++
+           ", ownerID = " ++ show (ownerID f) ++
+           ", groupID = " ++ show (groupID f) ++
+           ", configs = \"" ++ show (configs f) ++ "\"" ++
+           "}"
 
 
 config :: File.Path -> [Section] -> Config

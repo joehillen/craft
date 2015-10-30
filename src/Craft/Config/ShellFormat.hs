@@ -29,12 +29,13 @@ data Config
 
 
 instance Show Config where
-  show f = "Config { path = " ++ show (path f) ++
-                  ", mode = " ++ show (mode f) ++
-                  ", ownerID = " ++ show (ownerID f) ++
-                  ", groupID = " ++ show (groupID f) ++
-                  ", configs = \"" ++ showConfigs (configs f) ++ "\"" ++
-                  "}"
+  show f = "ShellFormat.Config " ++
+           "{ path = " ++ show (path f) ++
+           ", mode = " ++ show (mode f) ++
+           ", ownerID = " ++ show (ownerID f) ++
+           ", groupID = " ++ show (groupID f) ++
+           ", configs = \"" ++ showConfigs (configs f) ++ "\"" ++
+           "}"
 
 
 config :: File.Path -> Configs -> Config
