@@ -17,7 +17,6 @@ import Data.List (intercalate)
 import qualified Data.ByteString.Char8 as B8
 
 
-
 data Config
   = Config
     { path    :: File.Path
@@ -28,6 +27,7 @@ data Config
     }
     deriving (Eq)
 
+
 instance Show Config where
   show f = "Config { path = " ++ show (path f) ++
                   ", mode = " ++ show (mode f) ++
@@ -35,6 +35,7 @@ instance Show Config where
                   ", groupID = " ++ show (groupID f) ++
                   ", configs = \"" ++ showConfigs (configs f) ++ "\"" ++
                   "}"
+
 
 config :: File.Path -> Configs -> Config
 config fp cfgs = (configFromFile $ File.file fp) { configs = cfgs }
