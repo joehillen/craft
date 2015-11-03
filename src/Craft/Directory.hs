@@ -8,7 +8,7 @@ module Craft.Directory
 )
 where
 
-import           Craft
+import           Craft.Internal
 import           Craft.File (File)
 import qualified Craft.File as File
 import           Craft.File.Mode
@@ -21,11 +21,11 @@ import qualified Craft.User as User
 
 import           Control.Monad (void, unless)
 import           Control.Monad.Extra (unlessM)
+import           Control.Monad.Reader (local)
 import           Data.List (intercalate)
-import           Data.Maybe (catMaybes)
+import           Data.Maybe (catMaybes, isJust)
 import           Text.Megaparsec
-import           Data.Maybe (isJust)
-
+import           System.FilePath
 
 type Path = FilePath
 
@@ -154,3 +154,5 @@ getFiles :: Path -> Craft [File]
 getFiles dp = do
   fns <- parseExec getFilesParser stdout "/bin/ls" ["-a", "-1", dp]
   catMaybes <$> mapM (File.get . (</> dp)) fns
+
+

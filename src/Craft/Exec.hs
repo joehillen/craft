@@ -77,12 +77,7 @@ prependPath newpath go = do
 
 -- TESTME
 withPath :: [FilePath] -> Craft a -> Craft a
-withPath paths go = do
-  env <- asks craftExecEnv
-  let env' = map (replaceKey "PATH" paths') env
-  withEnv env' go
- where
-  paths' = intercalate ":" paths
+withPath = withEnvVar "PATH" . intercalate ":"
 
 
 replaceKey :: Eq a => a -> b -> (a, b) -> (a, b)
@@ -97,11 +92,10 @@ withEnv env = local (\r -> r { craftExecEnv = env })
 
 -- TESTME
 withEnvVar :: String -> String -> Craft a -> Craft a
-withEnvVar name val go = notImplemented "withEnvVar"
-
-
-withCWD :: FilePath -> Craft a -> Craft a
-withCWD path = local (\r -> r { craftExecCWD = path })
+withEnvVar name val go = do
+  env <- asks craftExecEnv
+  let env' = map (replaceKey name val) env
+  withEnv env' go
 
 
 isSuccess :: ExitCode -> Bool

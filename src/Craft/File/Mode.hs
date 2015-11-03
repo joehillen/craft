@@ -11,7 +11,7 @@ module Craft.File.Mode
 )
 where
 
-import Craft
+import Craft.Internal
 
 import Data.Bits ((.|.), (.&.))
 import Data.Char (digitToInt)

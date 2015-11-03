@@ -9,9 +9,8 @@ where
 import           Control.Monad (when, unless)
 import qualified Data.Set as S
 import           Data.List (intercalate)
-import           System.Exit
 
-import           Craft
+import           Craft.Internal
 import           Craft.Internal.Helpers
 import qualified Craft.Group as Group
 import           Craft.Internal.UserGroup

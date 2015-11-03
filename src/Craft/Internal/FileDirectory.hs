@@ -3,7 +3,7 @@ module Craft.Internal.FileDirectory
 , FilePath
 ) where
 
-import           Craft
+import           Craft.Internal
 import           Craft.File.Mode (Mode(..), fromString)
 import           Craft.Group (GroupID)
 import           Craft.User (UserID)

@@ -1,6 +1,6 @@
 module Craft.Internal.UserGroup where
 
-import           Craft
+import           Craft.Internal
 import           Craft.Internal.Helpers
 
 import           Control.Exception (tryJust)

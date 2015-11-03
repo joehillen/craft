@@ -1,7 +1,7 @@
 module Craft.Git where
 
 import           Control.Monad (unless)
-import           Data.Maybe (isJust)
+import           Data.Maybe (isJust, fromMaybe)
 import           Text.Megaparsec
 
 import           Craft hiding (Version(..))
@@ -104,19 +104,17 @@ getVersion = Commit <$> parseExec parser stdout gitBin ["rev-parse", "HEAD"]
 
 
 get :: Directory.Path -> Craft (Maybe Repo)
-get path = do
-  exists <- Directory.exists path
-  if not exists then
-    return Nothing
-  else
-    withCWD path $ do
+get path =
+  Directory.get path >>= \case
+    Nothing -> return Nothing
+    Just dir -> withCWD dir $ do
       !url'     <- getURL
       !version' <- getVersion
-      return . Just $
-        Repo { directory = path
-              , url       = url'
-              , version   = version'
-              }
+      return . Just
+             $ Repo { directory = path
+                    , url       = url'
+                    , version   = version'
+                    }
 
 
 instance Craftable Repo where
@@ -126,7 +124,10 @@ instance Craftable Repo where
     unless (isJust mrepo) $
       git "clone" [url, directory]
 
-    withCWD directory $ do
+    dir <- fromMaybe (error $ "git clone failed! "
+                              ++ "'" ++ directory ++ "' not found")
+           <$> Directory.get directory
+    withCWD dir $ do
       setURL url
       git "fetch" [origin]
       git "checkout" ["--force", show version]

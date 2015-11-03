@@ -8,7 +8,7 @@ module Craft.File
 )
 where
 
-import           Craft
+import           Craft.Internal
 import           Craft.File.Mode
 import           Craft.User (User, UserID)
 import qualified Craft.User as User
@@ -21,6 +21,7 @@ import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
 import           Data.Maybe
+import           System.FilePath
 
 
 type Path = FilePath
@@ -97,6 +98,12 @@ file fp =
   }
 
 
+fromSource :: Path -> Path -> Craft File
+fromSource sourcefp fp = do
+  c <- readSourceFile sourcefp
+  return $ (file fp) { content = Just c }
+
+
 multiple :: [Path] -> Mode -> User -> Group -> Maybe ByteString -> [File]
 multiple paths mode owner group content = map go paths
  where
@@ -128,9 +135,9 @@ instance Craftable File where
         setOwner'
         setGroup'
       Just oldf -> do
-        unless (mode f == mode oldf) $ setMode'
-        unless (ownerID f == ownerID oldf) $ setOwner'
-        unless (groupID f == groupID oldf) $ setGroup'
+        unless (mode f == mode oldf) setMode'
+        unless (ownerID f == ownerID oldf) setOwner'
+        unless (groupID f == groupID oldf) setGroup'
 
     case content f of
       Nothing -> return ()
@@ -173,6 +180,6 @@ find :: FilePath -> Args -> Craft [File]
 find dir args = do
   filenames <- filter (`notElem` [".", "..", ""])
                . lines . stdout . errorOnFail
-               <$> (exec "find" $ [dir, "-type", "f"] ++ args)
+               <$> exec "find" ([dir, "-type", "f"] ++ args)
   catMaybes <$> mapM get filenames
 

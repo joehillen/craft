@@ -7,7 +7,7 @@ where
 
 import           Data.List (intercalate)
 
-import           Craft
+import           Craft.Internal
 import           Craft.Internal.Helpers
 import           Craft.Internal.UserGroup
 
