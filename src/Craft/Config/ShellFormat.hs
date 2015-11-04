@@ -87,7 +87,7 @@ parser = do
 line :: Parsec String (Maybe (String, String))
 line = do
   space
-  try (comment >> return Nothing) <|> (item >>= return . Just)
+  try (comment >> return Nothing) <|> (Just <$> item)
 
 
 var :: Parsec String String
@@ -118,5 +118,5 @@ parse fp s =
 
 showConfigs :: Configs -> String
 showConfigs cfgs =
-  (intercalate "\n" $ map (\(k, v) -> k ++ "=" ++ v) $ M.toList cfgs)
+  intercalate "\n" (map (\(k, v) -> k ++ "=" ++ v) $ M.toList cfgs)
   ++ "\n"
