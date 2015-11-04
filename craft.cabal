@@ -91,6 +91,8 @@ library
                      , cond
                      , yaml
                      , aeson
+                     , versions
+                     , text
 
 test-suite craft-test
   type:                exitcode-stdio-1.0

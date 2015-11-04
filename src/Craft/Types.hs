@@ -1,13 +1,14 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Craft.Types where
 
-import           Control.Monad.Reader
-import           Control.Monad.Free
-import           System.Exit
-import           System.Process
-import           Data.ByteString (ByteString)
+import Control.Monad.Reader
+import Control.Monad.Free
+import System.Process
+import Data.ByteString (ByteString)
+import Data.Versions (parseV)
+import qualified Data.Text as T
 
-import           Craft.Helpers
+import Craft.Helpers
 
 type Craft a = forall pm. (PackageManager pm)
              => ReaderT (CraftEnv pm) (Free CraftDSL) a
@@ -92,16 +93,17 @@ data Version
   deriving (Show)
 
 
+-- Note: This may or may not make sense.
+-- Open to suggestions if any of this seems incorrect.
 instance Eq Version where
   (==) AnyVersion  _           = True
   (==) _           AnyVersion  = True
+  (==) Latest      Latest      = True
   (==) Latest      (Version _) = False
   (==) (Version _) Latest      = False
   (==) (Version a) (Version b) = a == b
 
 
--- Note: This may or may not make sense.
--- Open to suggestions if any of this seems incorrect.
 instance Ord Version where
   compare AnyVersion  AnyVersion  = EQ
   compare AnyVersion  Latest      = LT
@@ -114,7 +116,12 @@ instance Ord Version where
   compare (Version a) (Version b) = compareVersions a b
 
 compareVersions :: String -> String -> Ordering
-compareVersions a b = notImplemented "compareVersions"
+compareVersions a b = compare (ver a) (ver b)
+ where
+  ver x = case parseV (T.pack x) of
+            Left err -> error $ "Failed to parse version '" ++ x ++ "': "
+                                ++ show err
+            Right v -> v
 
 package :: PackageName -> Package
 package n = Package n AnyVersion
