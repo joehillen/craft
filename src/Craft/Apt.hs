@@ -50,14 +50,17 @@ dpkgQueryStatus :: String -> Craft ExecResult
 dpkgQueryStatus pn = dpkgQuery ["-s", pn]
 
 
-dpkgQueryShow :: String -> String -> Craft String
-dpkgQueryShow pattern n = do
-  let args = [ "--show", "--showformat", pattern, n ]
-  r <- stdout . errorOnFail
-         <$> dpkgQuery args
-  when (null r) $ error $ "'" ++ (unwords (dpkgQueryBin:args))
-                          ++ "' returned an empty result!"
+expectOutput :: String -> [String] -> Craft String
+expectOutput cmd args = do
+  r <- stdout . errorOnFail <$> exec cmd args
+  when (null r) $ error $ "'" ++ unwords (cmd:args) ++ "'"
+                          ++ " returned an empty result!"
   return r
+
+
+dpkgQueryShow :: String -> String -> Craft String
+dpkgQueryShow pattern n =
+  expectOutput dpkgQueryBin [ "--show", "--showformat", pattern, n ]
 
 
 dpkgQueryVersion :: String -> Craft String
@@ -69,14 +72,14 @@ dpkgQueryPackage = dpkgQueryShow "${Package}"
 
 
 getAptPackage :: PackageName -> Craft (Maybe Package)
-getAptPackage pn = do
+getAptPackage pn =
   dpkgQueryStatus pn >>= \case
     ExecFail _ -> return Nothing
     ExecSucc _ -> Just <$> do
       r <- dpkgQueryVersion pn
-      return $ Package { pkgName = pn
-                       , pkgVersion = Version r
-                       }
+      return Package { pkgName = pn
+                     , pkgVersion = Version r
+                     }
 
 
 aptInstallArgs :: [String]
@@ -148,13 +151,8 @@ dpkgDebBin = "/usr/bin/dpkg-deb"
 
 
 dpkgDebShow :: String -> File -> Craft String
-dpkgDebShow pattern f = do
-  let args = [ "--show", "--showformat", pattern, File.path f ]
-  r <- stdout . errorOnFail
-         <$> exec dpkgDebBin args
-  when (null r) $ error $ "'" ++ (unwords (dpkgDebBin:args))
-                          ++ "' returned an empty result!"
-  return r
+dpkgDebShow pattern f =
+  expectOutput dpkgDebBin [ "--show", "--showformat", pattern, File.path f ]
 
 
 dpkgDebVersion :: File -> Craft String
@@ -178,7 +176,7 @@ instance Craftable Deb where
         when (pkgVersion oldpkg /= pkgVersion pkg) $
           dpkgInstall f
 
-  destroyer deb = notImplemented "destroyer Deb"
+  destroyer pkg = notImplemented "destroyer Deb"
 
 
 data PPA = PPA { ppaURL :: String }
@@ -193,7 +191,7 @@ instance Craftable PPA where
     fs <- filter ((> 0) . length . File.contentAsString)
           <$> File.find "/etc/apt/sources.list.d"
               ["-name", "*" ++ ppaURLToFilename url ++ "*.list"]
-    if length fs > 0 then
+    if not (null fs) then
       return . Just $ PPA url
     else
       return Nothing
