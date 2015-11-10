@@ -29,17 +29,21 @@ exec cmd args = do
   cwd <- asks craftExecCWD
   lift $ execF cwd env cmd args
 
+
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
   env <- asks craftExecEnv
   cwd <- asks craftExecCWD
   lift $ execF_ cwd env cmd args
 
+
 fileRead :: FilePath -> Craft BS.ByteString
 fileRead fp = lift $ fileReadF fp
 
+
 fileWrite :: FilePath -> BS.ByteString -> Craft ()
 fileWrite fp content = lift $ fileWriteF fp content
+
 
 readSourceFile :: FilePath -> Craft ByteString
 readSourceFile fp = do
@@ -280,7 +284,7 @@ sshProc cwd SSHEnv{..} env command args =
         ["sh", "-c", "'", "cd", escape cwd, ";"] ++
         map escape (renderEnv env) ++ (command : map escape args) ++
         ["'"]
-  sudo = ["sudo" | sshSudo ]
+  sudo = ["sudo" | sshSudo ] ++ [ "-H" | sshSudo ]
   escape :: String -> String
   escape = recur backslash [" ", "*", "$", "'"]
   recur _ []     s = s
