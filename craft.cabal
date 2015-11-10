@@ -51,7 +51,7 @@ library
                      , Craft.Upstart
                      , Craft.User
                      , Craft.Vagrant
-                     , Craft.Watch
+                     , Craft.Watched
                      , Craft.Config.ShellFormat
                      , Craft.Config.Ssh
                      , Craft.Config.Yaml

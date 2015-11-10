@@ -91,11 +91,10 @@ instance Craftable Service where
     craft_ $ directory svcdir
     craft_ $ Link svcdir $ "/etc/service" </> name
 
-    runW <- watchCraft $
-      (file $ svcdir </> "run")
-        { File.mode    = Mode RWX RX RX
-        , File.content = Just runFile
-        }
+    runW <- fst <$> watchCraft ((file $ svcdir </> "run")
+                                { File.mode    = Mode RWX RX RX
+                                , File.content = Just runFile
+                                })
 
     let logDir = svcdir </> "log"
     craft_ $ directory logDir
@@ -112,6 +111,6 @@ instance Craftable Service where
     craft_ $ directory envDir
     mapM_ (craft . envFile envDir) env
 
-    when (restarts && isJust (updated runW)) $ restart s
+    when (restarts && updated runW) $ restart s
 
   destroyer = notImplemented "destroyer Daemontools"
