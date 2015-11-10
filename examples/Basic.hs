@@ -28,6 +28,7 @@ main = do
     (craftEnv { craftPackageManager = Apt
               }) $ do
       Apt.update
+      Pip.setup
       void addAdmins
       packages
 
