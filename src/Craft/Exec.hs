@@ -52,21 +52,20 @@ readSourceFile fp = do
 
 
 -- | better than grep
-parseExec :: Parsec String a -> (SuccResult -> String)
-          -> Command -> Args -> Craft a
-parseExec parser accessor cmd args = do
-  r <- errorOnFail <$> exec cmd args
-  case parse parser (unwords $ cmd:args) (accessor r) of
-    Right x -> return x
-    Left err -> error $
-      concatMap appendNL [ "parseExec failed!"
-                         , "<<<< process >>>>"
-                         , showProc (succProc r)
-                         , "<<<< output >>>>"
-                         , accessor r
-                         , "<<<< parse error >>>>"
-                         , show err
-                         ]
+parseExecResult :: ExecResult -> Parsec String a -> String -> a
+parseExecResult execr parser str =
+  case parse parser (showProc $ execResultProc execr) str of
+    Right x -> x
+    Left err ->
+      error $ concatMap appendNL
+        [ "parseExecResult error:"
+        , "<<<< process >>>>"
+        , showProc $ execResultProc execr
+        , "<<<< output >>>>"
+        , str
+        , "<<<< parse error >>>>"
+        , show err
+        ]
 
 
 craftExecPath :: CraftEnv a -> [FilePath]

@@ -39,6 +39,12 @@ data FailResult = FailResult { exitcode   :: Int
                              , failProc   :: CreateProcess
                              }
 
+
+execResultProc :: ExecResult -> CreateProcess
+execResultProc (ExecFail failr) = failProc failr
+execResultProc (ExecSucc succr) = succProc succr
+
+
 instance Show FailResult where
   show r = concatMap appendNL [ "exec failed!"
                               , "<<<< process >>>>"

@@ -30,15 +30,18 @@ latest pn = PipPackage $ Package pn Latest
 
 get :: PackageName -> Craft (Maybe PipPackage)
 get pn = do
-  results <- withPath ["/usr/local/bin", "/usr/bin"] $
-               parseExec pipShowParser stdout "pip" ["show", pn]
-  if null results then
-    return Nothing
-  else return $
-    case lookup "Version" results of
-      Nothing -> error "`pip show` did not return a version"
-      Just version ->
-        Just . PipPackage $ Package pn $ Version version
+  r <- withPath ["/usr/local/bin", "/usr/bin"] $ exec "pip" ["show", pn]
+  case r of
+    ExecFail _     -> return Nothing
+    ExecSucc succr ->
+      let results = parseExecResult r pipShowParser (stdout succr) in
+      if null results then
+        return Nothing
+      else return $
+        case lookup "Version" results of
+          Nothing -> error "`pip show` did not return a version"
+          Just version ->
+            Just . PipPackage $ Package pn $ Version version
 
 
 -- TESTME

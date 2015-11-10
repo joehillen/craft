@@ -26,7 +26,11 @@ digitParser :: Parser Int
 digitParser = read <$> some digitChar
 
 getOwnerID :: FilePath -> Craft UserID
-getOwnerID fp = parseExec digitParser stdout "/usr/bin/stat" ["-c", "%u", fp]
+getOwnerID fp = do
+  r <- exec "/usr/bin/stat" ["-c", "%u", fp]
+  return $ parseExecResult r digitParser $ stdout $ errorOnFail r
 
 getGroupID :: FilePath -> Craft GroupID
-getGroupID fp = parseExec digitParser stdout "/usr/bin/stat" ["-c", "%g", fp]
+getGroupID fp = do
+  r <- exec "/usr/bin/stat" ["-c", "%g", fp]
+  return $ parseExecResult r digitParser $ stdout $ errorOnFail r

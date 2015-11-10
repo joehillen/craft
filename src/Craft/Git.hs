@@ -80,10 +80,10 @@ setURL url = do
 
 getURL :: Craft URL
 getURL = do
-  results <- parseExec repoURLParser stdout gitBin ["remote", "-v"]
-  return $ case lookup (origin, "fetch") results of
-    Nothing -> error $ "git remote `" ++ origin ++ "` not found."
-    Just url -> url
+  r <- exec gitBin ["remote", "-v"]
+  let results = parseExecResult r repoURLParser $ stdout $ errorOnFail r
+  return $ fromMaybe (error $ "git remote `" ++ origin ++ "` not found.")
+                     (lookup (origin, "fetch") results)
 
 
 -- TESTME
@@ -98,7 +98,9 @@ repoURLParser = some $ do
 
 
 getVersion :: Craft Version
-getVersion = Commit <$> parseExec parser stdout gitBin ["rev-parse", "HEAD"]
+getVersion = do
+  r <- exec gitBin ["rev-parse", "HEAD"]
+  return . Commit $ parseExecResult r parser $ stdout $ errorOnFail r
  where
   parser = some alphaNumChar
 

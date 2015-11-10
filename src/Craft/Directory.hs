@@ -152,7 +152,8 @@ testGetFilesParser = do
 
 getFiles :: Path -> Craft [File]
 getFiles dp = do
-  fns <- parseExec getFilesParser stdout "/bin/ls" ["-a", "-1", dp]
+  r <- exec "/bin/ls" ["-a", "-1", dp]
+  let fns = parseExecResult r getFilesParser $ stdout $ errorOnFail r
   catMaybes <$> mapM (File.get . (</> dp)) fns
 
 
