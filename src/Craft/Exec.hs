@@ -277,6 +277,7 @@ sshProc cwd SSHEnv{..} env command args =
   proc "ssh" ([ "-i", sshKey ] ++
               ["-o" | not (null sshOptions)] ++
               intersperse "-o" sshOptions ++
+              ["-o", "BatchMode=yes"] ++ -- never prompt for a password
               [ sshUser ++ "@" ++ sshAddr
               , unwords cmd])
  where
