@@ -23,7 +23,7 @@ import           Craft.Vagrant
 
 
 main :: IO ()
-main = do
+main =
   runCraftVagrant
     (craftEnv { craftPackageManager = Apt
               }) $ do

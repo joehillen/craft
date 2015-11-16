@@ -183,14 +183,11 @@ data PPA = PPA { ppaURL :: String }
   deriving (Eq, Show)
 
 
-ppaURLToFilename :: String -> String
-ppaURLToFilename = replace "/" "-"
-
 instance Craftable PPA where
   checker (PPA url) = do
     fs <- filter ((> 0) . length . File.contentAsString)
           <$> File.find "/etc/apt/sources.list.d"
-              ["-name", "*" ++ ppaURLToFilename url ++ "*.list"]
+              ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
     if not (null fs) then
       return . Just $ PPA url
     else

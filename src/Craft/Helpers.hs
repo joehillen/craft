@@ -1,7 +1,17 @@
-module Craft.Helpers where
+module Craft.Helpers
+( module Craft.Helpers
+, when
+, unless
+, void
+, whenM
+, unlessM
+)
+where
 
+import Control.Monad (when, unless, void)
+import Control.Monad.Extra (whenM, unlessM)
 import qualified System.IO as IO
-import           System.Console.ANSI
+import System.Console.ANSI
 
 
 color :: Color -> IO a -> IO a
@@ -10,6 +20,7 @@ color c action = do
   r <- action
   setSGR [Reset]
   return r
+
 
 msg :: String -> String -> IO ()
 msg name m = do
