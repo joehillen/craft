@@ -15,13 +15,9 @@ import           Craft.File.Mode
 import           Craft.Group (Group, GroupID)
 import qualified Craft.Group as Group
 import           Craft.Internal.FileDirectory
-import           Craft.Internal.Helpers
 import           Craft.User (User, UserID)
 import qualified Craft.User as User
 
-import           Control.Monad (void, unless)
-import           Control.Monad.Extra (unlessM)
-import           Control.Monad.Reader (local)
 import           Data.List (intercalate)
 import           Data.Maybe (catMaybes, isJust)
 import           Text.Megaparsec
@@ -110,15 +106,8 @@ get dp = do
   if not exists' then
       return Nothing
   else do
-    m <- getMode dp
-    o <- getOwnerID dp
-    g <- getGroupID dp
-    return . Just $
-      Directory { path    = dp
-                , mode    = m
-                , ownerID = o
-                , groupID = g
-                }
+    (m, o, g) <- getStats dp
+    return . Just $ Directory dp m o g
 
 
 getFilesParser :: Parsec String [String]

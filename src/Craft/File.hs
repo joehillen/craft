@@ -16,7 +16,6 @@ import           Craft.Group (Group, GroupID)
 import qualified Craft.Group as Group
 import           Craft.Internal.FileDirectory
 
-import           Control.Monad (unless)
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
@@ -105,9 +104,9 @@ fromSource sourcefp fp = do
 
 
 multiple :: [Path] -> Mode -> User -> Group -> Maybe ByteString -> [File]
-multiple paths mode owner group content = map go paths
+multiple paths mode owner' group' content = map go paths
  where
-  go path = File path mode (User.uid owner) (Group.gid group) content
+  go path = File path mode (User.uid owner') (Group.gid group') content
 
 
 multipleRootOwned :: [Path] -> Mode -> Maybe ByteString -> [File]
@@ -158,9 +157,7 @@ get fp = do
   if not exists' then
     return Nothing
   else do
-    m <- getMode fp
-    o <- getOwnerID fp
-    g <- getGroupID fp
+    (m, o, g) <- getStats fp
     content <- fileRead fp
     return . Just $
       File { path    = fp
