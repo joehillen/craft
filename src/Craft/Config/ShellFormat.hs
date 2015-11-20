@@ -1,5 +1,12 @@
 module Craft.Config.ShellFormat where
 
+import Data.Map (Map)
+import qualified Data.Map as M
+import Data.Maybe (catMaybes)
+import Text.Megaparsec hiding (parse)
+import Data.List (intercalate)
+import qualified Data.ByteString.Char8 as B8
+
 import Craft
 import Craft.Internal.Helpers
 import Craft.File (File)
@@ -7,14 +14,6 @@ import qualified Craft.File as File
 import Craft.File.Mode
 import Craft.User (UserID)
 import Craft.Group (GroupID)
-
-import Data.Map (Map)
-import qualified Data.Map as M
-import Control.Monad (void)
-import Data.Maybe (catMaybes)
-import Text.Megaparsec hiding (parse)
-import Data.List (intercalate)
-import qualified Data.ByteString.Char8 as B8
 
 
 data Config
@@ -26,6 +25,15 @@ data Config
     , configs :: Configs
     }
     deriving (Eq)
+
+
+type Configs = Map String String
+
+
+showConfigs :: Configs -> String
+showConfigs cfgs =
+  intercalate "\n" (map (\(k, v) -> k ++ "=" ++ v) $ M.toList cfgs)
+  ++ "\n"
 
 
 instance Show Config where
@@ -74,9 +82,6 @@ instance Craftable Config where
     crafter (fileFromConfig cfg) (fileFromConfig <$> mcfg)
 
 
-type Configs = Map String String
-
-
 -- TESTME
 parser :: Parsec String Configs
 parser = do
@@ -105,7 +110,7 @@ item = do
   space
   void $ char '='
   space
-  val <- manyTill anyChar (try (void eol) <|> try comment <|> eof)
+  val <- manyTill anyChar (try comment <|> end)
   return (name, trim val)
 
 
@@ -114,9 +119,3 @@ parse fp s =
   case runParser parser fp s of
     Left err   -> error $ show err
     Right cfgs -> cfgs
-
-
-showConfigs :: Configs -> String
-showConfigs cfgs =
-  intercalate "\n" (map (\(k, v) -> k ++ "=" ++ v) $ M.toList cfgs)
-  ++ "\n"

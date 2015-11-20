@@ -3,6 +3,7 @@ module Craft.Git where
 import           Control.Monad (unless)
 import           Data.Maybe (isJust, fromMaybe)
 import           Text.Megaparsec
+import           Text.Megaparsec.String
 
 import           Craft hiding (Version(..))
 import qualified Craft.Directory as Directory
@@ -87,13 +88,14 @@ getURL = do
 
 
 -- TESTME
-repoURLParser :: Parsec String [((String, String), String)]
+repoURLParser :: Parser [((String, String), String)]
 repoURLParser = some $ do
   remote <- word
   url <- word
   direction <- char '(' *> some alphaNumChar <* char ')' <* newline
   return ((remote, direction), url)
  where
+  word :: Parser String
   word = some (noneOf " \t") <* some (spaceChar <|> tab)
 
 
@@ -102,6 +104,7 @@ getVersion = do
   r <- exec gitBin ["rev-parse", "HEAD"]
   return . Commit $ parseExecResult r parser $ stdout $ errorOnFail r
  where
+  parser :: Parser String
   parser = some alphaNumChar
 
 

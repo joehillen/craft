@@ -1,16 +1,13 @@
 module Craft.Internal.UserGroup where
 
-import           Craft.Internal
-import           Craft.Internal.Helpers
+import Data.List (intercalate)
+import Data.Maybe (fromJust)
+import Text.Megaparsec
+import Text.Megaparsec.String
 
-import           Control.Exception (tryJust)
-import           Control.Monad (guard, void)
-import           Data.List (intercalate)
-import           Data.Maybe (catMaybes, fromJust)
-import           System.IO.Error (isDoesNotExistError)
+import Craft.Internal
+import Craft.Internal.Helpers
 
-import           Text.Megaparsec
-import           Text.Megaparsec.String
 
 type UserName = String
 type UserID = Int
@@ -32,6 +29,7 @@ data User
     }
  deriving (Eq, Show)
 
+colon :: Parser Char
 colon = char ':'
 
 -- TESTME
@@ -54,7 +52,7 @@ shadowParser = do
 
 
 userFromName :: UserName -> Craft (Maybe User)
-userFromName name = do
+userFromName name =
   getent "passwd" name >>= \case
     ExecFail _ -> return Nothing
     ExecSucc r -> do
@@ -135,7 +133,7 @@ groupParser = do
 
 
 groupFromName :: GroupName -> Craft (Maybe Group)
-groupFromName gname = do
+groupFromName gname =
   getent "group" gname >>= \case
     ExecFail _ -> return Nothing
     ExecSucc r -> return
@@ -150,7 +148,7 @@ groupFromID = groupFromName . show
 instance Craftable Group where
   checker = groupFromName . groupname
 
-  crafter g@Group{..} _ = do
+  crafter Group{..} _ = do
     exec_ "/usr/sbin/groupadd" $ toArg "--gid" gid ++ [groupname]
     exec_  "/usr/bin/gpasswd" ["--members", intercalate "," members, groupname]
 

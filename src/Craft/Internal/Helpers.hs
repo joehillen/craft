@@ -1,7 +1,15 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Craft.Internal.Helpers where
 
+import Control.Monad (void)
 import Data.Char (isSpace)
+import Text.Megaparsec hiding (parse)
+import Text.Megaparsec.String
+
+
+end :: Parser ()
+end = try (void eol) <|> eof
+
 
 indent :: Int -> String -> String
 indent len text =

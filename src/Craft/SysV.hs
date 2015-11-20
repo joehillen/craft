@@ -57,7 +57,7 @@ service sn = Service { name = sn
 
 
 getStatus :: String -> Craft Status
-getStatus sn = do
+getStatus sn =
   exec (path sn) ["status"] >>= \case
     (ExecFail _) -> return Stopped
     (ExecSucc _) -> return Running
@@ -108,7 +108,7 @@ updateRcD svc cmd =
 instance Craftable Service where
   checker = get . name
 
-  crafter a mb = do
+  crafter a mb =
     case mb of
       Nothing -> error $ "No such SysVinit.Service " ++ name a
       Just r -> do
