@@ -38,6 +38,7 @@ library
                      , Craft.Group
                      , Craft.Helpers
                      , Craft.Hostname
+                     , Craft.Hosts
                      , Craft.Internal.Helpers
                      , Craft.Internal.FileDirectory
                      , Craft.Internal.UserGroup

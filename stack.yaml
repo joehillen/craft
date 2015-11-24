@@ -2,6 +2,6 @@ flags: {}
 packages:
 - '.'
 extra-deps:
-- megaparsec-4.1.1
+- megaparsec-4.2.0
 - versions-1.0.1
 resolver: lts-3.9
