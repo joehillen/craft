@@ -1,4 +1,4 @@
-module Craft.Vagrant where
+module Craft.Run.Vagrant where
 
 import Craft
 import Craft.Config.Ssh

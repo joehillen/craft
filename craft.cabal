@@ -52,7 +52,6 @@ library
                      , Craft.Types
                      , Craft.Upstart
                      , Craft.User
-                     , Craft.Vagrant
                      , Craft.Watched
                      , Craft.Config.ShellFormat
                      , Craft.Config.Ssh
@@ -62,6 +61,7 @@ library
                      , Craft.Run.SSH
                      , Craft.Run.Local
                      , Craft.Run.Internal
+                     , Craft.Run.Vagrant
 
   other-modules:       Craft.Internal
 

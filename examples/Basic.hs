@@ -19,7 +19,7 @@ import           Craft.User (User(..), createUser)
 import qualified Craft.User as User
 import qualified Craft.Group as Group
 import qualified Craft.Pip as Pip
-import           Craft.Vagrant
+import           Craft.Run.Vagrant
 
 
 main :: IO ()
