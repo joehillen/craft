@@ -17,25 +17,15 @@ runCraftLocal e = iterM runCraftLocal' . flip runReaderT e
 
 -- | runCraftLocal implementation
 runCraftLocal' :: CraftDSL (IO a) -> IO a
-runCraftLocal' (Exec cwd env command args next) = do
+runCraftLocal' (Exec cwd env command args next) =
   let p = localProc cwd env command args
-  execProc p next
-
-runCraftLocal' (Exec_ cwd env command args next) = do
+  in execProc p next
+runCraftLocal' (Exec_ cwd env command args next) =
   let p = localProc cwd env command args
-  execProc_ p next
-
-runCraftLocal' (FileRead fp next) = do
-  content <- BS.readFile fp
-  next content
-
-runCraftLocal' (FileWrite fp content next) = do
-  BS.writeFile fp content
-  next
-
-runCraftLocal' (ReadSourceFile fps fp next) = do
-  content <- readSourceFileIO fps fp
-  next content
+  in execProc_ p next
+runCraftLocal' (FileRead fp next) = BS.readFile fp >>= next
+runCraftLocal' (FileWrite fp content next) = BS.writeFile fp content >> next
+runCraftLocal' (ReadSourceFile fps fp next) = readSourceFileIO fps fp >>= next
 
 
 localProc :: CWD -> ExecEnv -> Command -> Args -> CreateProcess
