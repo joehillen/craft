@@ -1,7 +1,7 @@
 module Craft.Run.Internal where
 
-import Control.Monad (filterM)
-import Control.Monad.Reader (liftIO)
+import Control.Monad.IO.Class
+import Control.Monad.Reader
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import System.Directory
@@ -13,7 +13,7 @@ import System.Process hiding ( readCreateProcessWithExitCode
 import System.Process.ListLike
 
 import Craft.Types
-import Craft.Helpers
+import Craft.Log
 
 
 isSuccess :: ExitCode -> Bool
@@ -22,10 +22,9 @@ isSuccess (ExitFailure _) = False
 
 
 execProc_ :: CreateProcess -> IO a -> IO a
-execProc_ p next = do
-  msg "exec_" $ showProc p
-  (_, _, _, ph) <- liftIO $ createProcess p
-  liftIO (waitForProcess ph) >>= \case
+execProc_ p next = liftIO $ do
+  (_, _, _, ph) <- createProcess p
+  waitForProcess ph >>= \case
     ExitFailure n -> do
       flushStdout
       error $ "exec_ failed with code: " ++ show n
@@ -36,7 +35,6 @@ execProc_ p next = do
 
 execProc :: CreateProcess -> (ExecResult -> IO a) -> IO a
 execProc p next = do
-  msg "exec" $ showProc p
   (exit', stdoutRaw, stderrRaw) <- readCreateProcessWithExitCode p "" {- stdin -}
   let stdout' = trimNL stdoutRaw
   let stderr' = trimNL stderrRaw

@@ -22,13 +22,6 @@ color c action = do
   return r
 
 
-msg :: String -> String -> IO ()
-msg name m = do
-  color Green $ putStr $ ">>= " ++ name ++ " "
-  putStrLn m
-  IO.hFlush IO.stdout
-
-
 notImplemented :: String -> a
 notImplemented m = error $ "ERROR: Not Implemented! " ++ m
 

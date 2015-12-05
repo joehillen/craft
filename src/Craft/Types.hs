@@ -7,6 +7,9 @@ import System.Process
 import Data.ByteString (ByteString)
 import Data.Versions (parseV)
 import qualified Data.Text as T
+import System.IO (Handle)
+import System.Log.FastLogger (LogStr)
+
 
 import Craft.Helpers
 
@@ -19,6 +22,7 @@ data CraftEnv pm
     , craftPackageManager :: PackageManager pm => pm
     , craftExecEnv        :: ExecEnv
     , craftExecCWD        :: FilePath
+    , craftLogHandle      :: Handle
     }
 
 type StdOut = String
@@ -75,6 +79,7 @@ data CraftDSL next
   | FileRead FilePath (ByteString -> next)
   | FileWrite FilePath ByteString next
   | ReadSourceFile [FilePath] FilePath (ByteString -> next)
+  | Log Handle ByteString next
  deriving Functor
 
 class (Eq a, Show a) => Craftable a where

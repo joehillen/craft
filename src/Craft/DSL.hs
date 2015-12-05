@@ -1,20 +1,22 @@
-module Craft.Exec where
+module Craft.DSL where
 
-import           Control.Monad.Reader
-import           Control.Monad.Free
-import           Data.ByteString (ByteString)
+import Control.Monad.Reader
+import Control.Monad.Free
+import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
-import           Data.List (intercalate)
-import           Data.List.Split (splitOn)
-import           Text.Megaparsec
+import Data.List (intercalate)
+import Data.List.Split (splitOn)
+import Text.Megaparsec
 
-import           Craft.Types
-import           Craft.Helpers
+import Craft.Types
+import Craft.Helpers
+import Craft.Log
 
 
 -- | Craft DSL
 exec :: Command -> Args -> Craft ExecResult
 exec cmd args = do
+  logDebugNS "exec" $ unwords (cmd:args)
   env <- asks craftExecEnv
   cwd <- asks craftExecCWD
   lift $ execF cwd env cmd args
@@ -22,6 +24,7 @@ exec cmd args = do
 
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
+  logDebugNS "exec_" $ unwords (cmd:args)
   env <- asks craftExecEnv
   cwd <- asks craftExecCWD
   lift $ execF_ cwd env cmd args
@@ -39,7 +42,6 @@ readSourceFile :: FilePath -> Craft ByteString
 readSourceFile fp = do
   fps <- asks craftSourcePaths
   lift $ readSourceFileF fps fp
-
 
 -- | better than grep
 parseExecResult :: ExecResult -> Parsec String a -> String -> a
@@ -122,3 +124,4 @@ fileWriteF fp content = liftF $ FileWrite fp content ()
 
 readSourceFileF :: [FilePath] -> FilePath -> Free CraftDSL BS.ByteString
 readSourceFileF fps fp = liftF $ ReadSourceFile fps fp id
+

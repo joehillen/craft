@@ -26,6 +26,7 @@ runCraftLocal' (Exec_ cwd env command args next) =
 runCraftLocal' (FileRead fp next) = BS.readFile fp >>= next
 runCraftLocal' (FileWrite fp content next) = BS.writeFile fp content >> next
 runCraftLocal' (ReadSourceFile fps fp next) = readSourceFileIO fps fp >>= next
+runCraftLocal' (Log h bs next) = BS.hPutStr h bs >> next
 
 
 localProc :: CWD -> ExecEnv -> Command -> Args -> CreateProcess

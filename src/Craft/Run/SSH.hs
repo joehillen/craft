@@ -3,6 +3,7 @@ module Craft.Run.SSH where
 import Control.Exception (finally)
 import Control.Monad.Free
 import Control.Monad.Reader
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as B8
 import Data.List (intersperse)
 import Data.String.Utils (replace)
@@ -73,7 +74,6 @@ runCraftSSH' sshenv SSHSession{..} (Exec_ cwd env command args next) = do
 
 runCraftSSH' sshenv SSHSession{..} (FileRead fp next) = do
   let p = sshProc "/" sshenv sshControlPath [] "cat" [fp]
-  msg "exec_" $ showProc p
   (ec, content, stderr) <- liftIO $ Proc.BS.readCreateProcessWithExitCode p ""
   unless (isSuccess ec) $
     error $ "Failed to read file '"++ fp ++"': " ++ B8.unpack stderr
@@ -81,15 +81,14 @@ runCraftSSH' sshenv SSHSession{..} (FileRead fp next) = do
 
 runCraftSSH' sshenv SSHSession{..} (FileWrite fp content next) = do
   let p = sshProc "/" sshenv sshControlPath [] "tee" [fp]
-  msg "exec_" $ showProc p
   (ec, _, stderr) <- liftIO $ Proc.BS.readCreateProcessWithExitCode p content
   unless (isSuccess ec) $
     error $ "Failed to write file '"++ fp ++"': " ++ B8.unpack stderr
   next
 
-runCraftSSH' _ _ (ReadSourceFile fps fp next) = do
-  content <- readSourceFileIO fps fp
-  next content
+runCraftSSH' _ _ (ReadSourceFile fps fp next) = readSourceFileIO fps fp >>= next
+runCraftSSH' _ _ (Log h bs next) = BS.hPutStr h bs >> next
+
 
 
 sshProc :: CWD -> SSHEnv -> FilePath -> ExecEnv -> Command -> Args -> CreateProcess
