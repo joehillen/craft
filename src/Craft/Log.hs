@@ -19,7 +19,7 @@ craftLoggerLog loc logsource level m = do
   R.lift $ logF h $ fromLogStr bs
 
 
-logF :: Handle -> ByteString -> Free CraftDSL ()
+logF :: Handle -> ByteString -> Free (CraftDSL pm) ()
 logF h bs = liftF $ Log h bs ()
 
 

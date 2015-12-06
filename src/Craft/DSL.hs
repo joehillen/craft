@@ -17,17 +17,15 @@ import Craft.Log
 exec :: Command -> Args -> Craft ExecResult
 exec cmd args = do
   logDebugNS "exec" $ unwords (cmd:args)
-  env <- asks craftExecEnv
-  cwd <- asks craftExecCWD
-  lift $ execF cwd env cmd args
+  env <- ask
+  lift $ execF env cmd args
 
 
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
   logDebugNS "exec_" $ unwords (cmd:args)
-  env <- asks craftExecEnv
-  cwd <- asks craftExecCWD
-  lift $ execF_ cwd env cmd args
+  env <- ask
+  lift $ execF_ env cmd args
 
 
 fileRead :: FilePath -> Craft BS.ByteString
@@ -106,22 +104,22 @@ errorOnFail (ExecFail r) = error $ show r
 
 
 -- | Free CraftDSL functions
-execF :: CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ExecResult
-execF cwd env cmd args = liftF $ Exec cwd env cmd args id
+execF :: CraftEnv pm -> Command -> Args -> Free (CraftDSL pm) ExecResult
+execF env cmd args = liftF $ Exec env cmd args id
 
 
-execF_ :: CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ()
-execF_ cwd env cmd args = liftF $ Exec_ cwd env cmd args ()
+execF_ :: CraftEnv pm -> Command -> Args -> Free (CraftDSL pm) ()
+execF_ env cmd args = liftF $ Exec_ env cmd args ()
 
 
-fileReadF :: FilePath -> Free CraftDSL BS.ByteString
+fileReadF :: FilePath -> Free (CraftDSL pm) BS.ByteString
 fileReadF fp = liftF $ FileRead fp id
 
 
-fileWriteF :: FilePath -> BS.ByteString -> Free CraftDSL ()
+fileWriteF :: FilePath -> BS.ByteString -> Free (CraftDSL pm) ()
 fileWriteF fp content = liftF $ FileWrite fp content ()
 
 
-readSourceFileF :: [FilePath] -> FilePath -> Free CraftDSL BS.ByteString
+readSourceFileF :: [FilePath] -> FilePath -> Free (CraftDSL pm) BS.ByteString
 readSourceFileF fps fp = liftF $ ReadSourceFile fps fp id
 

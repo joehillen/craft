@@ -8,13 +8,13 @@ import Data.ByteString (ByteString)
 import Data.Versions (parseV)
 import qualified Data.Text as T
 import System.IO (Handle)
-import System.Log.FastLogger (LogStr)
+import qualified System.IO as Sys.IO
 
 
 import Craft.Helpers
 
-type Craft a = forall pm. (PackageManager pm)
-             => ReaderT (CraftEnv pm) (Free CraftDSL) a
+type Craft a = forall pm. PackageManager pm
+             => ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a
 
 data CraftEnv pm
   = CraftEnv
@@ -24,6 +24,20 @@ data CraftEnv pm
     , craftExecCWD        :: FilePath
     , craftLogHandle      :: Handle
     }
+
+
+craftEnv :: CraftEnv NoPackageManager
+craftEnv =
+  CraftEnv
+  { craftSourcePaths    = ["."]
+  , craftPackageManager = NoPackageManager
+  , craftExecEnv        = [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
+  , craftExecCWD        = "/"
+  , craftLogHandle      = Sys.IO.stdout
+  }
+
+
+
 
 type StdOut = String
 type StdErr = String
@@ -73,9 +87,9 @@ showProc p =
 type ExecEnv = [(String, String)]
 type CWD = FilePath
 
-data CraftDSL next
-  = Exec  CWD ExecEnv Command Args (ExecResult -> next)
-  | Exec_ CWD ExecEnv Command Args next
+data CraftDSL pm next
+  = Exec  (CraftEnv pm) Command Args (ExecResult -> next)
+  | Exec_ (CraftEnv pm) Command Args next
   | FileRead FilePath (ByteString -> next)
   | FileWrite FilePath ByteString next
   | ReadSourceFile [FilePath] FilePath (ByteString -> next)
