@@ -26,5 +26,5 @@ craftEnv =
   , craftPackageManager = NoPackageManager
   , craftExecEnv        = [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
   , craftExecCWD        = "/"
-  , craftLogger         = craftDefaultLogger Sys.IO.stdout
+  , craftLogger         = craftDefaultLogger Sys.IO.stdout LevelDebug
   }

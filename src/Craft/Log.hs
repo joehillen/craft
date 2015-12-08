@@ -42,7 +42,7 @@ import qualified Data.Text as Text
 import Language.Haskell.TH.Syntax (Lift (lift), Q, Exp, Loc (..), qLocation)
 import System.Log.FastLogger (ToLogStr, LogStr, toLogStr, fromLogStr)
 import Control.Monad.Logger (LogSource, LogLevel(..), defaultLogStr)
-import System.IO (Handle, hFlush)
+import System.IO (Handle, hFlush, openFile, IOMode(..))
 
 import Craft.Types
 
@@ -53,11 +53,19 @@ craftLoggerLog loc logsource level msg = do
   R.lift $ logF $ logger loc logsource level logstr
 
 
-craftDefaultLogger :: Handle -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
-craftDefaultLogger handle loc logsource level logstr = do
-  let bs = fromLogStr $ defaultLogStr loc logsource level logstr
-  BS.hPutStr handle bs
-  hFlush handle
+craftDefaultLogger :: Handle -> LogLevel -> LogFunc
+craftDefaultLogger handle minlevel loc logsource loglevel logstr
+  | minlevel <= loglevel  = do
+      let bs = fromLogStr $ defaultLogStr loc logsource loglevel logstr
+      BS.hPutStr handle bs
+      hFlush handle
+  | otherwise = return ()
+
+
+craftFileLogger :: FilePath -> LogLevel -> IO LogFunc
+craftFileLogger fp minlevel = do
+  h <- openFile fp WriteMode
+  return $ craftDefaultLogger h minlevel
 
 
 noLogger :: Loc -> LogSource -> LogLevel -> LogStr -> IO ()
