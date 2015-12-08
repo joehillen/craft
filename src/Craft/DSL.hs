@@ -17,17 +17,18 @@ import Craft.Log
 exec :: Command -> Args -> Craft ExecResult
 exec cmd args = do
   logDebugNS "exec" $ unwords (cmd:args)
+  logger <- asks craftLogger
   cwd <- asks craftExecCWD
   env <- asks craftExecEnv
-  lift $ execF cwd env cmd args
+  lift $ execF logger cwd env cmd args
 
 
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
   logDebugNS "exec_" $ unwords (cmd:args)
+  logger <- asks craftLogger
   cwd <- asks craftExecCWD
   env <- asks craftExecEnv
-  logger <- asks craftLogger
   lift $ execF_ logger cwd env cmd args
 
 
@@ -106,8 +107,8 @@ errorOnFail (ExecFail r) = error $ show r
 
 
 -- | Free CraftDSL functions
-execF :: CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ExecResult
-execF cwd env cmd args = liftF $ Exec cwd env cmd args id
+execF :: LogFunc -> CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ExecResult
+execF logger cwd env cmd args = liftF $ Exec logger cwd env cmd args id
 
 
 execF_ :: LogFunc -> CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ()

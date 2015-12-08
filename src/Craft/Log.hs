@@ -60,6 +60,10 @@ craftDefaultLogger handle loc logsource level logstr = do
   hFlush handle
 
 
+noLogger :: Loc -> LogSource -> LogLevel -> LogStr -> IO ()
+noLogger _ _ _ _ = return ()
+
+
 logF :: IO () -> Free CraftDSL ()
 logF action = liftF $ Log action ()
 

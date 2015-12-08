@@ -32,8 +32,9 @@ isSuccess ExitSuccess     = True
 isSuccess (ExitFailure _) = False
 
 
-execProc :: CreateProcess -> (ExecResult -> IO a) -> IO a
-execProc p next = do
+execProc :: LogFunc -> CreateProcess -> (ExecResult -> IO a) -> IO a
+execProc logger p next = do
+  logger defaultLoc "exec|process" LevelDebug $ toLogStr $ showProc p
   (exit', stdoutRaw, stderrRaw) <- SPLL.readCreateProcessWithExitCode p "" {- stdin -}
   let stdout' = trimNL stdoutRaw
   let stderr' = trimNL stderrRaw
@@ -42,43 +43,24 @@ execProc p next = do
            ExitFailure code -> ExecFail $ FailResult code stdout' stderr' p
 
 
-execProc_ :: LogFunc -> CreateProcess -> IO a -> IO a
-execProc_ logger p next = do
+execProc_ :: LogFunc -> String -> CreateProcess -> IO a -> IO a
+execProc_ logger src p next = do
   let p' = p { std_in  = CreatePipe
              , std_out = CreatePipe
              , std_err = CreatePipe
              }
-      src = T.pack $ showProc p'
+      src' = T.pack src
+  logger defaultLoc "exec_|process" LevelDebug $ toLogStr $ showProc p
   ec <- sourceProcessWithConsumers p'
-          (pipeConsumer $ src <> "|stdout")
-          (pipeConsumer $ src <> "|stderr")
+          (pipeConsumer $ "exec_|" <> src' <> "|stdout")
+          (pipeConsumer $ "exec_|" <> src' <> "|stderr")
   case ec of
-    ExitFailure n -> error $ "exec_ failed with code: " ++ show n
+    ExitFailure n -> error $ "exec_ `" ++ src ++ "` failed with code: " ++ show n
     ExitSuccess   -> next
  where
    pipeConsumer :: Text -> Consumer ByteString IO ()
    pipeConsumer src = decodeUtf8C =$= CT.lines =$ awaitForever (\txt ->
      liftIO $ logger defaultLoc src LevelDebug $ toLogStr txt)
-
-
-
-instance (r ~ (), MonadIO m, o ~ ByteString) => OutputSink (ConduitM i o m r) where
-    osStdStream = (\(Just h) -> return $ sourceHandle h, Just CreatePipe)
-instance (r ~ (), r' ~ (), MonadIO m, MonadIO n, o ~ ByteString) => OutputSink (ConduitM i o m r, n r') where
-    osStdStream = (\(Just h) -> return (sourceHandle h, liftIO $ hClose h), Just CreatePipe)
-
-
-
-sourceProcessWithConsumers :: CreateProcess
-                           -> Consumer ByteString IO () -- stdout
-                           -> Consumer ByteString IO () -- stderr
-                           -> IO ExitCode
-sourceProcessWithConsumers cp consumerStdout consumerStderr = do
-    ( ClosedStream, (sourceStdout, closeStdout)
-                  , (sourceStderr, closeStderr), cph) <- streamingProcess cp
-    race_ (sourceStdout $$ consumerStdout >> closeStdout)
-          (sourceStderr $$ consumerStderr >> closeStderr)
-    waitForStreamingProcess cph
 
 
 -- | Remove a single trailing newline character from the end of the String
@@ -98,3 +80,45 @@ readSourceFileIO fps name = do
             ++ show fps
   else
     BS.readFile $ head files </> name
+
+
+{-
+Taken from conduit-extra https://github.com/snoyberg/conduit/blob/master/conduit-extra/Data/Conduit/Process.hs
+
+Copyright (c) 2012 Michael Snoyman, http://www.yesodweb.com/
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+-}
+instance (r ~ (), MonadIO m, o ~ ByteString) => OutputSink (ConduitM i o m r) where
+    osStdStream = (\(Just h) -> return $ sourceHandle h, Just CreatePipe)
+instance (r ~ (), r' ~ (), MonadIO m, MonadIO n, o ~ ByteString) => OutputSink (ConduitM i o m r, n r') where
+    osStdStream = (\(Just h) -> return (sourceHandle h, liftIO $ hClose h), Just CreatePipe)
+
+
+sourceProcessWithConsumers :: CreateProcess
+                           -> Consumer ByteString IO () -- stdout
+                           -> Consumer ByteString IO () -- stderr
+                           -> IO ExitCode
+sourceProcessWithConsumers cp consumerStdout consumerStderr = do
+    ( ClosedStream, (sourceStdout, closeStdout)
+                  , (sourceStderr, closeStderr), cph) <- streamingProcess cp
+    race_ (sourceStdout $$ consumerStdout >> closeStdout)
+          (sourceStderr $$ consumerStderr >> closeStderr)
+    waitForStreamingProcess cph

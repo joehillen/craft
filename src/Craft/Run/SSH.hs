@@ -15,6 +15,7 @@ import qualified System.Process.ByteString as Proc.BS
 import Craft.Types
 import Craft.Helpers
 import Craft.Run.Internal
+import Craft.Log
 
 data SSHEnv
   = SSHEnv
@@ -64,13 +65,13 @@ runCraftSSH sshenv e prog = do
 
 -- | runCraftSSH implementation
 runCraftSSH' :: SSHEnv -> SSHSession -> CraftDSL (IO a) -> IO a
-runCraftSSH' sshenv SSHSession{..} (Exec cwd env command args next) = do
+runCraftSSH' sshenv SSHSession{..} (Exec logger cwd env command args next) = do
   let p = sshProc cwd sshenv sshControlPath env command args
-  execProc p next
+  execProc logger p next
 
 runCraftSSH' sshenv SSHSession{..} (Exec_ logger cwd env command args next) = do
   let p = sshProc cwd sshenv sshControlPath env command args
-  execProc_ logger p next
+  execProc_ logger (unwords (command:args)) p next
 
 runCraftSSH' sshenv SSHSession{..} (FileRead fp next) = do
   let p = sshProc "/" sshenv sshControlPath [] "cat" [fp]

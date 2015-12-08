@@ -7,6 +7,7 @@ import System.Process hiding ( readCreateProcessWithExitCode
                              , readProcessWithExitCode)
 
 import Craft.Types
+import Craft.Log
 import Craft.Run.Internal
 
 
@@ -17,10 +18,11 @@ runCraftLocal e = iterM runCraftLocal' . flip runReaderT e
 
 -- | runCraftLocal implementation
 runCraftLocal' :: CraftDSL (IO a) -> IO a
-runCraftLocal' (Exec cwd env command args next) =
-  let p = localProc cwd env command args in execProc p next
+runCraftLocal' (Exec _ cwd env command args next) =
+  let p = localProc cwd env command args in execProc noLogger p next
 runCraftLocal' (Exec_ logger cwd env command args next) =
-  let p = localProc cwd env command args in execProc_ logger p next
+  let p = localProc cwd env command args
+  in execProc_ logger (showProc p) p next
 runCraftLocal' (FileRead fp next) = BS.readFile fp >>= next
 runCraftLocal' (FileWrite fp content next) = BS.writeFile fp content >> next
 runCraftLocal' (ReadSourceFile fps fp next) = readSourceFileIO fps fp >>= next

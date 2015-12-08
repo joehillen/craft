@@ -17,7 +17,7 @@ type Craft a = forall pm. PackageManager pm
 
 
 data CraftDSL next
-  = Exec  CWD ExecEnv Command Args (ExecResult -> next)
+  = Exec  LogFunc CWD ExecEnv Command Args (ExecResult -> next)
   | Exec_ LogFunc CWD ExecEnv Command Args next
   | FileRead FilePath (ByteString -> next)
   | FileWrite FilePath ByteString next
