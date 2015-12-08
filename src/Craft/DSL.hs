@@ -27,7 +27,8 @@ exec_ cmd args = do
   logDebugNS "exec_" $ unwords (cmd:args)
   cwd <- asks craftExecCWD
   env <- asks craftExecEnv
-  lift $ execF_ cwd env cmd args
+  logger <- asks craftLogger
+  lift $ execF_ logger cwd env cmd args
 
 
 fileRead :: FilePath -> Craft BS.ByteString
@@ -109,8 +110,8 @@ execF :: CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ExecResult
 execF cwd env cmd args = liftF $ Exec cwd env cmd args id
 
 
-execF_ :: CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ()
-execF_ cwd env cmd args = liftF $ Exec_ cwd env cmd args ()
+execF_ :: LogFunc -> CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ()
+execF_ logger cwd env cmd args = liftF $ Exec_ logger cwd env cmd args ()
 
 
 fileReadF :: FilePath -> Free CraftDSL BS.ByteString

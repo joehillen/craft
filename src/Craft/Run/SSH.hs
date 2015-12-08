@@ -68,9 +68,9 @@ runCraftSSH' sshenv SSHSession{..} (Exec cwd env command args next) = do
   let p = sshProc cwd sshenv sshControlPath env command args
   execProc p next
 
-runCraftSSH' sshenv SSHSession{..} (Exec_ cwd env command args next) = do
+runCraftSSH' sshenv SSHSession{..} (Exec_ logger cwd env command args next) = do
   let p = sshProc cwd sshenv sshControlPath env command args
-  execProc_ p next
+  execProc_ logger p next
 
 runCraftSSH' sshenv SSHSession{..} (FileRead fp next) = do
   let p = sshProc "/" sshenv sshControlPath [] "cat" [fp]

@@ -1,4 +1,13 @@
-module Craft.Log where
+module Craft.Log
+( module Craft.Log
+, Loc
+, LogSource
+, LogLevel(..)
+, LogStr
+, toLogStr
+)
+where
+
 
 {-
 Most of this file was copied and modified from

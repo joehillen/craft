@@ -6,5 +6,4 @@ build:
 	stack build
 
 examples: build
-	stack ghc -- -o examples/basic examples/Basic.hs
-
+	stack ghc -- -O2 -threaded -rtsopts -with-rtsopts=-N -o examples/basic examples/Basic.hs

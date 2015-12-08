@@ -1,16 +1,27 @@
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Run.Internal where
 
+import Conduit as C
+import Data.Conduit.Text as CT
 import Control.Monad.IO.Class
 import Control.Monad.Reader
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
+import Data.Text (Text)
+import qualified Data.Text as T
 import System.Directory
-import System.Exit
 import System.FilePath
 import qualified System.IO as Sys.IO
-import System.Process hiding ( readCreateProcessWithExitCode
-                             , readProcessWithExitCode)
-import System.Process.ListLike
+import System.Process
+import qualified System.Process.ListLike as SPLL
+import Data.Monoid ((<>))
+import Data.Streaming.Process
+import Data.Streaming.Process.Internal
+import System.Exit
+import System.IO
+import Control.Concurrent.Async
 
 import Craft.Types
 import Craft.Log
@@ -21,21 +32,9 @@ isSuccess ExitSuccess     = True
 isSuccess (ExitFailure _) = False
 
 
-execProc_ :: CreateProcess -> IO a -> IO a
-execProc_ p next = do
-  (_, _, _, ph) <- createProcess p
-  waitForProcess ph >>= \case
-    ExitFailure n -> do
-      flushStdout
-      error $ "exec_ failed with code: " ++ show n
-    ExitSuccess   -> do
-      flushStdout
-      next
-
-
 execProc :: CreateProcess -> (ExecResult -> IO a) -> IO a
 execProc p next = do
-  (exit', stdoutRaw, stderrRaw) <- readCreateProcessWithExitCode p "" {- stdin -}
+  (exit', stdoutRaw, stderrRaw) <- SPLL.readCreateProcessWithExitCode p "" {- stdin -}
   let stdout' = trimNL stdoutRaw
   let stderr' = trimNL stderrRaw
   next $ case exit' of
@@ -43,8 +42,43 @@ execProc p next = do
            ExitFailure code -> ExecFail $ FailResult code stdout' stderr' p
 
 
-flushStdout :: IO ()
-flushStdout = Sys.IO.hFlush Sys.IO.stdout
+execProc_ :: LogFunc -> CreateProcess -> IO a -> IO a
+execProc_ logger p next = do
+  let p' = p { std_in  = CreatePipe
+             , std_out = CreatePipe
+             , std_err = CreatePipe
+             }
+      src = T.pack $ showProc p'
+  ec <- sourceProcessWithConsumers p'
+          (pipeConsumer $ src <> "|stdout")
+          (pipeConsumer $ src <> "|stderr")
+  case ec of
+    ExitFailure n -> error $ "exec_ failed with code: " ++ show n
+    ExitSuccess   -> next
+ where
+   pipeConsumer :: Text -> Consumer ByteString IO ()
+   pipeConsumer src = decodeUtf8C =$= CT.lines =$ awaitForever (\txt ->
+     liftIO $ logger defaultLoc src LevelDebug $ toLogStr txt)
+
+
+
+instance (r ~ (), MonadIO m, o ~ ByteString) => OutputSink (ConduitM i o m r) where
+    osStdStream = (\(Just h) -> return $ sourceHandle h, Just CreatePipe)
+instance (r ~ (), r' ~ (), MonadIO m, MonadIO n, o ~ ByteString) => OutputSink (ConduitM i o m r, n r') where
+    osStdStream = (\(Just h) -> return (sourceHandle h, liftIO $ hClose h), Just CreatePipe)
+
+
+
+sourceProcessWithConsumers :: CreateProcess
+                           -> Consumer ByteString IO () -- stdout
+                           -> Consumer ByteString IO () -- stderr
+                           -> IO ExitCode
+sourceProcessWithConsumers cp consumerStdout consumerStderr = do
+    ( ClosedStream, (sourceStdout, closeStdout)
+                  , (sourceStderr, closeStderr), cph) <- streamingProcess cp
+    race_ (sourceStdout $$ consumerStdout >> closeStdout)
+          (sourceStderr $$ consumerStderr >> closeStderr)
+    waitForStreamingProcess cph
 
 
 -- | Remove a single trailing newline character from the end of the String

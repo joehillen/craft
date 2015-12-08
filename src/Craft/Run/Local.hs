@@ -19,8 +19,8 @@ runCraftLocal e = iterM runCraftLocal' . flip runReaderT e
 runCraftLocal' :: CraftDSL (IO a) -> IO a
 runCraftLocal' (Exec cwd env command args next) =
   let p = localProc cwd env command args in execProc p next
-runCraftLocal' (Exec_ cwd env command args next) =
-  let p = localProc cwd env command args in execProc_ p next
+runCraftLocal' (Exec_ logger cwd env command args next) =
+  let p = localProc cwd env command args in execProc_ logger p next
 runCraftLocal' (FileRead fp next) = BS.readFile fp >>= next
 runCraftLocal' (FileWrite fp content next) = BS.writeFile fp content >> next
 runCraftLocal' (ReadSourceFile fps fp next) = readSourceFileIO fps fp >>= next
