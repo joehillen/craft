@@ -22,7 +22,7 @@ isSuccess (ExitFailure _) = False
 
 
 execProc_ :: CreateProcess -> IO a -> IO a
-execProc_ p next = liftIO $ do
+execProc_ p next = do
   (_, _, _, ph) <- createProcess p
   waitForProcess ph >>= \case
     ExitFailure n -> do

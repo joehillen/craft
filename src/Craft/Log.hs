@@ -26,27 +26,33 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 -}
 
-import Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
 import qualified Control.Monad.Reader as R
 import Control.Monad.Free as Free
 import qualified Data.Text as Text
 import Language.Haskell.TH.Syntax (Lift (lift), Q, Exp, Loc (..), qLocation)
-import System.Log.FastLogger (ToLogStr, toLogStr, fromLogStr)
+import System.Log.FastLogger (ToLogStr, LogStr, toLogStr, fromLogStr)
 import Control.Monad.Logger (LogSource, LogLevel(..), defaultLogStr)
-import System.IO (Handle)
+import System.IO (Handle, hFlush)
 
 import Craft.Types
 
-craftLoggerLog :: ToLogStr msg
-               => Loc -> LogSource -> LogLevel -> msg -> Craft ()
-craftLoggerLog loc logsource level m = do
-  let bs = defaultLogStr loc logsource level $ toLogStr m
-  h <- R.asks craftLogHandle
-  R.lift $ logF h $ fromLogStr bs
+craftLoggerLog :: ToLogStr msg => Loc -> LogSource -> LogLevel -> msg -> Craft ()
+craftLoggerLog loc logsource level msg = do
+  let logstr = toLogStr msg
+  logger <- R.asks craftLogger
+  R.lift $ logF $ logger loc logsource level logstr
 
 
-logF :: Handle -> ByteString -> Free (CraftDSL pm) ()
-logF h bs = liftF $ Log h bs ()
+craftDefaultLogger :: Handle -> Loc -> LogSource -> LogLevel -> LogStr -> IO ()
+craftDefaultLogger handle loc logsource level logstr = do
+  let bs = fromLogStr $ defaultLogStr loc logsource level logstr
+  BS.hPutStr handle bs
+  hFlush handle
+
+
+logF :: IO () -> Free CraftDSL ()
+logF action = liftF $ Log action ()
 
 
 logTH :: LogLevel -> Q Exp
@@ -112,7 +118,7 @@ logOtherS = [|\src level msg -> craftLoggerLog $(qLocation >>= liftLoc) src (Lev
 defaultLoc :: Loc
 defaultLoc = Loc "<unknown>" "<unknown>" "<unknown>" (0,0) (0,0)
 
-logWithoutLoc :: (ToLogStr msg) => LogSource -> LogLevel -> msg -> Craft ()
+logWithoutLoc :: ToLogStr msg => LogSource -> LogLevel -> msg -> Craft ()
 logWithoutLoc = craftLoggerLog defaultLoc
 
 logDebugN :: String -> Craft ()

@@ -9,7 +9,7 @@ Craft only works with GHC 7.10.
 Get [stack](https://github.com/commercialhaskell/stack#how-to-install)
 
 ```
-stack init # only need to run your first time using stack
+stack setup # only needs to be run your first time using stack
 stack build
 ```
 
@@ -18,12 +18,14 @@ stack build
 ```
 make
 cd examples
-vagrant up --provision
+vagrant up
+./basic
 ```
 
 # TODO
 
  * Write stdout and strerr from procs to logging handle
+   using https://hackage.haskell.org/package/process-streaming
  * Lenses!!!
  * Replace FilePath with [pathtype](https://hackage.haskell.org/package/pathtype)
  * Rename `get` so that it doesn't conflict with the State Monad, but what name to use?

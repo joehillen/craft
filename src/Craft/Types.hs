@@ -7,14 +7,13 @@ import System.Process
 import Data.ByteString (ByteString)
 import Data.Versions (parseV)
 import qualified Data.Text as T
-import System.IO (Handle)
-import qualified System.IO as Sys.IO
+import Control.Monad.Logger (Loc(..), LogSource, LogLevel(..), LogStr)
 
 
 import Craft.Helpers
 
 type Craft a = forall pm. PackageManager pm
-             => ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a
+             => ReaderT (CraftEnv pm) (Free CraftDSL) a
 
 data CraftEnv pm
   = CraftEnv
@@ -22,21 +21,8 @@ data CraftEnv pm
     , craftPackageManager :: PackageManager pm => pm
     , craftExecEnv        :: ExecEnv
     , craftExecCWD        :: FilePath
-    , craftLogHandle      :: Handle
+    , craftLogger         :: Loc -> LogSource -> LogLevel -> LogStr -> IO ()
     }
-
-
-craftEnv :: CraftEnv NoPackageManager
-craftEnv =
-  CraftEnv
-  { craftSourcePaths    = ["."]
-  , craftPackageManager = NoPackageManager
-  , craftExecEnv        = [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
-  , craftExecCWD        = "/"
-  , craftLogHandle      = Sys.IO.stdout
-  }
-
-
 
 
 type StdOut = String
@@ -87,13 +73,13 @@ showProc p =
 type ExecEnv = [(String, String)]
 type CWD = FilePath
 
-data CraftDSL pm next
-  = Exec  (CraftEnv pm) Command Args (ExecResult -> next)
-  | Exec_ (CraftEnv pm) Command Args next
+data CraftDSL next
+  = Exec  CWD ExecEnv Command Args (ExecResult -> next)
+  | Exec_ CWD ExecEnv Command Args next
   | FileRead FilePath (ByteString -> next)
   | FileWrite FilePath ByteString next
   | ReadSourceFile [FilePath] FilePath (ByteString -> next)
-  | Log Handle ByteString next
+  | Log (IO ()) next
  deriving Functor
 
 class (Eq a, Show a) => Craftable a where

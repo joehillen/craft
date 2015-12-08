@@ -17,15 +17,17 @@ import Craft.Log
 exec :: Command -> Args -> Craft ExecResult
 exec cmd args = do
   logDebugNS "exec" $ unwords (cmd:args)
-  env <- ask
-  lift $ execF env cmd args
+  cwd <- asks craftExecCWD
+  env <- asks craftExecEnv
+  lift $ execF cwd env cmd args
 
 
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
   logDebugNS "exec_" $ unwords (cmd:args)
-  env <- ask
-  lift $ execF_ env cmd args
+  cwd <- asks craftExecCWD
+  env <- asks craftExecEnv
+  lift $ execF_ cwd env cmd args
 
 
 fileRead :: FilePath -> Craft BS.ByteString
@@ -59,8 +61,7 @@ parseExecResult execr parser str =
 
 
 craftExecPath :: CraftEnv a -> [FilePath]
-craftExecPath craftEnv =
-  maybe [] (splitOn ":") $ lookup "PATH" $ craftExecEnv craftEnv
+craftExecPath = maybe [] (splitOn ":") . lookup "PATH" . craftExecEnv
 
 
 -- TESTME
@@ -104,22 +105,21 @@ errorOnFail (ExecFail r) = error $ show r
 
 
 -- | Free CraftDSL functions
-execF :: CraftEnv pm -> Command -> Args -> Free (CraftDSL pm) ExecResult
-execF env cmd args = liftF $ Exec env cmd args id
+execF :: CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ExecResult
+execF cwd env cmd args = liftF $ Exec cwd env cmd args id
 
 
-execF_ :: CraftEnv pm -> Command -> Args -> Free (CraftDSL pm) ()
-execF_ env cmd args = liftF $ Exec_ env cmd args ()
+execF_ :: CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ()
+execF_ cwd env cmd args = liftF $ Exec_ cwd env cmd args ()
 
 
-fileReadF :: FilePath -> Free (CraftDSL pm) BS.ByteString
+fileReadF :: FilePath -> Free CraftDSL BS.ByteString
 fileReadF fp = liftF $ FileRead fp id
 
 
-fileWriteF :: FilePath -> BS.ByteString -> Free (CraftDSL pm) ()
+fileWriteF :: FilePath -> BS.ByteString -> Free CraftDSL ()
 fileWriteF fp content = liftF $ FileWrite fp content ()
 
 
-readSourceFileF :: [FilePath] -> FilePath -> Free (CraftDSL pm) BS.ByteString
+readSourceFileF :: [FilePath] -> FilePath -> Free CraftDSL BS.ByteString
 readSourceFileF fps fp = liftF $ ReadSourceFile fps fp id
-
