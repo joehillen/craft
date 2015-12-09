@@ -3,6 +3,7 @@ module Craft.Hostname where
 import qualified Data.ByteString.Char8 as B8
 
 import qualified Craft.File as File
+import qualified Craft.Hosts as Hosts
 import Craft.Internal
 
 
@@ -19,5 +20,11 @@ instance Craftable Hostname where
   destroyer _ = return ()
   crafter (Hostname h) _ = do
     exec_ "hostname" [h]
+    Hosts.get >>= \case
+      Nothing -> do
+        $logError "/etc/hosts not found!"
+        error "/etc/hosts not found!"
+      Just hosts ->
+        craft_ $ Hosts.set (Hosts.Name h) (Hosts.IP "127.0.1.1") hosts
     craft_ $ (File.file "/etc/hostname")
              { File.content = Just $ B8.pack h }

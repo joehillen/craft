@@ -8,6 +8,7 @@ import qualified Data.ByteString.Char8 as B8
 import           Data.Maybe
 
 import           Craft
+import           Craft.Hostname (Hostname(..))
 import           Craft.Apt (Apt(..))
 import qualified Craft.Apt as Apt
 import           Craft.Directory (Directory(..))
@@ -27,6 +28,7 @@ main =
   runCraftVagrant
     (craftEnv { craftPackageManager = Apt
               }) $ do
+      craft_ $ Hostname "craft-example-basic"
       Apt.update
       Pip.setup
       void addAdmins
