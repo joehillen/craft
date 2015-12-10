@@ -46,6 +46,10 @@ import System.IO (Handle, hFlush, openFile, IOMode(..))
 
 import Craft.Types
 
+-- |Log an error and throw a runtime exception
+craftError :: Q Exp
+craftError = [|\msg -> $(logError) msg >> error msg|]
+
 craftLoggerLog :: ToLogStr msg => Loc -> LogSource -> LogLevel -> msg -> Craft ()
 craftLoggerLog loc logsource level msg = do
   let logstr = toLogStr msg
