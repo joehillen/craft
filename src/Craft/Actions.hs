@@ -4,6 +4,7 @@ import Control.Monad (void)
 import Data.Maybe (isJust)
 
 import Craft.Types
+import Craft.Log
 
 isPresent :: Craftable a => a -> Craft Bool
 isPresent a = isJust <$> checker a
@@ -23,7 +24,7 @@ craftWithoutChecker :: Craftable a => a -> Maybe a -> Craft a
 craftWithoutChecker a mb = do
   crafter a mb
   checker a >>= \case
-    Nothing -> error $ "craft failed (not found) for: " ++ show a
+    Nothing -> $craftError $ "craft failed (not found) for: " ++ show a
     Just  r -> return r
 
 craft_ :: Craftable a => a -> Craft ()
@@ -37,8 +38,8 @@ destroy a =
       destroyer a
       checker a >>= \case
         Nothing -> return a
-        Just  r -> error $ "destroy failed for: " ++ show a ++
-                           " Found: " ++ show r
+        Just  r -> $craftError $ "destroy failed for: " ++ show a
+                                 ++ " Found: " ++ show r
 
 destroy_ :: Craftable a => a -> Craft ()
 destroy_ = void . destroy

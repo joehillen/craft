@@ -53,8 +53,8 @@ dpkgQueryStatus pn = dpkgQuery ["-s", pn]
 expectOutput :: String -> [String] -> Craft String
 expectOutput cmd args = do
   r <- stdout . errorOnFail <$> exec cmd args
-  when (null r) $ error $ "'" ++ unwords (cmd:args) ++ "'"
-                          ++ " returned an empty result!"
+  when (null r) ($craftError $ "'" ++ unwords (cmd:args) ++ "'"
+                               ++ " returned an empty result!")
   return r
 
 

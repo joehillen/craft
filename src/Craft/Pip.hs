@@ -3,7 +3,6 @@ module Craft.Pip where
 import Craft hiding (package, latest)
 import qualified Craft
 import qualified Craft.File as File
-import Control.Monad (unless)
 
 import Text.Megaparsec
 
@@ -39,11 +38,11 @@ get pn = do
       let results = parseExecResult r pipShowParser (stdout succr) in
       if null results then
         return Nothing
-      else return $
-        case lookup "Version" results of
-          Nothing -> error "`pip show` did not return a version"
-          Just version ->
-            Just . PipPackage $ Package pn $ Version version
+      else case lookup "Version" results of
+        Nothing      -> $craftError "`pip show` did not return a version"
+        Just version -> return . Just
+                               . PipPackage
+                               $ Package pn $ Version version
 
 
 -- TESTME

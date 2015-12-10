@@ -110,7 +110,7 @@ instance Craftable Service where
 
   crafter a mb =
     case mb of
-      Nothing -> error $ "No such SysVinit.Service " ++ name a
+      Nothing -> $craftError $ "No such SysVinit.Service " ++ name a
       Just r -> do
         when (status a /= status r) $
           case status a of

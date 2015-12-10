@@ -39,16 +39,16 @@ data Directory =
 owner :: Directory -> Craft User
 owner d =
   User.fromID (ownerID d) >>= \case
-    Nothing -> error $ "No such owner with id `" ++ show (ownerID d)
-                       ++ "` for: " ++ show d
+    Nothing -> $craftError $ "No such owner with id `" ++ show (ownerID d)
+                             ++ "` for: " ++ show d
     Just g  -> return g
 
 
 group :: Directory -> Craft Group
 group d =
   Group.fromID (groupID d) >>= \case
-    Nothing -> error $ "No such group with id `" ++ show (groupID d)
-                       ++ "` for: " ++ show d
+    Nothing -> $craftError $ "No such group with id `" ++ show (groupID d)
+                             ++ "` for: " ++ show d
     Just g -> return g
 
 

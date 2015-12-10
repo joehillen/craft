@@ -101,8 +101,8 @@ setComment un comment = userMod un ["--comment", comment]
 setGroup :: UserName -> GroupName -> Craft ()
 setGroup un gn =
   Group.fromName gn  >>= \case
-    Nothing -> error $ "setGroup `" ++ un ++ "` `" ++ gn
-                       ++ "` failed. Group `" ++ gn ++ "` not found!"
+    Nothing -> $craftError $ "setGroup `" ++ un ++ "` `" ++ gn
+                             ++ "` failed. Group `" ++ gn ++ "` not found!"
     Just g  -> userMod un ["--gid", show $ gid g]
 
 setGroups :: UserName -> [GroupName] -> Craft ()
@@ -150,7 +150,7 @@ createUser un uopts@Options{..} = do
     Nothing -> notfound
     Just r  -> return r
  where
-  notfound = error $ "createUser `" ++ un ++ "` failed. Not Found!"
+  notfound = $craftError $ "createUser `" ++ un ++ "` failed. Not Found!"
 
   handleOpt :: Eq a => Maybe a -> a -> (a -> Craft ()) -> Craft ()
   handleOpt Nothing       _      _ = return ()
@@ -171,7 +171,7 @@ createUser' un Options{..} = do
   getGroupArg Nothing = return []
   getGroupArg (Just gn) =
     Group.fromName gn >>= \case
-      Nothing -> error $
+      Nothing -> $craftError $
         "Failed to create User `" ++ un ++ "` "
         ++ "with group `" ++ gn ++ "`. Group not found!"
       Just g -> return $ toArg "--gid" $ Group.gid g

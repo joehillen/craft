@@ -2,6 +2,7 @@ module Craft.Watched where
 
 import             Craft.Types
 import             Craft.Actions
+import             Craft.Log
 
 
 data Watched
@@ -60,8 +61,8 @@ watchDestroy a =
       destroyer a
       checker a >>= \case
         Nothing -> return (Removed, before)
-        Just  r -> error $ "destroy failed for: " ++ show a ++
-                           " Found: " ++ show r
+        Just  r -> $craftError $ "destroy failed for: " ++ show a
+                                 ++ " Found: " ++ show r
 
 
 watch :: Eq b

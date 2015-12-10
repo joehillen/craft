@@ -49,16 +49,16 @@ instance Eq File where
 owner :: File -> Craft User
 owner f =
   User.fromID (ownerID f) >>= \case
-    Nothing -> error $ "No such owner with id `" ++ show (ownerID f)
-                       ++ "` for: " ++ show f
+    Nothing -> $craftError $ "No such owner with id `" ++ show (ownerID f)
+                             ++ "` for: " ++ show f
     Just g  -> return g
 
 
 group :: File -> Craft Group
 group f =
   Group.fromID (groupID f) >>= \case
-    Nothing -> error $ "No such group with id `" ++ show (groupID f)
-                       ++ "` for: " ++ show f
+    Nothing -> $craftError $ "No such group with id `" ++ show (groupID f)
+                             ++ "` for: " ++ show f
     Just g -> return g
 
 

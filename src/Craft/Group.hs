@@ -38,7 +38,7 @@ createGroup gn Options{..} = do
   exec_ "/usr/sbin/groupadd" args
   exec_ "/usr/bin/gpasswd" ["--members", intercalate "," optUsers, gn]
   fromName gn >>= \case
-    Nothing -> error $ "createGroup `" ++ show gn ++ "` failed. Not Found!"
+    Nothing -> $craftError $ "createGroup `" ++ show gn ++ "` failed. Not Found!"
     Just g -> return g
  where
   args = concat
