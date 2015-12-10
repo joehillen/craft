@@ -53,6 +53,7 @@ library
                      , Craft.Upstart
                      , Craft.User
                      , Craft.Watched
+                     , Craft.Config.Ini
                      , Craft.Config.ShellFormat
                      , Craft.Config.Ssh
                      , Craft.Config.Yaml
@@ -107,6 +108,8 @@ library
                      , conduit-combinators
                      , conduit-extra
                      , streaming-commons
+                     , ini
+                     , hashmap
 
 test-suite craft-test
   type:                exitcode-stdio-1.0
