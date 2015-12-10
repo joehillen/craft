@@ -1,8 +1,26 @@
-module Craft.Hosts where
+module Craft.Hosts
+( IP(..)
+, Name(..)
+, Configs
+, Hosts(..)
+, Craft.Hosts.lookup
+, hostsfp
+, get
+, parse
+, showConfigs
+, toFile
+, insert
+, deleteIP
+, deleteName
+, delete
+, set
+)
+where
 
 
 import qualified Data.ByteString.Char8 as B8
 import Data.List (intercalate)
+import qualified Data.List as L
 import Data.Maybe (catMaybes)
 import Text.Megaparsec hiding (parse)
 import Text.Megaparsec.String
@@ -25,13 +43,15 @@ instance Show Name where
   show (Name name) = name
 
 type Configs = [(IP, [Name])]
-data Hosts = Hosts { configs :: Configs
-                   }
+data Hosts = Hosts { configs :: Configs }
              deriving (Eq, Show)
 
+lookup :: IP -> Hosts -> Maybe [Name]
+lookup ip hosts = L.lookup ip $ configs hosts
 
-map :: ((IP, [Name]) -> (IP, [Name])) -> Hosts -> Hosts
-map f (Hosts cfgs) = Hosts $ Prelude.map f cfgs
+
+hostsMap :: ((IP, [Name]) -> (IP, [Name])) -> Hosts -> Hosts
+hostsMap f (Hosts cfgs) = Hosts $ Prelude.map f cfgs
 
 
 hostsfp :: FilePath
@@ -59,7 +79,7 @@ instance Craftable Hosts where
 
 showConfigs :: Configs -> String
 showConfigs = unlines
-            . Prelude.map (\(ip, as) -> unwords (show ip:Prelude.map show as))
+            . map (\(ip, as) -> unwords (show ip:map show as))
 
 
 toFile :: Hosts -> File
@@ -71,7 +91,7 @@ toFile (Hosts cfgs) =
 insert :: IP -> Name -> Hosts -> Hosts
 insert newip name (Hosts cfgs) = fixUp $ Hosts go
  where
-  go | any ((== newip) . fst) cfgs = Prelude.map f cfgs
+  go | any ((== newip) . fst) cfgs = map f cfgs
      | otherwise           = cfgs ++ [(newip, [name])]
   f (ip, names) | ip == newip && name `notElem` names = (ip, name:names)
                 | otherwise                           = (ip, names)
@@ -82,13 +102,13 @@ deleteIP ip (Hosts cfgs) = fixUp . Hosts $ filter (\(ip', _) -> ip' /= ip) cfgs
 
 
 deleteName :: Name -> Hosts -> Hosts
-deleteName name = fixUp . Craft.Hosts.map f
+deleteName name = fixUp . hostsMap f
  where
    f (ip', names) = (ip', filter (/= name) names)
 
 
 delete :: IP -> Name -> Hosts -> Hosts
-delete ip name = fixUp . Craft.Hosts.map f
+delete ip name = fixUp . hostsMap f
  where
   f (ip', names) | ip' == ip = (ip', filter (/= name) names)
                  | otherwise = (ip', names)
@@ -96,6 +116,7 @@ delete ip name = fixUp . Craft.Hosts.map f
 
 set :: Name -> IP -> Hosts -> Hosts
 set name ip hosts = fixUp . insert ip name $ deleteName name hosts
+
 ----------------------------------------
 --   ____       _            _        --
 --  |  _ \ _ __(_)_   ____ _| |_ ___  --
