@@ -52,6 +52,9 @@ watchCraft x = do
                                               else Updated
   return (w, after)
 
+watchCraft_ :: Craftable a => a -> Craft Watched
+watchCraft_ = (fmap fst) . watchCraft
+
 
 watchDestroy :: Craftable a => a -> Craft (Watched, a)
 watchDestroy a =
