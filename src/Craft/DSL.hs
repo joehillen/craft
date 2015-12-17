@@ -17,33 +17,33 @@ import Craft.Log
 exec :: Command -> Args -> Craft ExecResult
 exec cmd args = do
   logDebugNS "exec" $ unwords (cmd:args)
-  logger <- asks craftLogger
-  cwd <- asks craftExecCWD
-  env <- asks craftExecEnv
-  lift $ execF logger cwd env cmd args
+  ce <- ask
+  lift $ execF ce cmd args
 
 
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
   logDebugNS "exec_" $ unwords (cmd:args)
-  logger <- asks craftLogger
-  cwd <- asks craftExecCWD
-  env <- asks craftExecEnv
-  lift $ execF_ logger cwd env cmd args
+  ce <- ask
+  lift $ execF_ ce cmd args
 
 
 fileRead :: FilePath -> Craft BS.ByteString
-fileRead fp = lift $ fileReadF fp
+fileRead fp = do
+  ce <- ask
+  lift $ fileReadF ce fp
 
 
 fileWrite :: FilePath -> BS.ByteString -> Craft ()
-fileWrite fp content = lift $ fileWriteF fp content
+fileWrite fp content = do
+  ce <- ask
+  lift $ fileWriteF ce fp content
 
 
 readSourceFile :: FilePath -> Craft ByteString
 readSourceFile fp = do
-  fps <- asks craftSourcePaths
-  lift $ readSourceFileF fps fp
+  ce <- ask
+  lift $ readSourceFileF ce fp
 
 -- | better than grep
 parseExecResult :: ExecResult -> Parsec String a -> String -> a
@@ -107,21 +107,21 @@ errorOnFail (ExecFail r) = error $ show r
 
 
 -- | Free CraftDSL functions
-execF :: LogFunc -> CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ExecResult
-execF logger cwd env cmd args = liftF $ Exec logger cwd env cmd args id
+execF :: CraftEnv pm  -> Command -> Args -> Free (CraftDSL pm) ExecResult
+execF ce cmd args = liftF $ Exec ce cmd args id
 
 
-execF_ :: LogFunc -> CWD -> ExecEnv -> Command -> Args -> Free CraftDSL ()
-execF_ logger cwd env cmd args = liftF $ Exec_ logger cwd env cmd args ()
+execF_ :: CraftEnv pm -> Command -> Args -> Free (CraftDSL pm) ()
+execF_ ce cmd args = liftF $ Exec_ ce cmd args ()
 
 
-fileReadF :: FilePath -> Free CraftDSL BS.ByteString
-fileReadF fp = liftF $ FileRead fp id
+fileReadF :: CraftEnv pm -> FilePath -> Free (CraftDSL pm) BS.ByteString
+fileReadF ce fp = liftF $ FileRead ce fp id
 
 
-fileWriteF :: FilePath -> BS.ByteString -> Free CraftDSL ()
-fileWriteF fp content = liftF $ FileWrite fp content ()
+fileWriteF :: CraftEnv pm -> FilePath -> BS.ByteString -> Free (CraftDSL pm) ()
+fileWriteF ce fp content = liftF $ FileWrite ce fp content ()
 
 
-readSourceFileF :: [FilePath] -> FilePath -> Free CraftDSL BS.ByteString
-readSourceFileF fps fp = liftF $ ReadSourceFile fps fp id
+readSourceFileF :: CraftEnv pm -> FilePath -> Free (CraftDSL pm) BS.ByteString
+readSourceFileF ce fp = liftF $ ReadSourceFile ce fp id

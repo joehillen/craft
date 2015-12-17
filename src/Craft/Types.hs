@@ -13,23 +13,23 @@ import Control.Monad.Logger (Loc(..), LogSource, LogLevel(..), LogStr)
 import Craft.Helpers
 
 type Craft a = forall pm. PackageManager pm
-             => ReaderT (CraftEnv pm) (Free CraftDSL) a
+             => ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a
 
 
-data CraftDSL next
-  = Exec  LogFunc CWD ExecEnv Command Args (ExecResult -> next)
-  | Exec_ LogFunc CWD ExecEnv Command Args next
-  | FileRead FilePath (ByteString -> next)
-  | FileWrite FilePath ByteString next
-  | ReadSourceFile [FilePath] FilePath (ByteString -> next)
-  | Log (IO ()) next
+data CraftDSL pm next
+  = Exec  (CraftEnv pm) Command Args (ExecResult -> next)
+  | Exec_ (CraftEnv pm) Command Args next
+  | FileRead (CraftEnv pm) FilePath (ByteString -> next)
+  | FileWrite (CraftEnv pm) FilePath ByteString next
+  | ReadSourceFile (CraftEnv pm) FilePath (ByteString -> next)
+  | Log (CraftEnv pm) Loc LogSource LogLevel LogStr next
  deriving Functor
 
 
 data CraftEnv pm
   = CraftEnv
-    { craftSourcePaths    :: [FilePath]
-    , craftPackageManager :: PackageManager pm => pm
+    { craftPackageManager :: PackageManager pm => pm
+    , craftSourcePaths    :: [FilePath]
     , craftExecEnv        :: ExecEnv
     , craftExecCWD        :: FilePath
     , craftLogger         :: LogFunc

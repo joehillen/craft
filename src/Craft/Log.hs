@@ -53,8 +53,8 @@ craftError = [|\msg -> $(logError) msg >> error msg|]
 craftLoggerLog :: ToLogStr msg => Loc -> LogSource -> LogLevel -> msg -> Craft ()
 craftLoggerLog loc logsource level msg = do
   let logstr = toLogStr msg
-  logger <- R.asks craftLogger
-  R.lift $ logF $ logger loc logsource level logstr
+  ce <- R.ask
+  R.lift $ logF ce loc logsource level logstr
 
 
 craftDefaultLogger :: Handle -> LogLevel -> LogFunc
@@ -76,8 +76,8 @@ noLogger :: Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 noLogger _ _ _ _ = return ()
 
 
-logF :: IO () -> Free CraftDSL ()
-logF action = liftF $ Log action ()
+logF :: CraftEnv pm -> Loc -> LogSource -> LogLevel -> LogStr -> Free (CraftDSL pm) ()
+logF ce loc logsource level logstr = liftF $ Log ce loc logsource level logstr ()
 
 
 logTH :: LogLevel -> Q Exp

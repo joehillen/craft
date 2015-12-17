@@ -12,28 +12,30 @@ import Craft.Run.Internal
 
 
 -- | runCraftLocal
-runCraftLocal :: craftenv -> ReaderT craftenv (Free CraftDSL) a -> IO a
-runCraftLocal e = iterM runCraftLocal' . flip runReaderT e
+runCraftLocal :: CraftEnv pm -> ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a -> IO a
+runCraftLocal ce = iterM runCraftLocal' . flip runReaderT ce
 
 
 -- | runCraftLocal implementation
-runCraftLocal' :: CraftDSL (IO a) -> IO a
-runCraftLocal' (Exec _ cwd env command args next) =
-  let p = localProc cwd env command args in execProc noLogger p next
-runCraftLocal' (Exec_ logger cwd env command args next) =
-  let p = localProc cwd env command args
-  in execProc_ logger (showProc p) p next
-runCraftLocal' (FileRead fp next) = BS.readFile fp >>= next
-runCraftLocal' (FileWrite fp content next) = BS.writeFile fp content >> next
-runCraftLocal' (ReadSourceFile fps fp next) = readSourceFileIO fps fp >>= next
-runCraftLocal' (Log action next) = action >> next
+runCraftLocal' :: CraftDSL pm (IO a) -> IO a
+runCraftLocal' (Exec ce command args next) =
+  let p = localProc ce command args in execProc ce p next
+runCraftLocal' (Exec_ ce command args next) =
+  let p = localProc ce command args
+  in execProc_ ce (showProc p) p next
+runCraftLocal' (FileRead ce fp next) = BS.readFile fp >>= next
+runCraftLocal' (FileWrite ce fp content next) = BS.writeFile fp content >> next
+runCraftLocal' (ReadSourceFile ce fp next) = readSourceFileIO ce fp >>= next
+runCraftLocal' (Log ce loc logsource level logstr next) =
+  let logger = craftLogger ce
+  in logger loc logsource level logstr >> next
 
 
-localProc :: CWD -> ExecEnv-> Command -> Args -> CreateProcess
-localProc cwd env prog args =
+localProc :: CraftEnv pm -> Command -> Args -> CreateProcess
+localProc ce prog args =
   (proc prog args)
-    { env           = Just env
-    , cwd           = Just cwd
+    { env           = Just (craftExecEnv ce)
+    , cwd           = Just (craftExecCWD ce)
     , close_fds     = True
     , create_group  = True
     , delegate_ctlc = False

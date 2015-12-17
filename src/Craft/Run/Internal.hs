@@ -32,8 +32,9 @@ isSuccess ExitSuccess     = True
 isSuccess (ExitFailure _) = False
 
 
-execProc :: LogFunc -> CreateProcess -> (ExecResult -> IO a) -> IO a
-execProc logger p next = do
+execProc :: CraftEnv pm -> CreateProcess -> (ExecResult -> IO a) -> IO a
+execProc ce p next = do
+  let logger = craftLogger ce
   logger defaultLoc "exec|process" LevelDebug $ toLogStr $ showProc p
   (exit', stdoutRaw, stderrRaw) <- SPLL.readCreateProcessWithExitCode p "" {- stdin -}
   let stdout' = trimNL stdoutRaw
@@ -43,8 +44,8 @@ execProc logger p next = do
            ExitFailure code -> ExecFail $ FailResult code stdout' stderr' p
 
 
-execProc_ :: LogFunc -> String -> CreateProcess -> IO a -> IO a
-execProc_ logger src p next = do
+execProc_ :: CraftEnv pm -> String -> CreateProcess -> IO a -> IO a
+execProc_ ce src p next = do
   let p' = p { std_in  = CreatePipe
              , std_out = CreatePipe
              , std_err = CreatePipe
@@ -58,6 +59,7 @@ execProc_ logger src p next = do
     ExitFailure n -> error $ "exec_ `" ++ src ++ "` failed with code: " ++ show n
     ExitSuccess   -> next
  where
+   logger = craftLogger ce
    pipeConsumer :: Text -> Consumer ByteString IO ()
    pipeConsumer src = decodeUtf8C =$= CT.lines =$ awaitForever (\txt ->
      liftIO $ logger defaultLoc src LevelDebug $ toLogStr txt)
@@ -72,8 +74,9 @@ trimNL = reverse . rmNL . reverse
   rmNL xs = xs
 
 
-readSourceFileIO :: [FilePath] -> FilePath -> IO ByteString
-readSourceFileIO fps name = do
+readSourceFileIO :: CraftEnv pm -> FilePath -> IO ByteString
+readSourceFileIO ce name = do
+  let fps = craftSourcePaths ce
   files <- filterM (\fp -> doesFileExist $ fp </> name) fps
   if null files then
     error $ "Source file `" ++ name ++ "` not found in file sources: "
