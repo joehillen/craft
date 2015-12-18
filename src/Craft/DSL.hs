@@ -40,10 +40,17 @@ fileWrite fp content = do
   lift $ fileWriteF ce fp content
 
 
+sourceFile :: FilePath -> FilePath -> Craft ()
+sourceFile src dest = do
+  ce <- ask
+  lift $ sourceFileF ce src dest
+
+
 readSourceFile :: FilePath -> Craft ByteString
 readSourceFile fp = do
   ce <- ask
   lift $ readSourceFileF ce fp
+
 
 -- | better than grep
 parseExecResult :: ExecResult -> Parsec String a -> String -> a
@@ -106,6 +113,8 @@ errorOnFail (ExecSucc r) = r
 errorOnFail (ExecFail r) = error $ show r
 
 
+
+
 -- | Free CraftDSL functions
 execF :: CraftEnv pm  -> Command -> Args -> Free (CraftDSL pm) ExecResult
 execF ce cmd args = liftF $ Exec ce cmd args id
@@ -121,6 +130,10 @@ fileReadF ce fp = liftF $ FileRead ce fp id
 
 fileWriteF :: CraftEnv pm -> FilePath -> BS.ByteString -> Free (CraftDSL pm) ()
 fileWriteF ce fp content = liftF $ FileWrite ce fp content ()
+
+
+sourceFileF :: CraftEnv pm -> FilePath -> FilePath -> Free (CraftDSL pm) ()
+sourceFileF ce src dest = liftF $ SourceFile ce src dest ()
 
 
 readSourceFileF :: CraftEnv pm -> FilePath -> Free (CraftDSL pm) BS.ByteString

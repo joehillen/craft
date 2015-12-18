@@ -7,7 +7,6 @@ import System.Process hiding ( readCreateProcessWithExitCode
                              , readProcessWithExitCode)
 
 import Craft.Types
-import Craft.Log
 import Craft.Run.Internal
 
 
@@ -23,8 +22,11 @@ runCraftLocal' (Exec ce command args next) =
 runCraftLocal' (Exec_ ce command args next) =
   let p = localProc ce command args
   in execProc_ ce (showProc p) p next
-runCraftLocal' (FileRead ce fp next) = BS.readFile fp >>= next
-runCraftLocal' (FileWrite ce fp content next) = BS.writeFile fp content >> next
+runCraftLocal' (FileRead _ fp next) = BS.readFile fp >>= next
+runCraftLocal' (FileWrite _ fp content next) = BS.writeFile fp content >> next
+runCraftLocal' (SourceFile ce src dest next) = do
+  src' <- findSourceFile ce src
+  runCraftLocal' (Exec_ ce "/bin/cp" [src', dest] next)
 runCraftLocal' (ReadSourceFile ce fp next) = readSourceFileIO ce fp >>= next
 runCraftLocal' (Log ce loc logsource level logstr next) =
   let logger = craftLogger ce

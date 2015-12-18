@@ -34,6 +34,7 @@ library
                      , Craft.File
                      , Craft.File.Link
                      , Craft.File.Mode
+                     , Craft.File.Sourced
                      , Craft.Git
                      , Craft.Group
                      , Craft.Helpers

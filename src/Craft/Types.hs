@@ -7,10 +7,10 @@ import System.Process
 import Data.ByteString (ByteString)
 import Data.Versions (parseV)
 import qualified Data.Text as T
-import Control.Monad.Logger (Loc(..), LogSource, LogLevel(..), LogStr)
-
+import Control.Monad.Logger (Loc, LogSource, LogLevel(..), LogStr)
 
 import Craft.Helpers
+
 
 type Craft a = forall pm. PackageManager pm
              => ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a
@@ -21,6 +21,7 @@ data CraftDSL pm next
   | Exec_ (CraftEnv pm) Command Args next
   | FileRead (CraftEnv pm) FilePath (ByteString -> next)
   | FileWrite (CraftEnv pm) FilePath ByteString next
+  | SourceFile (CraftEnv pm) FilePath FilePath next
   | ReadSourceFile (CraftEnv pm) FilePath (ByteString -> next)
   | Log (CraftEnv pm) Loc LogSource LogLevel LogStr next
  deriving Functor

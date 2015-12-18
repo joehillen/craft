@@ -74,15 +74,20 @@ trimNL = reverse . rmNL . reverse
   rmNL xs = xs
 
 
-readSourceFileIO :: CraftEnv pm -> FilePath -> IO ByteString
-readSourceFileIO ce name = do
+findSourceFile :: CraftEnv pm -> FilePath -> IO FilePath
+findSourceFile ce name = do
   let fps = craftSourcePaths ce
   files <- filterM (\fp -> doesFileExist $ fp </> name) fps
   if null files then
     error $ "Source file `" ++ name ++ "` not found in file sources: "
             ++ show fps
   else
-    BS.readFile $ head files </> name
+    return $ head files </> name
+
+
+readSourceFileIO :: CraftEnv pm -> FilePath -> IO ByteString
+readSourceFileIO ce name =
+  BS.readFile =<< findSourceFile ce name
 
 
 {-
