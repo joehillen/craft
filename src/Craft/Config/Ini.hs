@@ -17,7 +17,7 @@ import Craft.Group (GroupID)
 
 data Config
   = Config
-    { path    :: File.Path
+    { path    :: FilePath
     , mode    :: Mode
     , ownerID :: UserID
     , groupID :: GroupID
@@ -30,7 +30,7 @@ instance Eq Ini where
   a == b = show a == show b
 
 
-config :: File.Path -> Ini -> Config
+config :: FilePath -> Ini -> Config
 config fp cfgs = let f = File.file fp
                  in Config { path = File.path f
                            , mode = File.mode f
@@ -67,7 +67,7 @@ fileFromConfig cfg =
             }
 
 
-get :: File.Path -> Craft (Maybe Config)
+get :: FilePath -> Craft (Maybe Config)
 get fp = fmap configFromFile <$> File.get fp
 
 

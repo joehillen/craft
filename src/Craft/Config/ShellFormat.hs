@@ -18,7 +18,7 @@ import Craft.Group (GroupID)
 
 data Config
   = Config
-    { path    :: File.Path
+    { path    :: FilePath
     , mode    :: Mode
     , ownerID :: UserID
     , groupID :: GroupID
@@ -46,7 +46,7 @@ instance Show Config where
            "}"
 
 
-config :: File.Path -> Configs -> Config
+config :: FilePath -> Configs -> Config
 config fp cfgs = (configFromFile $ File.file fp) { configs = cfgs }
 
 
@@ -71,7 +71,7 @@ fileFromConfig cfg =
             }
 
 
-get :: File.Path -> Craft (Maybe Config)
+get :: FilePath -> Craft (Maybe Config)
 get fp = fmap configFromFile <$> File.get fp
 
 

@@ -1,27 +1,24 @@
 module Craft.File.Link where
 
-import Control.Monad (when)
-
 import           Craft
-import qualified Craft.File as File
 
 
 data Link
  = Link
-   { target :: File.Path
-   , path   :: File.Path
+   { target :: FilePath
+   , path   :: FilePath
    }
   deriving (Eq, Show)
 
-exists :: File.Path -> Craft Bool
+exists :: FilePath -> Craft Bool
 exists lp = isExecSucc <$> exec "/usr/bin/test" ["-L", lp]
 
 
-readLink :: File.Path -> Craft File.Path
+readLink :: FilePath -> Craft FilePath
 readLink lp =
   trimTrailing . stdout . errorOnFail <$> exec "/bin/readlink" [lp]
 
-get :: File.Path -> Craft (Maybe Link)
+get :: FilePath -> Craft (Maybe Link)
 get lp = do
   exists' <- exists lp
   if not exists' then

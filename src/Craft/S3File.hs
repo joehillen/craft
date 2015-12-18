@@ -3,15 +3,8 @@ module Craft.S3File where
 import           Craft
 import           Craft.File (File)
 import qualified Craft.File as File
-import           Craft.File.Mode
-import           Craft.Internal.FileDirectory
-import           Craft.Internal.Helpers
 
-import           Control.Lens
-import           Control.Monad (unless)
-import qualified Data.ByteString.Char8 as BS
 import           Data.Maybe
-import           Network.Wreq (head_, responseHeader)
 
 data S3File
   = S3File
@@ -23,7 +16,7 @@ data S3File
     deriving (Eq, Show)
 
 
-s3file :: File.Path -> String -> S3File
+s3file :: FilePath -> String -> S3File
 s3file path source =
   S3File
   { file    = File.file path

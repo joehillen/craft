@@ -23,12 +23,9 @@ import           Data.Maybe
 import           System.FilePath
 
 
-type Path = FilePath
-
-
 data File
   = File
-    { path    :: Path
+    { path    :: FilePath
     , mode    :: Mode
     , ownerID :: UserID
     , groupID :: GroupID
@@ -86,7 +83,7 @@ contentAsString :: File -> String
 contentAsString = B8.unpack . fromJust . content
 
 
-file :: Path -> File
+file :: FilePath -> File
 file fp =
   File
   { path    = fp
@@ -97,19 +94,19 @@ file fp =
   }
 
 
-fromSource :: Path -> Path -> Craft File
+fromSource :: FilePath -> FilePath -> Craft File
 fromSource sourcefp fp = do
   c <- readSourceFile sourcefp
   return $ (file fp) { content = Just c }
 
 
-multiple :: [Path] -> Mode -> User -> Group -> Maybe ByteString -> [File]
+multiple :: [FilePath] -> Mode -> User -> Group -> Maybe ByteString -> [File]
 multiple paths mode owner' group' content = map go paths
  where
   go path = File path mode (User.uid owner') (Group.gid group') content
 
 
-multipleRootOwned :: [Path] -> Mode -> Maybe ByteString -> [File]
+multipleRootOwned :: [FilePath] -> Mode -> Maybe ByteString -> [File]
 multipleRootOwned paths mode content = map go paths
  where
   go path = (file path) { mode = mode
@@ -124,9 +121,9 @@ instance Craftable File where
     unless (isJust mf) $ exec_ "touch" [path f]
 
     let fp = path f
-    let setMode' = setMode (mode f) fp
-    let setOwner' = setOwnerID (ownerID f) $ path f
-    let setGroup' = setGroupID (groupID f) $ path f
+    let setMode'  = setMode (mode f) fp
+    let setOwner' = setOwnerID (ownerID f) fp
+    let setGroup' = setGroupID (groupID f) fp
 
     case mf of
       Nothing -> do
@@ -143,15 +140,15 @@ instance Craftable File where
       Just c -> write (path f) c
 
 
-write :: Path -> ByteString -> Craft ()
+write :: FilePath -> ByteString -> Craft ()
 write = fileWrite
 
 
-exists :: Path -> Craft Bool
+exists :: FilePath -> Craft Bool
 exists fp = isExecSucc <$> exec "/usr/bin/test" ["-f", fp]
 
 
-get :: Path -> Craft (Maybe File)
+get :: FilePath -> Craft (Maybe File)
 get fp = do
   exists' <- exists fp
   if not exists' then
@@ -168,7 +165,7 @@ get fp = do
            }
 
 
-md5sum :: Path -> Craft String
+md5sum :: FilePath -> Craft String
 md5sum fp = head . words . stdout . errorOnFail <$> exec "/usr/bin/md5sum" [fp]
 
 
@@ -179,4 +176,3 @@ find dir args = do
                . lines . stdout . errorOnFail
                <$> exec "find" ([dir, "-type", "f"] ++ args)
   catMaybes <$> mapM get filenames
-

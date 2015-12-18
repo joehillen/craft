@@ -27,12 +27,12 @@ data UserConfig
   deriving Eq
 
 
-userPath :: UserConfig -> File.Path
+userPath :: UserConfig -> FilePath
 userPath UserConfig{..} = Directory.path (userDir user) </> "config"
 
 data Config
   = Config
-    { path    :: File.Path
+    { path    :: FilePath
     , mode    :: Mode
     , ownerID :: UserID
     , groupID :: GroupID
@@ -51,7 +51,7 @@ instance Show Config where
            "}"
 
 
-config :: File.Path -> [Section] -> Config
+config :: FilePath -> [Section] -> Config
 config fp cfgs = (configFromFile $ File.file fp) { configs = cfgs }
 
 
@@ -77,7 +77,7 @@ fileFromConfig cfg =
             }
 
 
-get :: File.Path -> Craft (Maybe Config)
+get :: FilePath -> Craft (Maybe Config)
 get fp = fmap configFromFile <$> File.get fp
 
 
@@ -121,14 +121,14 @@ instance Craftable UserConfig where
                              (File.contentAsString f)
           }
 
-  crafter config@UserConfig{..} _ = do
+  crafter cfg@UserConfig{..} _ = do
     craft_ $ userDir user
     craft_ $
-      File (userPath config)
+      File (userPath cfg)
            (Mode RW O O)
            (User.uid user)
            (Group.gid $ User.group user)
-           (File.strContent $ show config)
+           (File.strContent $ show cfg)
 
   destroyer = notImplemented "destroyer Ssh.UserConfig"
 

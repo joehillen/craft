@@ -13,7 +13,7 @@ import Data.Yaml
 
 data Config cfgs
   = Config
-    { path    :: File.Path
+    { path    :: FilePath
     , mode    :: Mode
     , ownerID :: UserID
     , groupID :: GroupID
@@ -32,7 +32,7 @@ instance ToJSON cfg => Show (Config cfg) where
            "}"
 
 
-config :: File.Path -> cfgs -> Config cfgs
+config :: FilePath -> cfgs -> Config cfgs
 config fp cfgs = let f = File.file fp
                  in Config { path = File.path f
                            , mode = File.mode f
@@ -68,7 +68,7 @@ fileFromConfig cfg =
             }
 
 
-get :: (FromJSON cfgs) => File.Path -> Craft (Maybe (Config cfgs))
+get :: (FromJSON cfgs) => FilePath -> Craft (Maybe (Config cfgs))
 get fp = fmap configFromFile <$> File.get fp
 
 

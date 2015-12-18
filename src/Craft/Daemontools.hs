@@ -46,7 +46,7 @@ data Service
     }
   deriving (Eq, Show)
 
-logRunDefault :: File.Path -> String
+logRunDefault :: FilePath -> String
 logRunDefault logdest =
   "#!/bin/sh\nexec setuidgid nobody multilog t " ++ logdest ++ " s10000000 n10\n"
 

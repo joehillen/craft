@@ -18,7 +18,7 @@ data PrivateKey
     }
   deriving (Eq, Show)
 
-path :: PrivateKey -> File.Path
+path :: PrivateKey -> FilePath
 path PrivateKey{..} = Directory.path (userDir user) </> name
 
 instance Craftable PrivateKey where

@@ -146,7 +146,7 @@ dpkgInstall f =
   exec_ "/usr/bin/dpkg" ["-i", File.path f]
 
 
-dpkgDebBin :: File.Path
+dpkgDebBin :: FilePath
 dpkgDebBin = "/usr/bin/dpkg-deb"
 
 
