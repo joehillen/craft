@@ -196,7 +196,7 @@ ipv4 = label "ipv4 address" $ do
   dot
   p3 <- num
   dot
-  p4 <- nonzero
+  p4 <- num
   notFollowedBy digitChar
   return . IP $ intercalate "." [p1, p2, p3, p4]
 
