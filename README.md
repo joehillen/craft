@@ -24,8 +24,6 @@ vagrant up
 
 # TODO
 
- * Write stdout and strerr from procs to logging handle
-   using https://hackage.haskell.org/package/process-streaming
  * Lenses!!!
  * Replace FilePath with [pathtype](https://hackage.haskell.org/package/pathtype)
  * Rename `get` so that it doesn't conflict with the State Monad, but what name to use?
