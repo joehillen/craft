@@ -1,13 +1,13 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Craft.Types where
 
-import Control.Monad.Reader
 import Control.Monad.Free
-import System.Process
-import Data.ByteString (ByteString)
-import Data.Versions (parseV)
-import qualified Data.Text as T
 import Control.Monad.Logger (Loc, LogSource, LogLevel(..), LogStr)
+import Control.Monad.Reader
+import Data.ByteString (ByteString)
+import qualified Data.Text as T
+import Data.Versions (parseV)
+import System.Process
 
 import Craft.Helpers
 
@@ -25,6 +25,31 @@ data CraftDSL pm next
   | ReadSourceFile (CraftEnv pm) FilePath (ByteString -> next)
   | Log (CraftEnv pm) Loc LogSource LogLevel LogStr next
  deriving Functor
+
+
+class Craftable a where
+  watchCraft :: a -> Craft (Watched, a)
+  watchDestroy :: a -> Craft (Watched, Maybe a)
+
+  craft :: a -> Craft a
+  craft x = snd <$> watchCraft x
+
+  craft_ :: a -> Craft ()
+  craft_ = void . craft
+
+  watchCraft_ :: a -> Craft Watched
+  watchCraft_ x = fst <$> watchCraft x
+
+  destroy :: a -> Craft (Maybe a)
+  destroy x = snd <$> watchDestroy x
+
+  destroy_ :: a -> Craft ()
+  destroy_ = void . destroy
+
+  watchDestroy_ :: a -> Craft Watched
+  watchDestroy_ x = fst <$> watchDestroy x
+
+  {-# MINIMAL watchCraft, watchDestroy #-}
 
 
 data CraftEnv pm
@@ -86,11 +111,6 @@ showProc p =
 
 type ExecEnv = [(String, String)]
 type CWD = FilePath
-
-class (Eq a, Show a) => Craftable a where
-  checker :: a -> Craft (Maybe a)
-  crafter :: a -> Maybe a -> Craft ()
-  destroyer :: a -> Craft ()
 
 type PackageName = String
 
@@ -165,18 +185,102 @@ noPMerror :: a
 noPMerror = error "NoPackageManager"
 
 instance Craftable Package where
-  checker pkg = do
+  watchCraft pkg = do
     pm <- asks craftPackageManager
-    pkgGetter pm $ pkgName pkg
-  crafter pkg mpkg = do
+    let name = pkgName pkg
+        ver  = pkgVersion pkg
+        get  = pkgGetter pm name
+        install = installer pm pkg
+        upgrade = upgrader pm pkg
+        error' str = error $ "craft Package `" ++ name ++ "` failed! " ++ str
+        notFound = error' "Not Found."
+        wrongVersion got = error' $ "Wrong Version: " ++ show got
+                                    ++ " Excepted: " ++ show ver
+    get >>= \case -- Figure out what to do.
+      Nothing -> do
+        install -- It's not installed. Install it.
+        get >>= \case -- Verify the installation.
+          Nothing -> notFound -- Not Found. The install failed.
+          Just pkg' -> do -- It worked!
+            let ver' = pkgVersion pkg'
+                ok   = return (Created, pkg')
+            case ver of -- Ensure the correct version was installed.
+              AnyVersion -> ok
+              Latest     -> ok
+              Version  _ ->
+                if ver == ver' then
+                  ok
+                else
+                  wrongVersion ver'
+      Just pkg' -> do -- It was already installed.
+        let ver' = pkgVersion pkg'
+        case ver of
+          AnyVersion -> return (Unchanged, pkg')
+          Latest -> do
+            upgrade -- Ensure it's the latest version.
+            get >>= \case
+              Nothing -> notFound -- Where did it go?
+              Just pkg'' -> do
+                let ver'' = pkgVersion pkg''
+                if ver'' > ver' then
+                  return (Updated, pkg'') -- Upgrade complete.
+                else
+                  return (Unchanged, pkg'') -- Already the latest.
+          Version _ -> -- Expecting a specific version
+            if ver == ver' then
+              return (Unchanged, pkg')
+            else do
+              upgrade -- Try upgrading to the correct version.
+              get >>= \case
+                Nothing -> notFound -- Where did it go?
+                Just pkg'' -> do
+                  let ver'' = pkgVersion pkg''
+                  if ver'' == ver then
+                    return (Updated, pkg'')
+                  else
+                    wrongVersion ver''
+
+  watchDestroy pkg = do
     pm <- asks craftPackageManager
-    case mpkg of
-      Nothing -> installer pm pkg
-      Just oldpkg ->
-        when (pkgVersion pkg /= AnyVersion
-              && (pkgVersion pkg == Latest
-                  || pkgVersion oldpkg /= pkgVersion pkg)) $
-          upgrader pm pkg
-  destroyer pkg = do
-    pm <- asks craftPackageManager
-    uninstaller pm pkg
+    let name = pkgName pkg
+        get  = pkgGetter pm name
+    get >>= \case
+      Nothing -> return (Unchanged, Nothing)
+      Just pkg' -> do
+        uninstaller pm pkg
+        get >>= \case
+          Nothing -> return (Removed, Just pkg')
+          Just pkg'' -> error $ "destroy Package `" ++ name ++ "` failed! "
+                                ++ "Found: " ++ show pkg''
+
+
+data Watched
+  = Unchanged
+  | Created
+  | Updated
+  | Removed
+  deriving (Eq, Show)
+
+
+changed :: Watched -> Bool
+changed = not . unchanged
+
+
+unchanged :: Watched -> Bool
+unchanged Unchanged = True
+unchanged _         = False
+
+
+created :: Watched -> Bool
+created Created = True
+created _       = False
+
+
+updated :: Watched -> Bool
+updated Updated = True
+updated _       = False
+
+
+removed :: Watched -> Bool
+removed Removed = True
+removed _       = False

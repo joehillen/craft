@@ -116,7 +116,6 @@ multipleRootOwned paths mode content = map go paths
 
 instance Craftable File where
   checker = get . path
-  destroyer = notImplemented "destroyer File"
   crafter f mf = do
     unless (isJust mf) $ exec_ "touch" [path f]
 
@@ -138,6 +137,8 @@ instance Craftable File where
     case content f of
       Nothing -> return ()
       Just c -> write (path f) c
+
+  watchDestroy = notImplemented "destroy File"
 
 
 write :: FilePath -> ByteString -> Craft ()

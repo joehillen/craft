@@ -91,25 +91,57 @@ userFromID :: UserID -> Craft (Maybe User)
 userFromID = userFromName . show
 
 
+useradd :: User -> Craft ()
+useradd User{..} =
+  exec_ "/usr/sbin/useradd" $ args ++ toArg "--gid" (gid group)
+ where
+  args = Prelude.concat
+    [ toArg "--uid"      uid
+    , toArg "--comment"  comment
+    , toArg "--groups"   $ intercalate "," groups
+    , toArg "--home"     home
+    , toArg "--password" passwordHash
+    , toArg "--shell"    shell
+    ]
+
+
 instance Craftable User where
-  checker = userFromName . username
+  watchCraft user = do
+    let name = username user
+        notFound = error $ "User `" ++ name ++ "` not found!"
+    userFromName name >>= \case
+      Nothing -> do
+        useradd user
+        userFromName name >>= \case
+          Nothing -> notFound
+          Just user' -> do
+            verify user' user
+            return (Created, user')
+      Just user' -> do
+        res <- mapM (\(cond, act) -> if cond then return True
+                                             else act >> return False)
+                 [ (username user' == username user, notImplemented "set username")
+                 , (uid user' == uid user, notImplemented "set uid")
+                 , (groupname (group user') == groupname (group user), notImplemented "set group")
+                 , (groups user' == groups user, notImplemented "set groups")
+                 , (home user' == home user, notImplemented "set home")
+                 , (passwordHash user' == passwordHash user', notImplemented "set passwordHash")
+                 , (shell user' == shell user, notImplemented "set shell")
+                 ]
+        if and res then
+          return (Unchanged, user')
+        else
+          userFromName name >>= \case
+            Nothing -> notFound
+            Just user'' -> do
+              verify user'' user
+              return (Updated, user'')
 
-  crafter User{..} _ = do
-    g <- groupFromName (groupname group) >>= \case
-      Nothing -> craft group
-      Just g  -> return g
-    exec_ "/usr/sbin/useradd" $ args ++ toArg "--gid" (gid g)
    where
-    args = Prelude.concat
-      [ toArg "--uid"         uid
-      , toArg "--comment"     comment
-      , toArg "--groups"      $ intercalate "," groups
-      , toArg "--home"        home
-      , toArg "--password"    passwordHash
-      , toArg "--shell"       shell
-      ]
+    verify user' user = notImplemented "verify User"
 
-  destroyer _ = notImplemented "destroyer User"
+
+  watchDestroy _ = notImplemented "destroy User"
 
 type GroupName = String
 
@@ -146,10 +178,11 @@ groupFromID = groupFromName . show
 
 
 instance Craftable Group where
-  checker = groupFromName . groupname
+  watchCraft grp = do
+    notImplemented "craft Group"
+    -- groupFromName . groupname
+    exec_ "/usr/sbin/groupadd" $ toArg "--gid" (gid grp) ++ [(groupname grp)]
+    exec_ "/usr/bin/gpasswd" ["--members", intercalate "," (members grp), (groupname grp)]
+    return (Unchanged, grp)
 
-  crafter Group{..} _ = do
-    exec_ "/usr/sbin/groupadd" $ toArg "--gid" gid ++ [groupname]
-    exec_  "/usr/bin/gpasswd" ["--members", intercalate "," members, groupname]
-
-  destroyer _ = notImplemented "destroyer Group"
+  watchDestroy _ = notImplemented "destroy Group"
