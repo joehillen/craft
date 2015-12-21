@@ -195,24 +195,36 @@ data PPA = PPA { ppaURL :: String }
   deriving (Eq, Show)
 
 
-{-
-instance Craftable PPA where
-  checker (PPA url) = do
-    fs <- filter ((> 0) . length . File.contentAsString)
+findPPAFiles :: PPA -> Craft [File]
+findPPAFiles (PPA url) =
+  filter ((> 0) . length . File.contentAsString)
           <$> File.find "/etc/apt/sources.list.d"
               ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
-    if not (null fs) then
-      return . Just $ PPA url
+
+
+instance Craftable PPA where
+  watchCraft ppa@(PPA url) = do
+    fs <- findPPAFiles ppa
+    if null fs then do
+      craft_ $ package "software-properties-common"
+      exec_ "add-apt-repository" ["-y", "ppa:" ++ url]
+      update
+      return (Created, ppa)
     else
-      return Nothing
+      return (Unchanged, ppa)
 
-  crafter _      (Just _) = return ()
-  crafter (PPA url) Nothing = do
-    craft_ $ package "software-properties-common"
-    exec_ "add-apt-repository" ["-y", "ppa:" ++ url]
-    update
 
-watchDestroy (PPA url) = do
-  exec_ "add-apt-repository" ["-y", "-r", "ppa:" ++ url]
-  update
--}
+instance Destroyable PPA where
+  watchDestroy ppa@(PPA url) = do
+    fs <- findPPAFiles ppa
+    if null fs then
+      return (Unchanged, Nothing)
+    else do
+      craft_ $ package "software-properties-common"
+      exec_ "add-apt-repository" ["-y", "-r", "ppa:" ++ url]
+      fs <- findPPAFiles ppa
+      unless (null fs) $
+        $craftError $ "destory PPA `" ++ show ppa ++ "` failed!"
+                  ++ " Found: " ++ show fs
+      update
+      return (Removed, Just ppa)
