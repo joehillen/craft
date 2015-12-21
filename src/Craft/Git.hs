@@ -45,6 +45,7 @@ data Repo
     { url       :: URL
     , directory :: Directory.Path
     , version   :: Version
+    , depth     :: Maybe Int
     }
   deriving (Eq, Show)
 
@@ -55,6 +56,7 @@ repo url directory =
   { url       = url
   , directory = directory
   , version   = master
+  , depth     = Nothing
   }
 
 
@@ -119,26 +121,51 @@ get path =
              $ Repo { directory = path
                     , url       = url'
                     , version   = version'
+                    , depth     = Nothing
                     }
 
 
 instance Craftable Repo where
-  checker = get . directory
+  watchCraft r = do
+    let dp = directory r
+        ver = version r
+        verify ver' = do
+          case ver of
+            Commit _ ->
+              when (ver' /= ver) $
+                error $ "craft Git.Repo `" ++ show r ++ "` failed! "
+                     ++ "Wrong Commit: " ++ show ver ++ " Got: " ++ show ver'
+            _ -> return ()
+    Directory.get dp >>= \case
+      Nothing -> do
+        case depth r of
+          Nothing -> git "clone" [url r, dp]
+          Just d  -> git "clone" ["--depth", show d, url r, dp]
+        Directory.get dp >>= \case
+          Nothing -> error $ "craft Git.Repo `" ++ show r ++ "` failed! "
+                          ++ "Clone Failed. Directory `" ++ dp ++ "` not found."
+          Just dir ->
+            withCWD dir $ do
+              setURL (url r)
+              git "fetch" [origin]
+              git "checkout" ["--force", show ver]
+              git "reset" ["--hard"]
+              ver' <- getVersion
+              verify ver'
+              return (Created, r { version = ver' })
 
-  crafter Repo{..} mrepo = do
-    unless (isJust mrepo) $
-      git "clone" [url, directory]
-
-    dir <- fromMaybe (error $ "git clone failed! "
-                              ++ "'" ++ directory ++ "' not found")
-           <$> Directory.get directory
-    withCWD dir $ do
-      setURL url
-      git "fetch" [origin]
-      git "checkout" ["--force", show version]
-      git "reset" ["--hard"]
-      case version of
-        Latest branchName -> git "pull" [origin, branchName]
-        _                 -> return ()
-
-  destroyer = notImplemented "destroyer Git"
+      Just dir ->
+        withCWD dir $ do
+          !beforeVersion <- getVersion
+          setURL (url r)
+          git "fetch" [origin]
+          git "checkout" ["--force", show ver]
+          git "reset" ["--hard"]
+          case ver of
+            Latest branchName -> git "pull" [origin, branchName]
+            _                 -> return ()
+          !ver' <- getVersion
+          verify ver'
+          return ( if beforeVersion == ver' then Unchanged
+                                            else Updated
+                , r { version = ver' })

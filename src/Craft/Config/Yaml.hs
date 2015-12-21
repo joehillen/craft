@@ -73,7 +73,6 @@ get fp = fmap configFromFile <$> File.get fp
 
 
 instance (Eq cfg, ToJSON cfg, FromJSON cfg) => Craftable (Config cfg) where
-  checker = get . path
-  destroyer cfg = destroyer $ fileFromConfig cfg
-  crafter cfg mcfg =
-    crafter (fileFromConfig cfg) (fileFromConfig <$> mcfg)
+  watchCraft cfg = do
+    w <- watchCraft_ $ fileFromConfig cfg
+    return (w, cfg)

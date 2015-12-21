@@ -164,25 +164,38 @@ dpkgDebPackage = dpkgDebShow "${Package}"
 
 
 instance Craftable Deb where
-  checker (Deb f pkg) =
-    getAptPackage (pkgName pkg) >>= \case
-      Nothing  -> return Nothing
-      Just pkg' -> return . Just $ Deb f pkg'
-
-  crafter (Deb f pkg) mdeb =
-    case mdeb of
-      Nothing             -> dpkgInstall f
-      Just (Deb _ oldpkg) ->
-        when (pkgVersion oldpkg /= pkgVersion pkg) $
+  watchCraft d@(Deb f pkg) = do
+    let name = pkgName pkg
+        ver = pkgVersion pkg
+        get = getAptPackage name
+        error' str = error $ "craft Deb `" ++ show d ++ "` failed! " ++ str
+        installAndVerify = do
           dpkgInstall f
+          get >>= \case
+            Nothing -> error' "Package Not Found."
+            Just pkg' -> do
+              let ver' = pkgVersion pkg'
+              when (ver' /= ver) $ error' $ "Wrong Version: " ++ show ver'
+                                        ++ " Expected: " ++ show ver
+    get >>= \case
+      Nothing  -> do
+        installAndVerify
+        return (Created, d)
 
-  destroyer pkg = notImplemented "destroyer Deb"
+      Just pkg' -> do
+        let ver' = pkgVersion pkg'
+        if ver' == ver then
+          return (Unchanged, d)
+        else do
+          installAndVerify
+          return (Updated, d)
 
 
 data PPA = PPA { ppaURL :: String }
   deriving (Eq, Show)
 
 
+{-
 instance Craftable PPA where
   checker (PPA url) = do
     fs <- filter ((> 0) . length . File.contentAsString)
@@ -199,6 +212,7 @@ instance Craftable PPA where
     exec_ "add-apt-repository" ["-y", "ppa:" ++ url]
     update
 
-  destroyer (PPA url) = do
-    exec_ "add-apt-repository" ["-y", "-r", "ppa:" ++ url]
-    update
+watchDestroy (PPA url) = do
+  exec_ "add-apt-repository" ["-y", "-r", "ppa:" ++ url]
+  update
+-}

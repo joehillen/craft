@@ -20,28 +20,32 @@ setGroupID :: GroupID -> FilePath -> Craft ()
 setGroupID gid path = exec_ "/bin/chgrp" [show gid, path]
 
 
+stat :: Args -> Craft ExecResult
+stat = exec "stat"
+
 getMode :: FilePath -> Craft Mode
 getMode fp = do
-  r <- exec "/usr/bin/stat" ["-c", "%a", fp]
+  r <- stat ["-c", "%a", fp]
   return $ parseExecResult r modeParser $ stdout $ errorOnFail r
 
 
 getOwnerID :: FilePath -> Craft UserID
 getOwnerID fp = do
-  r <- exec "/usr/bin/stat" ["-c", "%u", fp]
+  r <- stat ["-c", "%u", fp]
   return $ parseExecResult r digitParser $ stdout $ errorOnFail r
 
 
 getGroupID :: FilePath -> Craft GroupID
 getGroupID fp = do
-  r <- exec "/usr/bin/stat" ["-c", "%g", fp]
+  r <- stat ["-c", "%g", fp]
   return $ parseExecResult r digitParser $ stdout $ errorOnFail r
 
 
-getStats :: FilePath -> Craft (Mode, UserID, GroupID)
-getStats fp = do
-  r <- exec "/usr/bin/stat" ["-c", "%a:%u:%g", fp]
-  return $ parseExecResult r statsParser $ stdout $ errorOnFail r
+getStats :: FilePath -> Craft (Maybe (Mode, UserID, GroupID))
+getStats fp = stat ["-c", "%a:%u:%g", fp] >>= \case
+  ExecFail _ -> return Nothing
+  ExecSucc r ->
+    return . Just $ parseExecResult (ExecSucc r) statsParser $ stdout r
 
 
 statsParser :: Parser (Mode, UserID, GroupID)

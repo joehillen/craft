@@ -29,7 +29,6 @@ data CraftDSL pm next
 
 class Craftable a where
   watchCraft :: a -> Craft (Watched, a)
-  watchDestroy :: a -> Craft (Watched, Maybe a)
 
   craft :: a -> Craft a
   craft x = snd <$> watchCraft x
@@ -40,6 +39,11 @@ class Craftable a where
   watchCraft_ :: a -> Craft Watched
   watchCraft_ x = fst <$> watchCraft x
 
+  {-# MINIMAL watchCraft #-}
+
+class Destroyable a where
+  watchDestroy :: a -> Craft (Watched, Maybe a)
+
   destroy :: a -> Craft (Maybe a)
   destroy x = snd <$> watchDestroy x
 
@@ -49,7 +53,7 @@ class Craftable a where
   watchDestroy_ :: a -> Craft Watched
   watchDestroy_ x = fst <$> watchDestroy x
 
-  {-# MINIMAL watchCraft, watchDestroy #-}
+  {-# MINIMAL watchDestroy #-}
 
 
 data CraftEnv pm
@@ -240,6 +244,8 @@ instance Craftable Package where
                   else
                     wrongVersion ver''
 
+
+instance Destroyable Package where
   watchDestroy pkg = do
     pm <- asks craftPackageManager
     let name = pkgName pkg

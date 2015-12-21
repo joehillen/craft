@@ -79,36 +79,49 @@ exists p = isExecSucc <$> exec "/usr/bin/test" ["-d", p]
 
 
 instance Craftable Directory where
-  checker = get . path
-  crafter d md = do
-    unless (isJust md) $
-      exec_ "mkdir" ["-p", path d]
-
-    let setMode'  = setMode (mode d) $ path d
-    let setOwner' = setOwnerID (ownerID d) $ path d
-    let setGroup' = setGroupID (groupID d) $ path d
-    case md of
+  watchCraft d = do
+    let dp = path d
+        setMode'  = setMode (mode d) dp
+        setOwner' = setOwnerID (ownerID d) dp
+        setGroup' = setGroupID (groupID d) dp
+        error' str = error $ "craft Directory `" ++ dp ++ "` failed! " ++ str
+        verifyMode m =
+          when (m /= mode d) $ error' $ "Wrong Mode: " ++ show m
+                                    ++ " Expected: " ++ show (mode d)
+        verifyOwner o =
+          when (o /= ownerID d) $ error' $ "Wrong Owner ID: " ++ show o
+                                       ++ " Expected: " ++ show (ownerID d)
+        verifyGroup g =
+          when (g /= groupID d) $ error' $ "Wrong Group ID: " ++ show g
+                                       ++ " Expected: " ++ show (groupID d)
+        verifyStats (m, o, g) =
+          verifyMode m >> verifyOwner o >> verifyGroup g
+    getStats dp >>= \case
       Nothing -> do
-        setMode'
-        setOwner'
-        setGroup'
-      Just oldd -> do
-        unless (mode d == mode oldd) setMode'
-        unless (ownerID d == ownerID oldd) setOwner'
-        unless (groupID d == groupID oldd) setGroup'
-
-  destroyer = notImplemented "destroyer Directory"
+        exec_ "mkdir" ["-p", path d]
+        setMode' >> setOwner' >> setGroup'
+        getStats dp >>= \case
+          Nothing -> error' "Not Found."
+          Just stats' -> verifyStats stats' >> return (Created, d)
+      Just (m', o', g') -> do
+        let checks = [ (mode d == m', setMode')
+                     , (ownerID d == o', setOwner')
+                     , (groupID d == g', setGroup')
+                     ]
+        mapM_ (uncurry unless) checks
+        if and (map fst checks) then
+          return (Unchanged, d)
+        else
+          getStats dp >>= \case
+            Nothing -> error' "Not Found."
+            Just stats' -> verifyStats stats' >> return (Updated, d)
 
 
 get :: Path -> Craft (Maybe Directory)
-get dp = do
-  exists' <- exists dp
-  if not exists' then
-      return Nothing
-  else do
-    (m, o, g) <- getStats dp
-    return . Just $ Directory dp m o g
-
+get dp =
+  getStats dp >>= \case
+    Nothing -> return Nothing
+    Just (m, o, g) -> return . Just $ Directory dp m o g
 
 getFilesParser :: Parsec String [String]
 getFilesParser = stuff `sepBy` newline <* optional newline

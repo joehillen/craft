@@ -8,6 +8,7 @@ module Craft.File
 )
 where
 
+import           Craft.Helpers
 import           Craft.Internal
 import           Craft.File.Mode
 import           Craft.User (User, UserID)
@@ -18,6 +19,7 @@ import           Craft.Internal.FileDirectory
 
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Char8 as B8
 import           Data.Maybe
 import           System.FilePath
@@ -115,30 +117,85 @@ multipleRootOwned paths mode content = map go paths
 
 
 instance Craftable File where
-  checker = get . path
-  crafter f mf = do
-    unless (isJust mf) $ exec_ "touch" [path f]
-
+  watchCraft f = do
     let fp = path f
-    let setMode'  = setMode (mode f) fp
-    let setOwner' = setOwnerID (ownerID f) fp
-    let setGroup' = setGroupID (groupID f) fp
+        setMode'  = setMode (mode f) fp
+        setOwner' = setOwnerID (ownerID f) fp
+        setGroup' = setGroupID (groupID f) fp
+        md5c = show . md5 . BL.fromStrict . fromMaybe "" $ content f
+        error' str = error $ "craft File `" ++ fp ++ "` failed! " ++ str
+        verifyMode m =
+          when (m /= mode f) $ error' $ "Wrong Mode: " ++ show m
+                                    ++ " Expected: " ++ show (mode f)
+        verifyOwner o =
+          when (o /= ownerID f) $ error' $ "Wrong Owner ID: " ++ show o
+                                    ++ " Expected: " ++ show (ownerID f)
+        verifyGroup g =
+          when (g /= groupID f) $ error' $ "Wrong Group ID: " ++ show g
+                                    ++ " Expected: " ++ show (groupID f)
+        verifyStats (m, o, g) =
+          verifyMode m >> verifyOwner o >> verifyGroup g
 
-    case mf of
+    getStats fp >>= \case
       Nothing -> do
-        setMode'
-        setOwner'
-        setGroup'
-      Just oldf -> do
-        unless (mode f == mode oldf) setMode'
-        unless (ownerID f == ownerID oldf) setOwner'
-        unless (groupID f == groupID oldf) setGroup'
+        exec_ "touch" [fp]
+        setMode' >> setOwner' >> setGroup'
+        case content f of
+          Nothing -> return ()
+          Just c -> write fp c
+        getStats fp >>= \case
+          Nothing -> error' "Not Found."
+          Just stats' -> do
+            verifyStats stats'
+            case content f of
+              Nothing -> return (Created, f)
+              Just _ -> do
+                md5content' <- md5sum fp
+                if md5content' /= md5c then error' "Content Mismatch."
+                                       else return (Created, f)
 
-    case content f of
-      Nothing -> return ()
-      Just c -> write (path f) c
+      Just (m', o', g') -> do
+        let checks = [ (mode f == m', setMode')
+                     , (ownerID f == o', setOwner')
+                     , (groupID f == g', setGroup')
+                     ]
+        mapM_ (uncurry unless) checks
+        case content f of
+          Nothing ->
+            if and (map fst checks) then
+              return (Unchanged, f)
+            else do
+              getStats fp >>= \case
+                Nothing -> error' "Not Found."
+                Just stats'' -> verifyStats stats''
+              return (Updated, f)
 
-  watchDestroy = notImplemented "destroy File"
+          Just c -> do
+            md5content' <- md5sum fp
+            if md5content' /= md5c then
+              if and (map fst checks) then return (Unchanged, f)
+                                      else return (Updated, f)
+            else do
+              write fp c
+              md5content'' <- md5sum fp
+              if md5content'' /= md5c then return (Updated, f)
+                                      else error' "Content Mismatch."
+
+
+instance Destroyable File where
+  watchDestroy f = do
+    let fp = path f
+    get fp >>= \case
+      Nothing -> return (Unchanged, Nothing)
+      Just f' -> do
+        destroy_ f
+        return (Removed, Just f')
+
+  destroy_ f = do
+    let fp = path f
+    exec_ "rm" ["-f", fp]
+    exists fp >>= flip when (
+      $craftError $ "destroy File `" ++ fp ++ "` failed! Found.")
 
 
 write :: FilePath -> ByteString -> Craft ()
@@ -150,20 +207,18 @@ exists fp = isExecSucc <$> exec "/usr/bin/test" ["-f", fp]
 
 
 get :: FilePath -> Craft (Maybe File)
-get fp = do
-  exists' <- exists fp
-  if not exists' then
-    return Nothing
-  else do
-    (m, o, g) <- getStats fp
-    content <- fileRead fp
-    return . Just $
-      File { path    = fp
-           , mode    = m
-           , ownerID = o
-           , groupID = g
-           , content = Just content
-           }
+get fp =
+  getStats fp >>= \case
+    Nothing -> return Nothing
+    Just (m, o, g) -> do
+      content <- fileRead fp
+      return . Just $
+        File { path    = fp
+             , mode    = m
+             , ownerID = o
+             , groupID = g
+             , content = Just content
+             }
 
 
 md5sum :: FilePath -> Craft String

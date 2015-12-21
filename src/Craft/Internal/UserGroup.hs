@@ -141,8 +141,6 @@ instance Craftable User where
     verify user' user = notImplemented "verify User"
 
 
-  watchDestroy _ = notImplemented "destroy User"
-
 type GroupName = String
 
 data Group
@@ -184,5 +182,3 @@ instance Craftable Group where
     exec_ "/usr/sbin/groupadd" $ toArg "--gid" (gid grp) ++ [(groupname grp)]
     exec_ "/usr/bin/gpasswd" ["--members", intercalate "," (members grp), (groupname grp)]
     return (Unchanged, grp)
-
-  watchDestroy _ = notImplemented "destroy Group"

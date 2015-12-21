@@ -22,16 +22,11 @@ path :: PrivateKey -> FilePath
 path PrivateKey{..} = Directory.path (userDir user) </> name
 
 instance Craftable PrivateKey where
-  checker pk = File.get (path pk) >>= \case
-    Nothing -> return Nothing
-    Just  f -> return . Just $ pk { content = File.contentAsString f }
-
-  crafter pk@PrivateKey{..} _ = do
-    craft_ $ userDir user
-    craft_ $ File (Craft.Ssh.PrivateKey.path pk)
-                   (Mode RW O O)
-                   (User.uid user)
-                   (Group.gid $ User.group user)
-                   (File.strContent content)
-
-  destroyer = notImplemented "destroyer PrivateKey"
+  watchCraft pk = do
+    craft_ $ userDir $ user pk
+    w <- watchCraft_ $ File (Craft.Ssh.PrivateKey.path pk)
+                            (Mode RW O O)
+                            (User.uid $ user pk)
+                            (Group.gid $ User.group $ user pk)
+                            (File.strContent $ content pk)
+    return (w, pk)

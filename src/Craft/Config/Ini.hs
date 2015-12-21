@@ -62,8 +62,7 @@ fileFromConfig cfg =
             , File.mode    = mode cfg
             , File.ownerID = ownerID cfg
             , File.groupID = groupID cfg
-            , File.content = Just . encodeUtf8 . printIni
-                             $ configs cfg
+            , File.content = Just . encodeUtf8 . printIni $ configs cfg
             }
 
 
@@ -72,7 +71,15 @@ get fp = fmap configFromFile <$> File.get fp
 
 
 instance Craftable Config where
-  checker = get . path
-  destroyer cfg = destroyer $ fileFromConfig cfg
-  crafter cfg mcfg =
-    crafter (fileFromConfig cfg) (fileFromConfig <$> mcfg)
+  watchCraft cfg = do
+    (w, f) <- watchCraft $ fileFromConfig cfg
+    return (w, configFromFile f)
+
+{-
+instance Destroyable Config where
+  watchDestroy cfg = do
+    (w, mbf) <- watchDestroy $ fileFromConfig cfg
+    case mbf of
+      Nothing -> return (w, Nothing)
+      Just f -> return (w, Just $ configFromFile f)
+-}

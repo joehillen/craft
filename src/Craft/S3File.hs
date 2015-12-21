@@ -35,32 +35,21 @@ getS3Sum = notImplemented "getS3Sum"
 --   return $ filter ('"' /=) . BS.unpack <$> (r ^? responseHeader "ETag")
 
 
+{-
 instance Craftable S3File where
-  checker s3f = checker (file s3f) >>= \case
-    Nothing -> return Nothing
-    Just  f -> do
-      v <- File.md5sum $ File.path f
-      return . Just $
-        s3f { file    = f
-            , version = Version v
-            }
+  watchCraft s3f = do
+    let fp = File.path $ file s3f
+    let url = "https://" ++ domain s3f ++ "/" ++ source s3f
+    let downloadFile = exec_ "curl" ["-s", "-L", "-o", fp, url]
 
-  crafter S3File{..} ms3f = do
-    let path = File.path file
-    let url = "https://" ++ domain ++ "/" ++ source
-    let downloadFile = do
-          craft_ $ package "curl"
-          exec_ "/usr/bin/curl" ["-s", "-L", "-o", path, url]
-
-    curSum <- File.md5sum path
+    curSum <- File.md5sum fp
     s3Sum <- fromJust <$> getS3Sum url
 
-    unless (isJust ms3f) $
+    unless (isJust s3f) $
       case version of
         AnyVersion     -> downloadFile
         Latest         -> unless (s3Sum == curSum)  downloadFile
         Version verStr -> unless (curSum == verStr) downloadFile
 
     craft_ $ file { File.content = Nothing }
-
-  destroyer S3File{..} = destroyer file
+-}

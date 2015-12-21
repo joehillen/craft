@@ -74,6 +74,32 @@ pipInstall pkg = pip $ "install" : pkgArgs pkg
 
 
 instance Craftable PipPackage where
-  checker (PipPackage name) = get $ pkgName name
-  crafter pkg _ = pipInstall pkg
-  destroyer = notImplemented "destroyer PipPackage"
+  watchCraft ppkg@(PipPackage pkg) = do
+    let name = pkgName pkg
+        ver = pkgVersion pkg
+        verify =
+          get name >>= \case
+            Nothing -> error $ "craft PipPackage `" ++ name ++ "` failed! Not Found."
+            Just ppkg'@(PipPackage pkg') -> do
+              let newver = pkgVersion pkg'
+              case ver of
+                Version _ ->
+                  when (newver /= ver) $
+                    error $ "craft PipPackage `" ++ name ++ "` failed!"
+                          ++ " Wrong Version: " ++ show newver
+                          ++ " Expected: " ++ show ver
+                _ -> return ()
+              return ppkg'
+    get name >>= \case
+      Nothing -> do
+        pipInstall ppkg
+        ppkg' <- verify
+        return (Created, ppkg')
+      Just (PipPackage pkg') -> do
+        let ver' = pkgVersion pkg'
+        if ver' == ver then
+          return (Unchanged, ppkg)
+        else do
+          pipInstall ppkg
+          ppkg' <- verify
+          return (Updated, ppkg')

@@ -74,6 +74,7 @@ getEnv svc = do
  where
   go f = (File.name f, File.contentAsString f)
 
+{-
 instance Craftable Service where
   checker svc = File.get (path svc </> "run") >>= \case
     Nothing -> return Nothing
@@ -112,5 +113,4 @@ instance Craftable Service where
     mapM_ (craft . envFile envDir) env
 
     when (restarts && updated runW) $ restart s
-
-  destroyer = notImplemented "destroyer Daemontools"
+-}

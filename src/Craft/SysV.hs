@@ -105,19 +105,18 @@ updateRcD svc cmd =
   exec_ "/usr/sbin/update-rc.d" ["-f", name svc, cmd]
 
 
+{-
 instance Craftable Service where
-  checker = get . name
-
-  crafter a mb =
-    case mb of
-      Nothing -> $craftError $ "No such SysVinit.Service " ++ name a
-      Just r -> do
-        when (status a /= status r) $
-          case status a of
-            Running -> start a
-            Stopped -> stop a
-        whenJust (atBoot a) $ \case
-          True -> updateRcD a "defaults"
-          False -> updateRcD a "remove"
-
-  destroyer _ = notImplemented "destroyer SysV.Service"
+  watchCraft svc = do
+    get (name svc) >>= \case
+      Nothing -> return (Unchanged, svc)
+      Just a -> do
+    when (status svc /= status r) $
+      case status a of
+        Running -> start a
+        Stopped -> stop a
+    case atBoot a of
+      Nothing -> return ()
+      Just x -> if x then updateRcD a "defaults"
+                     else updateRcD a "remove"
+-}

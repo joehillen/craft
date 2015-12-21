@@ -113,24 +113,14 @@ cfgLookup sectionName key sections' =
 
 
 instance Craftable UserConfig where
-  checker cfg = File.get (userPath cfg) >>= \case
-    Nothing -> return Nothing
-    Just  f -> return . Just $
-      cfg { userConfigs = Craft.Config.Ssh.parse
-                             (userPath cfg)
-                             (File.contentAsString f)
-          }
-
-  crafter cfg@UserConfig{..} _ = do
-    craft_ $ userDir user
-    craft_ $
-      File (userPath cfg)
-           (Mode RW O O)
-           (User.uid user)
-           (Group.gid $ User.group user)
-           (File.strContent $ show cfg)
-
-  destroyer = notImplemented "destroyer Ssh.UserConfig"
+  watchCraft cfg = do
+    craft_ $ userDir $ user cfg
+    w <- watchCraft_ $ File (userPath cfg)
+                            (Mode RW O O)
+                            (User.uid $ user cfg)
+                            (Group.gid $ User.group $ user cfg)
+                            (File.strContent $ show cfg)
+    return (w, cfg)
 
 
 parse :: String -> String -> [Section]

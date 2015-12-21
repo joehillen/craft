@@ -22,7 +22,7 @@ import qualified Data.ByteString.Char8 as B8
 import Data.List (intercalate)
 import qualified Data.List as L
 import Data.Maybe (catMaybes)
-import Text.Megaparsec hiding (parse)
+import Text.Megaparsec hiding (parse, fromFile)
 import Text.Megaparsec.String
 
 import Craft.Internal
@@ -58,13 +58,13 @@ hostsfp :: FilePath
 hostsfp = "/etc/hosts"
 
 
-get :: Craft (Maybe Hosts)
+get :: Craft Hosts
 get =
   File.get hostsfp >>= \case
-    Nothing -> return Nothing
+    Nothing -> $craftError $ hostsfp ++ " not found!"
     Just f  -> case File.content f of
-                 Nothing -> return Nothing
-                 Just bs -> return . Just . parse $ B8.unpack bs
+                 Nothing -> $craftError $ hostsfp ++ " not found!"
+                 Just bs -> return . parse $ B8.unpack bs
 
 
 parse :: String -> Hosts
@@ -72,9 +72,9 @@ parse = Hosts . catMaybes . zipWith parseLine [1..] . lines
 
 
 instance Craftable Hosts where
-  checker _ = get
-  destroyer _ = return ()
-  crafter hosts _ = craft_ $ toFile hosts
+  watchCraft hosts = do
+    (w, f) <- watchCraft $ toFile hosts
+    return (w, fromFile f)
 
 
 showConfigs :: Configs -> String
@@ -86,6 +86,13 @@ toFile :: Hosts -> File
 toFile (Hosts cfgs) =
   (File.file hostsfp)
      {File.content = Just . B8.pack $ showConfigs cfgs}
+
+
+fromFile :: File -> Hosts
+fromFile f =
+  case File.content f of
+    Nothing -> Hosts []
+    Just c  -> parse $ B8.unpack c
 
 
 insert :: IP -> Name -> Hosts -> Hosts

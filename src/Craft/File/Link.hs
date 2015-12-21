@@ -1,6 +1,6 @@
 module Craft.File.Link where
 
-import           Craft
+import Craft
 
 
 data Link
@@ -10,33 +10,38 @@ data Link
    }
   deriving (Eq, Show)
 
+
 exists :: FilePath -> Craft Bool
 exists lp = isExecSucc <$> exec "/usr/bin/test" ["-L", lp]
 
 
-readLink :: FilePath -> Craft FilePath
-readLink lp =
-  trimTrailing . stdout . errorOnFail <$> exec "/bin/readlink" [lp]
+readlink :: FilePath -> Craft (Maybe FilePath)
+readlink lp =
+  exec "/bin/readlink" [lp] >>= \case
+    ExecFail _ -> return Nothing
+    ExecSucc r -> return . Just . trimTrailing . stdout $ r
 
-get :: FilePath -> Craft (Maybe Link)
-get lp = do
-  exists' <- exists lp
-  if not exists' then
-    return Nothing
-  else do
-    target' <- readLink lp
-    return . Just
-           $ Link { target  = target'
-                  , path = lp
-                  }
 
 instance Craftable Link where
-  checker = get . path
-  crafter l ml = do
-    let mkLink = exec_ "/bin/ln" ["-snf", (target l), (path l)]
-    case ml of
-      Nothing   -> mkLink
-      Just oldl -> when (target oldl /= target l) $ mkLink
+  watchCraft l = do
+    let lp = path l
+    readlink lp >>= \case
+      Nothing -> do
+        craft_ l
+        return (Created, l)
+      Just target' ->
+        if target' == target l then
+          return (Unchanged, l)
+        else do
+          craft_ l
+          return (Updated, l)
 
-  destroyer = notImplemented "destroyer Link"
-
+  craft_ l = do
+    let lp = path l
+    exec_ "ln" ["-snf", (target l), (path l)]
+    readlink lp >>= \case
+      Nothing -> error $ "craft Link `" ++ lp ++ "` failed! Not Found."
+      Just target' ->
+        when (target' /= target l) $
+          error $ "craft Link `" ++ lp ++ "` failed! Wrong Target: " ++ target'
+                                                 ++" Expected: " ++ target l
