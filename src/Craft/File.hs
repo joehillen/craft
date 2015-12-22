@@ -123,15 +123,15 @@ instance Craftable File where
         setOwner' = setOwnerID (ownerID f) fp
         setGroup' = setGroupID (groupID f) fp
         md5c = show . md5 . BL.fromStrict . fromMaybe "" $ content f
-        error' str = error $ "craft File `" ++ fp ++ "` failed! " ++ str
+        err str = $craftError $ "craft File `" ++ fp ++ "` failed! " ++ str
         verifyMode m =
-          when (m /= mode f) $ error' $ "Wrong Mode: " ++ show m
+          when (m /= mode f) $ err $ "Wrong Mode: " ++ show m
                                     ++ " Expected: " ++ show (mode f)
         verifyOwner o =
-          when (o /= ownerID f) $ error' $ "Wrong Owner ID: " ++ show o
+          when (o /= ownerID f) $ err $ "Wrong Owner ID: " ++ show o
                                     ++ " Expected: " ++ show (ownerID f)
         verifyGroup g =
-          when (g /= groupID f) $ error' $ "Wrong Group ID: " ++ show g
+          when (g /= groupID f) $ err $ "Wrong Group ID: " ++ show g
                                     ++ " Expected: " ++ show (groupID f)
         verifyStats (m, o, g) =
           verifyMode m >> verifyOwner o >> verifyGroup g
@@ -144,15 +144,15 @@ instance Craftable File where
           Nothing -> return ()
           Just c -> write fp c
         getStats fp >>= \case
-          Nothing -> error' "Not Found."
+          Nothing -> err "Not Found."
           Just stats' -> do
             verifyStats stats'
             case content f of
               Nothing -> return (Created, f)
               Just _ -> do
                 md5content' <- md5sum fp
-                if md5content' /= md5c then error' "Content Mismatch."
-                                       else return (Created, f)
+                if md5content' == md5c then return (Created, f)
+                                       else err "Content Mismatch."
 
       Just (m', o', g') -> do
         let checks = [ (mode f == m', setMode')
@@ -166,20 +166,20 @@ instance Craftable File where
               return (Unchanged, f)
             else do
               getStats fp >>= \case
-                Nothing -> error' "Not Found."
+                Nothing -> err "Not Found."
                 Just stats'' -> verifyStats stats''
               return (Updated, f)
 
           Just c -> do
             md5content' <- md5sum fp
-            if md5content' /= md5c then
+            if md5content' == md5c then
               if and (map fst checks) then return (Unchanged, f)
                                       else return (Updated, f)
             else do
               write fp c
               md5content'' <- md5sum fp
-              if md5content'' /= md5c then return (Updated, f)
-                                      else error' "Content Mismatch."
+              if md5content'' == md5c then return (Updated, f)
+                                      else err "Content Mismatch."
 
 
 instance Destroyable File where
@@ -222,7 +222,7 @@ get fp =
 
 
 md5sum :: FilePath -> Craft String
-md5sum fp = head . words . stdout . errorOnFail <$> exec "/usr/bin/md5sum" [fp]
+md5sum fp = head . words . stdout . errorOnFail <$> exec "md5sum" [fp]
 
 
 -- | A thin wrapper over the Unix find program.
