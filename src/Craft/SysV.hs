@@ -105,18 +105,19 @@ updateRcD svc cmd =
   exec_ "/usr/sbin/update-rc.d" ["-f", name svc, cmd]
 
 
-{-
 instance Craftable Service where
   watchCraft svc = do
-    get (name svc) >>= \case
-      Nothing -> return (Unchanged, svc)
-      Just a -> do
-    when (status svc /= status r) $
-      case status a of
-        Running -> start a
-        Stopped -> stop a
-    case atBoot a of
-      Nothing -> return ()
-      Just x -> if x then updateRcD a "defaults"
-                     else updateRcD a "remove"
--}
+    let sn = name svc
+    whenJust (atBoot svc) $ \x ->
+      updateRcD svc (if x then "defaults" else "remove")
+
+    status' <- getStatus sn
+    case (status svc, status') of
+      (Running, Running) -> return (Unchanged, svc)
+      (Stopped, Stopped) -> return (Unchanged, svc)
+      (Running, Stopped) -> do
+        start svc
+        return (Updated, svc)
+      (Stopped, Running) -> do
+        stop svc
+        return (Updated, svc)
