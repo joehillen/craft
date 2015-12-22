@@ -18,6 +18,7 @@ instance Craftable Hostname where
     (Hostname oldhn) <- get
     hosts <- Hosts.get
     if (oldhn /= hn) then do
+      $logInfo $ "Hostname " ++ oldhn ++ " /= " ++ hn
       hosts' <- craft $ Hosts.set (Hosts.Name hn) (Hosts.IP "127.0.1.1") hosts
       craft_ $ (File.file "/etc/hostname") { File.content = File.strContent hn }
       exec_ "hostname" [hn]
