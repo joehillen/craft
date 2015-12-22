@@ -162,7 +162,7 @@ instance Craftable File where
         mapM_ (uncurry unless) checks
         case content f of
           Nothing ->
-            if and (map fst checks) then
+            if all fst checks then
               return (Unchanged, f)
             else do
               getStats fp >>= \case
@@ -173,7 +173,7 @@ instance Craftable File where
           Just c -> do
             md5content' <- md5sum fp
             if md5content' == md5c then
-              if and (map fst checks) then return (Unchanged, f)
+              if all fst checks then return (Unchanged, f)
                                       else return (Updated, f)
             else do
               write fp c
