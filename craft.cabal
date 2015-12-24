@@ -25,7 +25,6 @@ library
   hs-source-dirs:      src
                      , src/Craft
   exposed-modules:     Craft
-                     , Craft.Actions
                      , Craft.Apt
                      , Craft.Daemontools
                      , Craft.Directory
@@ -53,7 +52,6 @@ library
                      , Craft.Types
                      , Craft.Upstart
                      , Craft.User
-                     , Craft.Watched
                      , Craft.Config.Ini
                      , Craft.Config.ShellFormat
                      , Craft.Config.Ssh
