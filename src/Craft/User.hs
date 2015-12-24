@@ -14,6 +14,7 @@ import           Craft.Internal
 import           Craft.Internal.Helpers
 import qualified Craft.Group as Group
 import           Craft.Internal.UserGroup
+import Formatting
 
 type Name = UserName
 
@@ -101,8 +102,10 @@ setComment un comment = userMod un ["--comment", comment]
 setGroup :: UserName -> GroupName -> Craft ()
 setGroup un gn =
   Group.fromName gn  >>= \case
-    Nothing -> $craftError $ "setGroup `" ++ un ++ "` `" ++ gn
-                             ++ "` failed. Group `" ++ gn ++ "` not found!"
+    Nothing ->
+      $craftError
+      $ formatToString ("setGroup `"%string%"` `"%string%"` failed. Group `"%string%"` not found!")
+                       un gn gn
     Just g  -> userMod un ["--gid", show $ gid g]
 
 setGroups :: UserName -> [GroupName] -> Craft ()

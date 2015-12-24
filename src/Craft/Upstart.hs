@@ -15,23 +15,17 @@ data Service
 
 
 get :: ServiceName -> Craft (Maybe Service)
-get sn = do
+get sn =
   exec "/sbin/status" [sn] >>= \case
     ExecFail _ -> return Nothing
     ExecSucc r -> return . Just . Service sn
-                         . errorLeft
-                         $ parse (statusParser sn) "Upstart status" (stdout r)
+                  $ parseExecResult (ExecSucc r) (statusParser sn) (stdout r)
 
 
 statusParser :: String -> Parsec String String
 statusParser sn = do
   void $ string sn >> space >> some (noneOf "/") >> char '/'
   some $ noneOf ","
-
-
-errorLeft :: Show a => Either a b -> b
-errorLeft (Left m) = error $ "Upstart status parse: " ++ show m
-errorLeft (Right x) = x
 
 
 start :: Service -> Craft ()

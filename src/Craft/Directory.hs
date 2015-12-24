@@ -19,9 +19,11 @@ import           Craft.User (User, UserID)
 import qualified Craft.User as User
 
 import           Data.List (intercalate)
-import           Data.Maybe (catMaybes, isJust)
+import           Data.Maybe (catMaybes)
 import           Text.Megaparsec
 import           System.FilePath
+import           Formatting ((%), shown, formatToString)
+import qualified Formatting as F
 
 type Path = FilePath
 
@@ -39,16 +41,18 @@ data Directory =
 owner :: Directory -> Craft User
 owner d =
   User.fromID (ownerID d) >>= \case
-    Nothing -> $craftError $ "No such owner with id `" ++ show (ownerID d)
-                             ++ "` for: " ++ show d
+    Nothing -> $craftError
+               $ formatToString ("No such owner with id `"%shown%"` for: "%shown)
+                                (ownerID d) d
     Just g  -> return g
 
 
 group :: Directory -> Craft Group
 group d =
   Group.fromID (groupID d) >>= \case
-    Nothing -> $craftError $ "No such group with id `" ++ show (groupID d)
-                             ++ "` for: " ++ show d
+    Nothing -> $craftError
+               $ formatToString ("No such group with id `"%shown%"` for: "%shown)
+                                (groupID d) d
     Just g -> return g
 
 
@@ -84,16 +88,21 @@ instance Craftable Directory where
         setMode'  = setMode (mode d) dp
         setOwner' = setOwnerID (ownerID d) dp
         setGroup' = setGroupID (groupID d) dp
-        error' str = error $ "craft Directory `" ++ dp ++ "` failed! " ++ str
+        error' str = $craftError
+           $ formatToString ("craft Directory `"%F.string%"` failed! "%F.string)
+                            dp str
         verifyMode m =
-          when (m /= mode d) $ error' $ "Wrong Mode: " ++ show m
-                                    ++ " Expected: " ++ show (mode d)
+          when (m /= mode d) $
+            error' $ formatToString ("Wrong Mode: "%shown%" Expected: "%shown)
+                                    m (mode d)
         verifyOwner o =
-          when (o /= ownerID d) $ error' $ "Wrong Owner ID: " ++ show o
-                                       ++ " Expected: " ++ show (ownerID d)
+          when (o /= ownerID d) $
+            error' $ formatToString ("Wrong Owner ID: "%shown%" Expected: "%shown)
+                                    o (ownerID d)
         verifyGroup g =
-          when (g /= groupID d) $ error' $ "Wrong Group ID: " ++ show g
-                                       ++ " Expected: " ++ show (groupID d)
+          when (g /= groupID d) $
+            error' $ formatToString ("Wrong Group ID: "%shown%" Expected: "%shown)
+                                    g (groupID d)
         verifyStats (m, o, g) =
           verifyMode m >> verifyOwner o >> verifyGroup g
     getStats dp >>= \case
@@ -109,7 +118,7 @@ instance Craftable Directory where
                      , (groupID d == g', setGroup')
                      ]
         mapM_ (uncurry unless) checks
-        if and (map fst checks) then
+        if all fst checks then
           return (Unchanged, d)
         else
           getStats dp >>= \case
@@ -122,6 +131,7 @@ get dp =
   getStats dp >>= \case
     Nothing -> return Nothing
     Just (m, o, g) -> return . Just $ Directory dp m o g
+
 
 getFilesParser :: Parsec String [String]
 getFilesParser = stuff `sepBy` newline <* optional newline
@@ -157,5 +167,3 @@ getFiles dp = do
   r <- exec "/bin/ls" ["-a", "-1", dp]
   let fns = parseExecResult r getFilesParser $ stdout $ errorOnFail r
   catMaybes <$> mapM (File.get . (</> dp)) fns
-
-

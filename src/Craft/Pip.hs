@@ -5,6 +5,8 @@ import qualified Craft
 import qualified Craft.File as File
 
 import Text.Megaparsec
+import Formatting hiding (char)
+import qualified Formatting as F
 
 
 newtype PipPackage = PipPackage Package
@@ -79,17 +81,20 @@ instance Craftable PipPackage where
         ver = pkgVersion pkg
         verify =
           get name >>= \case
-            Nothing -> error $ "craft PipPackage `" ++ name ++ "` failed! Not Found."
+            Nothing -> $craftError $
+                         "craft PipPackage `"++name++"` failed! Not Found."
             Just ppkg'@(PipPackage pkg') -> do
               let newver = pkgVersion pkg'
               case ver of
                 Version _ ->
                   when (newver /= ver) $
-                    error $ "craft PipPackage `" ++ name ++ "` failed!"
-                          ++ " Wrong Version: " ++ show newver
-                          ++ " Expected: " ++ show ver
+                    $craftError
+                      $ formatToString
+                        ("craft PipPackage `"%F.string%"` failed! Wrong Version: "%shown%" Expected: "%shown)
+                        name newver ver
                 _ -> return ()
               return ppkg'
+
     get name >>= \case
       Nothing -> do
         pipInstall ppkg

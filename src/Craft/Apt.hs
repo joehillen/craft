@@ -8,6 +8,7 @@ import Control.Monad
 import Data.Maybe
 import Data.List (union, (\\))
 import Data.String.Utils (replace)
+import Formatting
 
 
 data Apt = Apt
@@ -53,8 +54,9 @@ dpkgQueryStatus pn = dpkgQuery ["-s", pn]
 expectOutput :: String -> [String] -> Craft String
 expectOutput cmd args = do
   r <- stdout . errorOnFail <$> exec cmd args
-  when (null r) ($craftError $ "'" ++ unwords (cmd:args) ++ "'"
-                               ++ " returned an empty result!")
+  when (null r) $
+    $craftError $ formatToString ("'"%string%"' returned an empty result!")
+                                 (unwords $ cmd:args)
   return r
 
 
@@ -168,15 +170,18 @@ instance Craftable Deb where
     let name = pkgName pkg
         ver = pkgVersion pkg
         get = getAptPackage name
-        error' str = error $ "craft Deb `" ++ show d ++ "` failed! " ++ str
+        error' str =
+          $craftError $ formatToString ("craft Deb `"%shown%"` failed! "%string)
+                                       d str
         installAndVerify = do
           dpkgInstall f
           get >>= \case
             Nothing -> error' "Package Not Found."
             Just pkg' -> do
               let ver' = pkgVersion pkg'
-              when (ver' /= ver) $ error' $ "Wrong Version: " ++ show ver'
-                                        ++ " Expected: " ++ show ver
+              when (ver' /= ver) $
+                error' $ formatToString ("Wrong Version: "%shown%" Expected: "%shown)
+                                        ver' ver
     get >>= \case
       Nothing  -> do
         installAndVerify
@@ -224,7 +229,7 @@ instance Destroyable PPA where
       exec_ "add-apt-repository" ["-y", "-r", "ppa:" ++ url]
       fs <- findPPAFiles ppa
       unless (null fs) $
-        $craftError $ "destory PPA `" ++ show ppa ++ "` failed!"
-                  ++ " Found: " ++ show fs
+        $craftError $ formatToString ("destroy PPA `"%shown%"` failed! Found: "%shown)
+                                     ppa fs
       update
       return (Removed, Just ppa)

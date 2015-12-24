@@ -108,7 +108,7 @@ useradd User{..} =
 instance Craftable User where
   watchCraft user = do
     let name = username user
-        notFound = error $ "User `" ++ name ++ "` not found!"
+        notFound = $craftError $ "User `" ++ name ++ "` not found!"
     userFromName name >>= \case
       Nothing -> do
         useradd user

@@ -78,40 +78,41 @@ library
                      , TemplateHaskell
 
   build-depends:       base >= 4.8 && < 4.9
+                     , aeson
                      , ansi-terminal
                      , async
+                     , bytestring
+                     , cond
+                     , conduit-combinators
+                     , conduit-extra
                      , containers
                      , directory
+                     , extra
+                     , fast-logger
                      , filepath
-                     , process
-                     , process-extras
-                     , transformers
-                     , unix
+                     , formatting
+                     , free
+                     , hashmap
+                     , ini
                      , lens
                      , megaparsec
                      , MissingH
+                     , monad-logger
                      , mtl
                      , optparse-applicative
-                     , template-haskell
-                     , wreq
-                     , bytestring
-                     , extra
-                     , free
-                     , split
-                     , cond
-                     , yaml
-                     , aeson
-                     , versions
-                     , text
-                     , random
-                     , monad-logger
-                     , fast-logger
-                     , conduit-combinators
-                     , conduit-extra
-                     , streaming-commons
-                     , ini
-                     , hashmap
+                     , process
+                     , process-extras
                      , pureMD5
+                     , random
+                     , split
+                     , streaming-commons
+                     , template-haskell
+                     , text
+                     , transformers
+                     , unix
+                     , versions
+                     , wreq
+                     , yaml
 
 test-suite craft-test
   type:                exitcode-stdio-1.0
