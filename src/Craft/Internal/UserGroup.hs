@@ -1,5 +1,6 @@
 module Craft.Internal.UserGroup where
 
+import Control.Lens
 import Data.List (intercalate)
 import Data.Maybe (fromJust)
 import Text.Megaparsec
@@ -57,12 +58,12 @@ userFromName name =
     ExecFail _ -> return Nothing
     ExecSucc r -> do
       let (nameS, uid', gid', comment', home', shell') =
-            parseGetent passwdParser "passwd" name (stdout r)
+            parseGetent passwdParser "passwd" name (r ^. stdout)
       grp <- fromJust <$> groupFromID gid'
       grps <- getGroups nameS
-      shadowResult <- errorOnFail <$> getent "shadow" nameS
+      shadowResult <- view errorOnFail <$> getent "shadow" nameS
       let passwordHash' = parseGetent shadowParser "shadow" nameS
-                            $ stdout shadowResult
+                            $ shadowResult ^. stdout
       return . Just
             $ User { username     = nameS
                     , uid          = uid'
@@ -75,7 +76,7 @@ userFromName name =
                     }
 
 getGroups :: UserName -> Craft [GroupName]
-getGroups name = words . stdout . errorOnFail <$> exec "id" ["-nG", name]
+getGroups name =  view (errorOnFail . stdout . to words) <$> exec "id" ["-nG", name]
 
 getent :: String -> String -> Craft ExecResult
 getent dbase key = exec "getent" [dbase, key]
@@ -168,7 +169,7 @@ groupFromName gname =
     ExecFail _ -> return Nothing
     ExecSucc r -> return
                   . Just
-                  $ parseGetent groupParser "group" gname (stdout r)
+                  $ parseGetent groupParser "group" gname $ r ^. stdout
 
 
 groupFromID :: GroupID -> Craft (Maybe Group)

@@ -8,6 +8,7 @@ module Craft.Directory
 )
 where
 
+import Control.Lens
 import           Craft.Internal
 import           Craft.File (File)
 import qualified Craft.File as File
@@ -17,13 +18,11 @@ import qualified Craft.Group as Group
 import           Craft.Internal.FileDirectory
 import           Craft.User (User, UserID)
 import qualified Craft.User as User
+import Craft.Directory.Parser
 
-import           Data.List (intercalate)
 import           Data.Maybe (catMaybes)
-import           Text.Megaparsec
 import           System.FilePath
-import           Formatting ((%), shown, formatToString)
-import qualified Formatting as F
+import           Formatting
 
 type Path = FilePath
 
@@ -89,7 +88,7 @@ instance Craftable Directory where
         setOwner' = setOwnerID (ownerID d) dp
         setGroup' = setGroupID (groupID d) dp
         error' str = $craftError
-           $ formatToString ("craft Directory `"%F.string%"` failed! "%F.string)
+           $ formatToString ("craft Directory `"%string%"` failed! "%string)
                             dp str
         verifyMode m =
           when (m /= mode d) $
@@ -133,37 +132,8 @@ get dp =
     Just (m, o, g) -> return . Just $ Directory dp m o g
 
 
-getFilesParser :: Parsec String [String]
-getFilesParser = stuff `sepBy` newline <* optional newline
- where
-  stuff :: Parsec String String
-  stuff = do
-    void $ optional $ string "." >> newline
-    void $ optional $ string ".." >> newline
-    line
-  line :: Parsec String String
-  line = many $ noneOf "\n"
-
-
-testGetFilesParser :: IO Bool
-testGetFilesParser = do
-  let expected = ["ab", "lkjasd", "912 12391", " ", "~"] :: [String]
-  let resultE = parse getFilesParser "testGetFilesParser"
-                $ intercalate "\n" (".":"..":expected)
-  case resultE of
-    Left err -> do
-      putStrLn $ "FAILED: error " ++ show err
-      return False
-    Right result ->
-      if result /= expected then do
-        putStrLn $ "FAILED: got " ++ show expected
-        return False
-      else
-        return True
-
-
 getFiles :: Path -> Craft [File]
 getFiles dp = do
   r <- exec "/bin/ls" ["-a", "-1", dp]
-  let fns = parseExecResult r getFilesParser $ stdout $ errorOnFail r
+  let fns = parseExecResult r getFilesParser $ r ^. errorOnFail . stdout
   catMaybes <$> mapM (File.get . (</> dp)) fns

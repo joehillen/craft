@@ -6,6 +6,7 @@ module Craft.User
 )
 where
 
+import           Control.Lens
 import           Control.Monad (when, unless)
 import qualified Data.Set as S
 import           Data.List (intercalate)
@@ -87,7 +88,7 @@ getUID :: UserName -> Craft (Maybe UserID)
 getUID "root" = return . Just $ 0
 getUID un = do
   exec "/usr/bin/id" ["--user", un] >>= \case
-    ExecSucc r -> return . Just . read $ stdout r
+    ExecSucc r -> return . Just . read $ r ^. stdout
     ExecFail _ -> return Nothing
 
 setUID :: UserName -> UserID -> Craft ()

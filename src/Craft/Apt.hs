@@ -1,5 +1,6 @@
 module Craft.Apt where
 
+import Control.Lens
 import Craft
 import Craft.File (File)
 import qualified Craft.File as File
@@ -26,8 +27,8 @@ instance PackageManager Apt where
 aptMultiInstaller :: [Package] -> Craft ()
 aptMultiInstaller []   = return ()
 aptMultiInstaller pkgs = do
-  let latests = filter ((Latest ==) . pkgVersion) pkgs
-  rest <- filterM (\x -> isNothing <$> getAptPackage (pkgName x)) (pkgs \\ latests)
+  let latests = filter ((Latest ==) . view pkgVersion) pkgs
+  rest <- filterM (\x -> isNothing <$> getAptPackage (x ^. pkgName)) (pkgs \\ latests)
   aptInstallMult $ latests `union` rest
 
 
@@ -53,7 +54,7 @@ dpkgQueryStatus pn = dpkgQuery ["-s", pn]
 
 expectOutput :: String -> [String] -> Craft String
 expectOutput cmd args = do
-  r <- stdout . errorOnFail <$> exec cmd args
+  r <- view (errorOnFail . stdout) <$> exec cmd args
   when (null r) $
     $craftError $ formatToString ("'"%string%"' returned an empty result!")
                                  (unwords $ cmd:args)
@@ -79,9 +80,7 @@ getAptPackage pn =
     ExecFail _ -> return Nothing
     ExecSucc _ -> Just <$> do
       r <- dpkgQueryVersion pn
-      return Package { pkgName = pn
-                     , pkgVersion = Version r
-                     }
+      return $ Package pn (Version r)
 
 
 aptInstallArgs :: [String]
@@ -105,26 +104,27 @@ pkgArg (Package pn (Version v)) = pn ++ "=" ++ v
 
 aptRemove :: Package -> Craft ()
 aptRemove Package{..} =
-  aptGet ["remove", pkgName]
+  aptGet ["remove", _pkgName]
 
 
 purge :: Package -> Craft ()
 purge Package{..} =
-  aptGet ["remove", pkgName, "--purge"]
+  aptGet ["remove", _pkgName, "--purge"]
 
 
-data Deb = Deb { debFile :: File
-               , debPkg  :: Package
+data Deb = Deb { _debFile :: File
+               , _debPkg  :: Package
                }
   deriving (Eq, Show)
 
+makeLenses ''Deb
 
-debName :: Deb -> String
-debName = pkgName . debPkg
+debName :: Lens' Deb String
+debName = debPkg . pkgName
 
 
-debVersion :: Deb -> Version
-debVersion = pkgVersion . debPkg
+debVersion :: Lens' Deb Version
+debVersion = debPkg . pkgVersion
 
 
 deb :: File -> Craft Deb
@@ -137,10 +137,7 @@ packageFromDebFile :: File -> Craft Package
 packageFromDebFile f = do
   name    <- dpkgDebPackage f
   version <- dpkgDebVersion f
-  return Package { pkgName    = name
-                 , pkgVersion = Version version
-                 }
-
+  return $ Package name (Version version)
 
 
 dpkgInstall :: File -> Craft ()
@@ -166,19 +163,19 @@ dpkgDebPackage = dpkgDebShow "${Package}"
 
 
 instance Craftable Deb where
-  watchCraft d@(Deb f pkg) = do
-    let name = pkgName pkg
-        ver = pkgVersion pkg
+  watchCraft d = do
+    let name = d ^. debName
+        ver = d ^. debVersion
         get = getAptPackage name
         error' str =
           $craftError $ formatToString ("craft Deb `"%shown%"` failed! "%string)
                                        d str
         installAndVerify = do
-          dpkgInstall f
+          dpkgInstall $ d ^. debFile
           get >>= \case
             Nothing -> error' "Package Not Found."
             Just pkg' -> do
-              let ver' = pkgVersion pkg'
+              let ver' = pkg' ^. pkgVersion
               when (ver' /= ver) $
                 error' $ formatToString ("Wrong Version: "%shown%" Expected: "%shown)
                                         ver' ver
@@ -188,7 +185,7 @@ instance Craftable Deb where
         return (Created, d)
 
       Just pkg' -> do
-        let ver' = pkgVersion pkg'
+        let ver' = pkg' ^. pkgVersion
         if ver' == ver then
           return (Unchanged, d)
         else do

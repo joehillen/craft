@@ -1,5 +1,6 @@
 module Craft.DSL where
 
+import Control.Lens
 import Control.Monad.Reader
 import Control.Monad.Free
 import Data.ByteString (ByteString)
@@ -108,9 +109,11 @@ isExecSucc (ExecSucc _) = True
 isExecSucc (ExecFail _) = False
 
 
-errorOnFail :: ExecResult -> SuccResult
-errorOnFail (ExecSucc r) = r
-errorOnFail (ExecFail r) = error $ show r
+errorOnFail :: Getter ExecResult SuccResult
+errorOnFail = to justdoit
+ where
+  justdoit (ExecSucc r) = r
+  justdoit (ExecFail r) = error $ show r
 
 
 

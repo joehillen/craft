@@ -4,6 +4,7 @@ import Craft hiding (package, latest)
 import qualified Craft
 import qualified Craft.File as File
 
+import Control.Lens hiding (noneOf)
 import Text.Megaparsec
 import Formatting hiding (char)
 import qualified Formatting as F
@@ -37,7 +38,7 @@ get pn = do
   case r of
     ExecFail _     -> return Nothing
     ExecSucc succr ->
-      let results = parseExecResult r pipShowParser (stdout succr) in
+      let results = parseExecResult r pipShowParser (succr ^. stdout) in
       if null results then
         return Nothing
       else case lookup "Version" results of
@@ -77,14 +78,14 @@ pipInstall pkg = pip $ "install" : pkgArgs pkg
 
 instance Craftable PipPackage where
   watchCraft ppkg@(PipPackage pkg) = do
-    let name = pkgName pkg
-        ver = pkgVersion pkg
+    let name = pkg ^. pkgName
+        ver = pkg ^. pkgVersion
         verify =
           get name >>= \case
             Nothing -> $craftError $
                          "craft PipPackage `"++name++"` failed! Not Found."
             Just ppkg'@(PipPackage pkg') -> do
-              let newver = pkgVersion pkg'
+              let newver = pkg' ^. pkgVersion
               case ver of
                 Version _ ->
                   when (newver /= ver) $
@@ -101,7 +102,7 @@ instance Craftable PipPackage where
         ppkg' <- verify
         return (Created, ppkg')
       Just (PipPackage pkg') -> do
-        let ver' = pkgVersion pkg'
+        let ver' = pkg' ^. pkgVersion
         if ver' == ver then
           return (Unchanged, ppkg)
         else do

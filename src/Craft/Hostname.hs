@@ -1,5 +1,6 @@
 module Craft.Hostname where
 
+import Control.Lens
 import qualified Craft.File as File
 import qualified Craft.Hosts as Hosts
 import Craft.Internal
@@ -10,7 +11,7 @@ data Hostname = Hostname String
 
 
 get :: Craft Hostname
-get = Hostname . stdout . errorOnFail <$> exec "hostname" []
+get = Hostname . view (errorOnFail . stdout) <$> exec "hostname" []
 
 
 instance Craftable Hostname where

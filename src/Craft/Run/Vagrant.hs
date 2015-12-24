@@ -2,6 +2,8 @@ module Craft.Run.Vagrant where
 
 import Craft
 import Craft.Config.Ssh
+
+import Control.Lens
 import qualified System.Environment
 import qualified System.Directory
 import Data.Maybe (fromMaybe)
@@ -14,7 +16,7 @@ runCraftVagrant env configs = do
                                       , craftExecCWD = cwd
                                       }) $ do
     r <- exec "vagrant" ["ssh-config"]
-    return $ parseExecResult r parser $ stdout $ errorOnFail r
+    return $ parseExecResult r parser $ r ^. errorOnFail . stdout
 
   runCraftSSH
     (sshEnv (cfgLookupOrError "hostname" sections)

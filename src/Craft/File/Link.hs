@@ -1,6 +1,7 @@
 module Craft.File.Link where
 
 import Craft
+import Control.Lens
 
 
 data Link
@@ -19,7 +20,7 @@ readlink :: FilePath -> Craft (Maybe FilePath)
 readlink lp =
   exec "/bin/readlink" [lp] >>= \case
     ExecFail _ -> return Nothing
-    ExecSucc r -> return . Just . trimTrailing . stdout $ r
+    ExecSucc r -> return . Just . trimTrailing $ r ^. stdout
 
 
 instance Craftable Link where

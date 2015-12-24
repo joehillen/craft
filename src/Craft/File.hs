@@ -8,6 +8,7 @@ module Craft.File
 )
 where
 
+import Control.Lens
 import           Craft.Helpers
 import           Craft.Internal
 import           Craft.File.Mode
@@ -222,13 +223,13 @@ get fp =
 
 
 md5sum :: FilePath -> Craft String
-md5sum fp = head . words . stdout . errorOnFail <$> exec "md5sum" [fp]
+md5sum fp = view (errorOnFail . stdout . to words . _head) <$> exec "md5sum" [fp]
 
 
 -- | A thin wrapper over the Unix find program.
 find :: FilePath -> Args -> Craft [File]
 find dir args = do
   filenames <- filter (`notElem` [".", "..", ""])
-               . lines . stdout . errorOnFail
+               . view (errorOnFail . stdout . to lines)
                <$> exec "find" ([dir, "-type", "f"] ++ args)
   catMaybes <$> mapM get filenames

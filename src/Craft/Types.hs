@@ -1,6 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 module Craft.Types where
 
+import Control.Lens
 import Control.Monad.Free
 import Control.Monad.Logger (Loc, LogSource, LogLevel(..), LogStr)
 import Control.Monad.Reader
@@ -11,6 +12,47 @@ import System.Process
 
 import Craft.Helpers
 
+type StdOut = String
+type StdErr = String
+type Args = [String]
+type Command = FilePath
+
+
+
+data Watched
+  = Unchanged
+  | Created
+  | Updated
+  | Removed
+  deriving (Eq, Show)
+
+makePrisms ''Watched
+
+
+
+data SuccResult = SuccResult { _stdout   :: StdOut
+                             , _stderr   :: StdErr
+                             , _succProc :: CreateProcess
+                             }
+makeLenses ''SuccResult
+
+
+data FailResult = FailResult { _exitcode   :: Int
+                             , _failStdout :: StdOut
+                             , _failStderr :: StdErr
+                             , _failProc   :: CreateProcess
+                             }
+
+makeLenses ''FailResult
+
+data ExecResult = ExecFail FailResult | ExecSucc SuccResult
+
+class PackageManager pm where
+  pkgGetter      :: pm -> PackageName -> Craft (Maybe Package)
+  installer      :: pm -> Package     -> Craft ()
+  upgrader       :: pm -> Package     -> Craft ()
+  uninstaller    :: pm -> Package     -> Craft ()
+  multiInstaller :: pm -> [Package]   -> Craft ()
 
 type Craft a = forall pm. PackageManager pm
              => ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a
@@ -68,40 +110,42 @@ data CraftEnv pm
 type LogFunc = Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 
 
-type StdOut = String
-type StdErr = String
-type Args = [String]
-type Command = FilePath
+data Version
+  = Version String
+  | AnyVersion
+  | Latest
+  deriving (Show)
 
-data ExecResult = ExecFail FailResult | ExecSucc SuccResult
 
-data SuccResult = SuccResult { stdout   :: StdOut
-                             , stderr   :: StdErr
-                             , succProc :: CreateProcess
-                             }
+-- Note: This may or may not make sense.
+-- Open to suggestions if any of this seems incorrect.
+instance Eq Version where
+  (==) AnyVersion  _           = True
+  (==) _           AnyVersion  = True
+  (==) Latest      Latest      = True
+  (==) Latest      (Version _) = False
+  (==) (Version _) Latest      = False
+  (==) (Version a) (Version b) = a == b
 
-data FailResult = FailResult { exitcode   :: Int
-                             , failStdout :: StdOut
-                             , failStderr :: StdErr
-                             , failProc   :: CreateProcess
-                             }
+
+
 
 
 execResultProc :: ExecResult -> CreateProcess
-execResultProc (ExecFail failr) = failProc failr
-execResultProc (ExecSucc succr) = succProc succr
+execResultProc (ExecFail failr) = failr ^. failProc
+execResultProc (ExecSucc succr) = succr ^. succProc
 
 
 instance Show FailResult where
   show r = concatMap appendNL [ "exec failed!"
                               , "<<<< process >>>>"
-                              , showProc (failProc r)
+                              , showProc (r ^. failProc)
                               , "<<<< exit code >>>>"
-                              , show (exitcode r)
+                              , show (r ^. exitcode)
                               , "<<<< stdout >>>>"
-                              , failStdout r
+                              , r ^. failStdout
                               , "<<<< stderr >>>>"
-                              , failStderr r
+                              , r ^. failStderr
                               ]
 
 
@@ -120,28 +164,12 @@ type PackageName = String
 
 data Package =
   Package
-  { pkgName    :: PackageName
-  , pkgVersion :: Version
+  { _pkgName    :: PackageName
+  , _pkgVersion :: Version
   }
   deriving (Eq, Show)
 
-
-data Version
-  = Version String
-  | AnyVersion
-  | Latest
-  deriving (Show)
-
-
--- Note: This may or may not make sense.
--- Open to suggestions if any of this seems incorrect.
-instance Eq Version where
-  (==) AnyVersion  _           = True
-  (==) _           AnyVersion  = True
-  (==) Latest      Latest      = True
-  (==) Latest      (Version _) = False
-  (==) (Version _) Latest      = False
-  (==) (Version a) (Version b) = a == b
+makeLenses ''Package
 
 
 instance Ord Version where
@@ -169,13 +197,6 @@ package n = Package n AnyVersion
 latest :: PackageName -> Package
 latest n = Package n Latest
 
-class PackageManager pm where
-  pkgGetter      :: pm -> PackageName -> Craft (Maybe Package)
-  installer      :: pm -> Package     -> Craft ()
-  upgrader       :: pm -> Package     -> Craft ()
-  uninstaller    :: pm -> Package     -> Craft ()
-  multiInstaller :: pm -> [Package]   -> Craft ()
-
 data NoPackageManager = NoPackageManager
 
 instance PackageManager NoPackageManager where
@@ -191,8 +212,8 @@ noPMerror = error "NoPackageManager"
 instance Craftable Package where
   watchCraft pkg = do
     pm <- asks craftPackageManager
-    let name = pkgName pkg
-        ver  = pkgVersion pkg
+    let name = pkg ^. pkgName
+        ver  = pkg ^. pkgVersion
         get  = pkgGetter pm name
         install = installer pm pkg
         upgrade = upgrader pm pkg
@@ -206,7 +227,7 @@ instance Craftable Package where
         get >>= \case -- Verify the installation.
           Nothing -> notFound -- Not Found. The install failed.
           Just pkg' -> do -- It worked!
-            let ver' = pkgVersion pkg'
+            let ver' = pkg' ^. pkgVersion
                 ok   = return (Created, pkg')
             case ver of -- Ensure the correct version was installed.
               AnyVersion -> ok
@@ -217,7 +238,7 @@ instance Craftable Package where
                 else
                   wrongVersion ver'
       Just pkg' -> do -- It was already installed.
-        let ver' = pkgVersion pkg'
+        let ver' = pkg' ^. pkgVersion
         case ver of
           AnyVersion -> return (Unchanged, pkg')
           Latest -> do
@@ -225,7 +246,7 @@ instance Craftable Package where
             get >>= \case
               Nothing -> notFound -- Where did it go?
               Just pkg'' -> do
-                let ver'' = pkgVersion pkg''
+                let ver'' = pkg'' ^. pkgVersion
                 if ver'' > ver' then
                   return (Updated, pkg'') -- Upgrade complete.
                 else
@@ -238,7 +259,7 @@ instance Craftable Package where
               get >>= \case
                 Nothing -> notFound -- Where did it go?
                 Just pkg'' -> do
-                  let ver'' = pkgVersion pkg''
+                  let ver'' = pkg'' ^. pkgVersion
                   if ver'' == ver then
                     return (Updated, pkg'')
                   else
@@ -248,7 +269,7 @@ instance Craftable Package where
 instance Destroyable Package where
   watchDestroy pkg = do
     pm <- asks craftPackageManager
-    let name = pkgName pkg
+    let name = pkg ^. pkgName
         get  = pkgGetter pm name
     get >>= \case
       Nothing -> return (Unchanged, Nothing)
@@ -258,14 +279,6 @@ instance Destroyable Package where
           Nothing -> return (Removed, Just pkg')
           Just pkg'' -> error $ "destroy Package `" ++ name ++ "` failed! "
                                 ++ "Found: " ++ show pkg''
-
-
-data Watched
-  = Unchanged
-  | Created
-  | Updated
-  | Removed
-  deriving (Eq, Show)
 
 
 changed :: Watched -> Bool

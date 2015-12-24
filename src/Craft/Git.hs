@@ -1,9 +1,10 @@
 module Craft.Git where
 
-import           Control.Monad (unless)
+import           Control.Lens hiding (noneOf)
 import           Data.Maybe (isJust, fromMaybe)
 import           Text.Megaparsec
 import           Text.Megaparsec.String
+import Formatting hiding (char)
 
 import           Craft hiding (Version(..))
 import qualified Craft.Directory as Directory
@@ -69,7 +70,7 @@ git cmd args = exec_ gitBin $ cmd : args
 
 
 remotes :: Craft [String]
-remotes = lines . stdout . errorOnFail <$> exec gitBin ["remote"]
+remotes = view (errorOnFail . stdout . to lines) <$> exec gitBin ["remote"]
 
 
 setURL :: URL -> Craft ()
@@ -84,7 +85,7 @@ setURL url = do
 getURL :: Craft URL
 getURL = do
   r <- exec gitBin ["remote", "-v"]
-  let results = parseExecResult r repoURLParser $ stdout $ errorOnFail r
+  let results = parseExecResult r repoURLParser $ r ^. errorOnFail . stdout
   return $ fromMaybe (error $ "git remote `" ++ origin ++ "` not found.")
                      (lookup (origin, "fetch") results)
 
@@ -104,7 +105,7 @@ repoURLParser = some $ do
 getVersion :: Craft Version
 getVersion = do
   r <- exec gitBin ["rev-parse", "HEAD"]
-  return . Commit $ parseExecResult r parser $ stdout $ errorOnFail r
+  return . Commit $ parseExecResult r parser $ r ^. errorOnFail . stdout
  where
   parser :: Parser String
   parser = some alphaNumChar
@@ -133,8 +134,10 @@ instance Craftable Repo where
           case ver of
             Commit _ ->
               when (ver' /= ver) $
-                error $ "craft Git.Repo `" ++ show r ++ "` failed! "
-                     ++ "Wrong Commit: " ++ show ver ++ " Got: " ++ show ver'
+                $craftError
+                $ formatToString ("craft Git.Repo `"%shown%"` failed! Wrong Commit: "%shown%" Got: "%shown)
+                                 r ver ver'
+
             _ -> return ()
     Directory.get dp >>= \case
       Nothing -> do
