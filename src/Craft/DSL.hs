@@ -71,7 +71,7 @@ parseExecResult execr parser str =
 
 
 craftExecPath :: CraftEnv a -> [FilePath]
-craftExecPath = maybe [] (splitOn ":") . lookup "PATH" . craftExecEnv
+craftExecPath = maybe [] (splitOn ":") . lookup "PATH" . view craftExecEnv
 
 
 -- TESTME
@@ -93,15 +93,15 @@ replaceKey k'  v' (k, v)
 
 
 withEnv :: ExecEnv -> Craft a -> Craft a
-withEnv env = local (\r -> r { craftExecEnv = env })
+withEnv env = local (\r -> r & craftExecEnv .~ env)
 
 
 -- TESTME
 withEnvVar :: String -> String -> Craft a -> Craft a
 withEnvVar name val go = do
-  env <- asks craftExecEnv
-  let env' = map (replaceKey name val) env
-  withEnv env' go
+  ce <- ask
+  let env = map (replaceKey name val) $ ce ^. craftExecEnv
+  withEnv env go
 
 
 isExecSucc :: ExecResult -> Bool

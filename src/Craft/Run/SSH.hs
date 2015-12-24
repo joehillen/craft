@@ -1,5 +1,6 @@
 module Craft.Run.SSH where
 
+import Control.Lens
 import Control.Exception (finally)
 import Control.Monad.Free
 import Control.Monad.Reader
@@ -72,9 +73,8 @@ runCraftSSH' sshenv sshsession (Exec_ ce command args next) = do
   execProc_ ce (unwords (command:args)) p next
 
 runCraftSSH' sshenv sshsession (FileRead ce fp next) = do
-  let ce' = ce { craftExecEnv = []
-               , craftExecCWD = "/"
-               }
+  let ce' = ce & craftExecEnv .~ []
+               & craftExecCWD .~ "/"
       p = sshProc sshenv sshsession ce' "cat" [fp]
   (ec, content, stderr) <- liftIO $ Proc.BS.readCreateProcessWithExitCode p ""
   unless (isSuccess ec) $
@@ -82,9 +82,8 @@ runCraftSSH' sshenv sshsession (FileRead ce fp next) = do
   next content
 
 runCraftSSH' sshenv sshsession (FileWrite ce fp content next) = do
-  let ce' = ce { craftExecEnv = []
-               , craftExecCWD = "/"
-               }
+  let ce' = ce & craftExecEnv .~ []
+               & craftExecCWD .~ "/"
       p = sshProc sshenv sshsession ce' "tee" [fp]
   (ec, _, stderr) <- liftIO $ Proc.BS.readCreateProcessWithExitCode p content
   unless (isSuccess ec) $
@@ -110,8 +109,7 @@ runCraftSSH' sshenv sshsession (SourceFile ce src dest next) = do
 
 runCraftSSH' _ _ (ReadSourceFile ce fp next) = readSourceFileIO ce fp >>= next
 runCraftSSH' _ _ (Log ce loc logsource level logstr next) =
-  let logger = craftLogger ce
-  in logger loc logsource level logstr >> next
+  (ce ^. craftLogger) loc logsource level logstr >> next
 
 
 sshArgs :: SSHEnv -> SSHSession -> Args
@@ -131,8 +129,8 @@ sshProc sshenv sshsession ce command args =
               ++ [ sshUser sshenv ++ "@" ++ sshAddr sshenv
                  , unwords cmd])
  where
-  cwd = craftExecCWD ce
-  env = craftExecEnv ce
+  cwd = ce ^. craftExecCWD
+  env = ce ^. craftExecEnv
   cmd = sudo ++
         ["sh", "-c", "'", "cd", escape cwd, ";"] ++
         map escape (renderEnv env) ++ (command : map escape args) ++

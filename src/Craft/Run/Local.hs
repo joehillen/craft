@@ -1,5 +1,6 @@
 module Craft.Run.Local where
 
+import Control.Lens
 import Control.Monad.Reader
 import Control.Monad.Free
 import qualified Data.ByteString as BS
@@ -29,15 +30,15 @@ runCraftLocal' (SourceFile ce src dest next) = do
   runCraftLocal' (Exec_ ce "/bin/cp" [src', dest] next)
 runCraftLocal' (ReadSourceFile ce fp next) = readSourceFileIO ce fp >>= next
 runCraftLocal' (Log ce loc logsource level logstr next) =
-  let logger = craftLogger ce
+  let logger = ce ^. craftLogger
   in logger loc logsource level logstr >> next
 
 
 localProc :: CraftEnv pm -> Command -> Args -> CreateProcess
 localProc ce prog args =
   (proc prog args)
-    { env           = Just (craftExecEnv ce)
-    , cwd           = Just (craftExecCWD ce)
+    { env           = Just (ce ^. craftExecEnv)
+    , cwd           = Just (ce ^. craftExecCWD)
     , close_fds     = True
     , create_group  = True
     , delegate_ctlc = False

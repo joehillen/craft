@@ -12,11 +12,11 @@ import System.Process
 
 import Craft.Helpers
 
+
 type StdOut = String
 type StdErr = String
 type Args = [String]
 type Command = FilePath
-
 
 
 data Watched
@@ -27,7 +27,6 @@ data Watched
   deriving (Eq, Show)
 
 makePrisms ''Watched
-
 
 
 data SuccResult = SuccResult { _stdout   :: StdOut
@@ -45,17 +44,41 @@ data FailResult = FailResult { _exitcode   :: Int
 
 makeLenses ''FailResult
 
+
 data ExecResult = ExecFail FailResult | ExecSucc SuccResult
 
-class PackageManager pm where
-  pkgGetter      :: pm -> PackageName -> Craft (Maybe Package)
-  installer      :: pm -> Package     -> Craft ()
-  upgrader       :: pm -> Package     -> Craft ()
-  uninstaller    :: pm -> Package     -> Craft ()
-  multiInstaller :: pm -> [Package]   -> Craft ()
+type ExecEnv = [(String, String)]
+type CWD = FilePath
 
-type Craft a = forall pm. PackageManager pm
-             => ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a
+type PackageName = String
+
+
+data Version
+  = Version String
+  | AnyVersion
+  | Latest
+  deriving (Show)
+makePrisms ''Version
+
+
+-- Note: This may or may not make sense.
+-- Open to suggestions if any of this seems incorrect.
+instance Eq Version where
+  (==) AnyVersion  _           = True
+  (==) _           AnyVersion  = True
+  (==) Latest      Latest      = True
+  (==) Latest      (Version _) = False
+  (==) (Version _) Latest      = False
+  (==) (Version a) (Version b) = a == b
+
+
+data Package =
+  Package
+  { _pkgName    :: PackageName
+  , _pkgVersion :: Version
+  }
+  deriving (Eq, Show)
+makeLenses ''Package
 
 
 data CraftDSL pm next
@@ -67,6 +90,32 @@ data CraftDSL pm next
   | ReadSourceFile (CraftEnv pm) FilePath (ByteString -> next)
   | Log (CraftEnv pm) Loc LogSource LogLevel LogStr next
  deriving Functor
+
+
+type Craft a = forall pm. PackageManager pm
+             => ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a
+
+
+
+class PackageManager pm where
+  pkgGetter      :: pm -> PackageName -> Craft (Maybe Package)
+  installer      :: pm -> Package     -> Craft ()
+  upgrader       :: pm -> Package     -> Craft ()
+  uninstaller    :: pm -> Package     -> Craft ()
+  multiInstaller :: pm -> [Package]   -> Craft ()
+
+type LogFunc = Loc -> LogSource -> LogLevel -> LogStr -> IO ()
+
+
+data CraftEnv pm
+  = CraftEnv
+    { _craftPackageManager :: PackageManager pm => pm
+    , _craftSourcePaths    :: [FilePath]
+    , _craftExecEnv        :: ExecEnv
+    , _craftExecCWD        :: FilePath
+    , _craftLogger         :: LogFunc
+    }
+makeLenses ''CraftEnv
 
 
 class Craftable a where
@@ -98,39 +147,6 @@ class Destroyable a where
   {-# MINIMAL watchDestroy #-}
 
 
-data CraftEnv pm
-  = CraftEnv
-    { craftPackageManager :: PackageManager pm => pm
-    , craftSourcePaths    :: [FilePath]
-    , craftExecEnv        :: ExecEnv
-    , craftExecCWD        :: FilePath
-    , craftLogger         :: LogFunc
-    }
-
-type LogFunc = Loc -> LogSource -> LogLevel -> LogStr -> IO ()
-
-
-data Version
-  = Version String
-  | AnyVersion
-  | Latest
-  deriving (Show)
-
-
--- Note: This may or may not make sense.
--- Open to suggestions if any of this seems incorrect.
-instance Eq Version where
-  (==) AnyVersion  _           = True
-  (==) _           AnyVersion  = True
-  (==) Latest      Latest      = True
-  (==) Latest      (Version _) = False
-  (==) (Version _) Latest      = False
-  (==) (Version a) (Version b) = a == b
-
-
-
-
-
 execResultProc :: ExecResult -> CreateProcess
 execResultProc (ExecFail failr) = failr ^. failProc
 execResultProc (ExecSucc succr) = succr ^. succProc
@@ -155,21 +171,6 @@ showProc p =
   case cmdspec p of
     ShellCommand s -> s
     RawCommand fp args -> unwords [fp, unwords args]
-
-
-type ExecEnv = [(String, String)]
-type CWD = FilePath
-
-type PackageName = String
-
-data Package =
-  Package
-  { _pkgName    :: PackageName
-  , _pkgVersion :: Version
-  }
-  deriving (Eq, Show)
-
-makeLenses ''Package
 
 
 instance Ord Version where
@@ -211,8 +212,9 @@ noPMerror = error "NoPackageManager"
 
 instance Craftable Package where
   watchCraft pkg = do
-    pm <- asks craftPackageManager
-    let name = pkg ^. pkgName
+    ce <- ask
+    let pm = ce ^. craftPackageManager
+        name = pkg ^. pkgName
         ver  = pkg ^. pkgVersion
         get  = pkgGetter pm name
         install = installer pm pkg
@@ -268,8 +270,9 @@ instance Craftable Package where
 
 instance Destroyable Package where
   watchDestroy pkg = do
-    pm <- asks craftPackageManager
-    let name = pkg ^. pkgName
+    ce <- ask
+    let pm   = ce ^. craftPackageManager
+        name = pkg ^. pkgName
         get  = pkgGetter pm name
     get >>= \case
       Nothing -> return (Unchanged, Nothing)

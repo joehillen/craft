@@ -12,9 +12,9 @@ runCraftVagrant :: PackageManager pm => CraftEnv pm -> Craft a -> IO a
 runCraftVagrant env configs = do
   sysEnv <- System.Environment.getEnvironment
   cwd <- System.Directory.getCurrentDirectory
-  sections <- runCraftLocal (craftEnv { craftExecEnv = sysEnv
-                                      , craftExecCWD = cwd
-                                      }) $ do
+  sections <- runCraftLocal (craftEnv & craftExecEnv .~ sysEnv
+                                      & craftExecCWD .~ cwd
+                                      ) $ do
     r <- exec "vagrant" ["ssh-config"]
     return $ parseExecResult r parser $ r ^. errorOnFail . stdout
 

@@ -7,6 +7,7 @@ module Craft
 )
 where
 
+import Control.Lens
 import Control.Monad.Reader
 import System.Exit (ExitCode(..))
 import System.FilePath
@@ -16,15 +17,15 @@ import qualified System.IO as Sys.IO
 
 
 withCWD :: Dir.Directory -> Craft a -> Craft a
-withCWD dir = local (\r -> r { craftExecCWD = Dir.path dir })
+withCWD dir = local (\r -> r & craftExecCWD .~ Dir.path dir)
 
 
 craftEnv :: CraftEnv NoPackageManager
 craftEnv =
   CraftEnv
-  { craftSourcePaths    = ["."]
-  , craftPackageManager = NoPackageManager
-  , craftExecEnv        = [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
-  , craftExecCWD        = "/"
-  , craftLogger         = craftDefaultLogger Sys.IO.stdout LevelDebug
+  { _craftSourcePaths    = ["."]
+  , _craftPackageManager = NoPackageManager
+  , _craftExecEnv        = [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
+  , _craftExecCWD        = "/"
+  , _craftLogger         = craftDefaultLogger Sys.IO.stdout LevelDebug
   }

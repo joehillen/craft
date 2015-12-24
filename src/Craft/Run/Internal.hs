@@ -3,6 +3,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Run.Internal where
 
+import Control.Lens
 import Conduit as C
 import Data.Conduit.Text as CT
 import Control.Monad.IO.Class
@@ -34,7 +35,7 @@ isSuccess (ExitFailure _) = False
 
 execProc :: CraftEnv pm -> CreateProcess -> (ExecResult -> IO a) -> IO a
 execProc ce p next = do
-  let logger = craftLogger ce
+  let logger = ce ^. craftLogger
   logger defaultLoc "exec|process" LevelDebug $ toLogStr $ showProc p
   (exit', stdoutRaw, stderrRaw) <- SPLL.readCreateProcessWithExitCode p "" {- stdin -}
   let stdout' = trimNL stdoutRaw
@@ -59,10 +60,10 @@ execProc_ ce src p next = do
     ExitFailure n -> error $ "exec_ `" ++ src ++ "` failed with code: " ++ show n
     ExitSuccess   -> next
  where
-   logger = craftLogger ce
+   logger = ce ^. craftLogger
    pipeConsumer :: Text -> Consumer ByteString IO ()
-   pipeConsumer src = decodeUtf8C =$= CT.lines =$ awaitForever (\txt ->
-     liftIO $ logger defaultLoc src LevelDebug $ toLogStr txt)
+   pipeConsumer src' = decodeUtf8C =$= CT.lines =$ awaitForever (\txt ->
+     liftIO $ logger defaultLoc src' LevelDebug $ toLogStr txt)
 
 
 -- | Remove a single trailing newline character from the end of the String
@@ -76,7 +77,7 @@ trimNL = reverse . rmNL . reverse
 
 findSourceFile :: CraftEnv pm -> FilePath -> IO FilePath
 findSourceFile ce name = do
-  let fps = craftSourcePaths ce
+  let fps = ce ^. craftSourcePaths
   files <- filterM (\fp -> doesFileExist $ fp </> name) fps
   if null files then
     error $ "Source file `" ++ name ++ "` not found in file sources: "
