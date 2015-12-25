@@ -5,8 +5,10 @@ import Craft
 import Craft.File (File)
 import qualified Craft.File as File
 
+import Control.Lens
 import Control.Monad
 import Data.Maybe
+import Data.ByteString.Lens
 import Data.List (union, (\\))
 import Data.String.Utils (replace)
 import Formatting
@@ -142,7 +144,7 @@ packageFromDebFile f = do
 
 dpkgInstall :: File -> Craft ()
 dpkgInstall f =
-  exec_ "/usr/bin/dpkg" ["-i", File.path f]
+  exec_ "/usr/bin/dpkg" ["-i", f ^. File.path]
 
 
 dpkgDebBin :: FilePath
@@ -151,7 +153,7 @@ dpkgDebBin = "/usr/bin/dpkg-deb"
 
 dpkgDebShow :: String -> File -> Craft String
 dpkgDebShow pattern f =
-  expectOutput dpkgDebBin [ "--show", "--showformat", pattern, File.path f ]
+  expectOutput dpkgDebBin [ "--show", "--showformat", pattern, f ^. File.path ]
 
 
 dpkgDebVersion :: File -> Craft String
@@ -199,7 +201,7 @@ data PPA = PPA { ppaURL :: String }
 
 findPPAFiles :: PPA -> Craft [File]
 findPPAFiles (PPA url) =
-  filter ((> 0) . length . File.contentAsString)
+  filter ((> 0) . length . (view $ File.content . _Just . unpackedChars))
           <$> File.find "/etc/apt/sources.list.d"
               ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
 

@@ -6,7 +6,7 @@ import           Craft.File (File, file)
 import qualified Craft.File as File
 import qualified Craft.SysV as SysV
 
-import qualified Data.ByteString.Char8 as B8
+import Control.Lens
 
 setup :: Craft ()
 setup =
@@ -49,8 +49,8 @@ sslServer SSL{..} =
     , listen           = (AnyAddress, 443, ["ssl"])
     , serverDirectives =
         [ ("ssl",                 ["on"])
-        , ("ssl_certificate",     [File.path sslCert])
-        , ("ssl_certificate_key", [File.path sslKey])
+        , ("ssl_certificate",     [sslCert ^. File.path])
+        , ("ssl_certificate_key", [sslKey ^. File.path])
         , ("ssl_session_cache",   ["shared:SSL:10m"])
         , ("ssl_session_timeout", ["5m"])
         , ("ssl_protocols",       ["TLSv1", "TLSv1.1", "TLSv1.2"])
@@ -146,8 +146,8 @@ showListen (addr, port, args) =
 
 toFile :: Config -> File
 toFile c@Config{..} =
-  (file (sitesDir </> show configPriority ++ "_" ++ configName ++ ".conf"))
-    { File.content = Just . B8.pack $ show c }
+  file (sitesDir </> show configPriority ++ "_" ++ configName ++ ".conf")
+    & File.strContent .~ show c
 
 reload :: Craft ()
 reload = SysV.reload $ SysV.service "nginx"

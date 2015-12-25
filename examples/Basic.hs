@@ -3,6 +3,7 @@
 
 module Main where
 
+import           Control.Lens
 import           Control.Monad
 import qualified Data.ByteString.Char8 as B8
 import           Data.Maybe
@@ -103,13 +104,13 @@ normalUser name fullname sshPubKey UserOptions{..} = do
   -- if the user's shell is bash
   -- then instal the standard bashrc
   when (optShell == bash) $ do
-    bashrc <- File.content . fromJust <$> File.get "/etc/bash.bashrc"
+    bashrc <- fromJust <$> File.get "/etc/bash.bashrc"
     craft_ $
       File (homepath </> ".bashrc")
            (Mode RW R R)
            (User.uid user)
            (Group.gid $ User.group user)
-           bashrc
+           (bashrc ^. File.content)
 
   return user
 
@@ -124,8 +125,8 @@ admin name fullname sshPubKey opts = do
 
   -- add the user to sudo
   craft_ $
-    (file $ "/etc/sudoers.d" </> "10_" ++ name)
-      { content = Just . B8.pack $ name ++ " ALL=(ALL) NOPASSWD: ALL" }
+    file ("/etc/sudoers.d" </> "10_" ++ name)
+      & File.strContent .~ name ++ " ALL=(ALL) NOPASSWD: ALL\n"
 
   return user
 

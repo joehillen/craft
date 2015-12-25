@@ -4,66 +4,70 @@ module Craft.Config.Ini
 )
 where
 
+import Control.Lens
 import Data.Ini
 import Data.HashMap (fromList)
 import Data.Text.Encoding (encodeUtf8, decodeUtf8)
 
 import Craft.Types
+import Craft.Log
 import Craft.File (File)
 import qualified Craft.File as File
 import Craft.File.Mode
 import Craft.User (UserID)
 import Craft.Group (GroupID)
 
-data Config
-  = Config
-    { path    :: FilePath
-    , mode    :: Mode
-    , ownerID :: UserID
-    , groupID :: GroupID
-    , configs :: Ini
-    }
-    deriving (Show, Eq)
-
 
 instance Eq Ini where
   a == b = show a == show b
 
 
+data Config
+  = Config
+    { _path    :: FilePath
+    , _mode    :: Mode
+    , _ownerID :: UserID
+    , _groupID :: GroupID
+    , _configs :: Ini
+    }
+    deriving (Show, Eq)
+makeLenses ''Config
+
+
 config :: FilePath -> Ini -> Config
 config fp cfgs = let f = File.file fp
-                 in Config { path = File.path f
-                           , mode = File.mode f
-                           , ownerID = File.ownerID f
-                           , groupID = File.groupID f
-                           , configs = cfgs
+                 in Config { _path = f ^. File.path
+                           , _mode = f ^. File.mode
+                           , _ownerID = f ^. File.ownerID
+                           , _groupID = f ^. File.groupID
+                           , _configs = cfgs
                            }
 
 
 configFromFile :: File -> Config
 configFromFile f =
-  Config { path    = File.path f
-         , mode    = File.mode f
-         , ownerID = File.ownerID f
-         , groupID = File.groupID f
-         , configs =
-             case File.content f of
-               Nothing -> error $ "Unmanaged Ini config: " ++ File.path f
+  Config { _path    = f ^. File.path
+         , _mode    = f ^. File.mode
+         , _ownerID = f ^. File.ownerID
+         , _groupID = f ^. File.groupID
+         , _configs =
+             case f ^. File.content of
+               Nothing -> error $ "Unmanaged Ini config: " ++ f ^. File.path
                Just bs -> case parseIni (decodeUtf8 bs) of
                             Left err -> error $ "Failed to parse "
-                                                ++ File.path f ++ " : " ++ err
+                                                ++ f ^. File.path ++ " : " ++ err
                             Right x  -> x
          }
 
 
 fileFromConfig :: Config -> File
 fileFromConfig cfg =
-  File.File { File.path    = path cfg
-            , File.mode    = mode cfg
-            , File.ownerID = ownerID cfg
-            , File.groupID = groupID cfg
-            , File.content = Just . encodeUtf8 . printIni $ configs cfg
-            }
+  File.file (cfg ^. path)
+    & File.path .~ (cfg ^. path)
+    & File.mode    .~ (cfg ^. mode)
+    & File.ownerID .~ (cfg ^. ownerID)
+    & File.groupID .~ (cfg ^. groupID)
+    & File.content ?~ (encodeUtf8 . printIni $ cfg ^. configs)
 
 
 get :: FilePath -> Craft (Maybe Config)

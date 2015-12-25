@@ -18,89 +18,92 @@ import           Craft.Group (Group, GroupID)
 import qualified Craft.Group as Group
 import           Craft.Internal.FileDirectory
 
+import Control.Lens
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Char8 as B8
+import Data.ByteString.Lens
 import           Data.Maybe
+import Formatting
 import           System.FilePath
 
 
 data File
   = File
-    { path    :: FilePath
-    , mode    :: Mode
-    , ownerID :: UserID
-    , groupID :: GroupID
-    , content :: Maybe ByteString
+    { _path    :: FilePath
+    , _mode    :: Mode
+    , _ownerID :: UserID
+    , _groupID :: GroupID
+    , _content :: Maybe ByteString
     }
+
+makeLenses ''File
 
 
 instance Eq File where
-  (==) a b = (path a == path b)
-          && (mode a == mode b)
-          && (ownerID a == ownerID b)
-          && (groupID a == groupID b)
-          && (  isNothing (content a)
-             || isNothing (content b)
-             || (content a == content b))
+  (==) a b = (a ^. path == b ^. path)
+          && (a ^. mode == b ^. mode)
+          && (a ^. ownerID == b ^. ownerID)
+          && (a ^. groupID == b ^. groupID)
+          && (  isNothing (a ^. content)
+             || isNothing (b ^. content)
+             || (a ^. content == b ^. content))
 
 
 owner :: File -> Craft User
 owner f =
-  User.fromID (ownerID f) >>= \case
-    Nothing -> $craftError $ "No such owner with id `" ++ show (ownerID f)
-                             ++ "` for: " ++ show f
+  User.fromID (f ^. ownerID) >>= \case
+    Nothing -> $craftError $ formatToString ("No such owner with id `"%int%"` for: "%shown)
+                                            (f ^. ownerID) f
     Just g  -> return g
 
 
 group :: File -> Craft Group
 group f =
-  Group.fromID (groupID f) >>= \case
-    Nothing -> $craftError $ "No such group with id `" ++ show (groupID f)
-                             ++ "` for: " ++ show f
+  Group.fromID (f ^. groupID) >>= \case
+    Nothing -> $craftError $ formatToString ("No such group with id `"%int%"` for: "%shown)
+                                            (f ^. groupID) f
     Just g -> return g
 
 
 instance Show File where
-  show f = "File { path = " ++ show (path f) ++
-                ", mode = " ++ show (mode f) ++
-                ", ownerID = " ++ show (ownerID f) ++
-                ", groupID = " ++ show (groupID f) ++
-                ", content = " ++ showContent (content f) ++
+  show f = "File { path = " ++ show (f ^. path) ++
+                ", mode = " ++ show (f ^. mode) ++
+                ", ownerID = " ++ show (f ^. ownerID) ++
+                ", groupID = " ++ show (f ^. groupID) ++
+                ", content = " ++ showContent (f ^. content) ++
                " }"
     where
       showContent Nothing  = "Nothing"
       showContent (Just c) = "Just " ++ show (BS.take 30 c) ++ "..."
 
 
-name :: File -> String
-name f = takeFileName $ path f
+name :: Getter File String
+name = path . to takeFileName
 
 
-strContent :: String -> Maybe ByteString
-strContent = Just . B8.pack
+strContent :: Lens' File String
+strContent = lens (view $ content . _Just . unpackedChars)
+                  (\f s -> f & content .~ Just (B8.pack s))
 
-
-contentAsString :: File -> String
-contentAsString = B8.unpack . fromJust . content
 
 
 file :: FilePath -> File
 file fp =
   File
-  { path    = fp
-  , mode    = Mode RW R R
-  , ownerID = 0
-  , groupID = 0
-  , content = Nothing
+  { _path    = fp
+  , _mode    = Mode RW R R
+  , _ownerID = 0
+  , _groupID = 0
+  , _content = Nothing
   }
 
 
 fromSource :: FilePath -> FilePath -> Craft File
 fromSource sourcefp fp = do
   c <- readSourceFile sourcefp
-  return $ (file fp) { content = Just c }
+  return $ file fp & content ?~ c
 
 
 multiple :: [FilePath] -> Mode -> User -> Group -> Maybe ByteString -> [File]
@@ -109,31 +112,24 @@ multiple paths mode owner' group' content = map go paths
   go path = File path mode (User.uid owner') (Group.gid group') content
 
 
-multipleRootOwned :: [FilePath] -> Mode -> Maybe ByteString -> [File]
-multipleRootOwned paths mode content = map go paths
- where
-  go path = (file path) { mode = mode
-                        , content = content
-                        }
-
 
 instance Craftable File where
   watchCraft f = do
-    let fp = path f
-        setMode'  = setMode (mode f) fp
-        setOwner' = setOwnerID (ownerID f) fp
-        setGroup' = setGroupID (groupID f) fp
-        md5c = show . md5 . BL.fromStrict . fromMaybe "" $ content f
+    let fp = f ^. path
+        setMode'  = setMode (f ^. mode) fp
+        setOwner' = setOwnerID (f ^. ownerID) fp
+        setGroup' = setGroupID (f ^. groupID) fp
+        md5c = show . md5 . BL.fromStrict . fromMaybe "" $ f ^. content
         err str = $craftError $ "craft File `" ++ fp ++ "` failed! " ++ str
         verifyMode m =
-          when (m /= mode f) $ err $ "Wrong Mode: " ++ show m
-                                    ++ " Expected: " ++ show (mode f)
+          when (m /= f ^. mode) $ err $ "Wrong Mode: " ++ show m
+                                    ++ " Expected: " ++ show (f ^. mode)
         verifyOwner o =
-          when (o /= ownerID f) $ err $ "Wrong Owner ID: " ++ show o
-                                    ++ " Expected: " ++ show (ownerID f)
+          when (o /= f ^. ownerID) $ err $ "Wrong Owner ID: " ++ show o
+                                    ++ " Expected: " ++ show (f ^. ownerID)
         verifyGroup g =
-          when (g /= groupID f) $ err $ "Wrong Group ID: " ++ show g
-                                    ++ " Expected: " ++ show (groupID f)
+          when (g /= f ^. groupID) $ err $ "Wrong Group ID: " ++ show g
+                                    ++ " Expected: " ++ show (f ^. groupID)
         verifyStats (m, o, g) =
           verifyMode m >> verifyOwner o >> verifyGroup g
 
@@ -141,14 +137,14 @@ instance Craftable File where
       Nothing -> do
         exec_ "touch" [fp]
         setMode' >> setOwner' >> setGroup'
-        case content f of
+        case f ^. content of
           Nothing -> return ()
           Just c -> write fp c
         getStats fp >>= \case
           Nothing -> err "Not Found."
           Just stats' -> do
             verifyStats stats'
-            case content f of
+            case f  ^. content of
               Nothing -> return (Created, f)
               Just _ -> do
                 md5content' <- md5sum fp
@@ -156,12 +152,12 @@ instance Craftable File where
                                        else err "Content Mismatch."
 
       Just (m', o', g') -> do
-        let checks = [ (mode f == m', setMode')
-                     , (ownerID f == o', setOwner')
-                     , (groupID f == g', setGroup')
+        let checks = [ (f ^. mode == m', setMode')
+                     , (f ^. ownerID == o', setOwner')
+                     , (f ^. groupID == g', setGroup')
                      ]
         mapM_ (uncurry unless) checks
-        case content f of
+        case f ^. content of
           Nothing ->
             if all fst checks then
               return (Unchanged, f)
@@ -184,16 +180,15 @@ instance Craftable File where
 
 
 instance Destroyable File where
-  watchDestroy f = do
-    let fp = path f
-    get fp >>= \case
+  watchDestroy f =
+    get (f ^. path) >>= \case
       Nothing -> return (Unchanged, Nothing)
       Just f' -> do
         destroy_ f
         return (Removed, Just f')
 
   destroy_ f = do
-    let fp = path f
+    let fp = f ^. path
     exec_ "rm" ["-f", fp]
     exists fp >>= flip when (
       $craftError $ "destroy File `" ++ fp ++ "` failed! Found.")
@@ -212,14 +207,11 @@ get fp =
   getStats fp >>= \case
     Nothing -> return Nothing
     Just (m, o, g) -> do
-      content <- fileRead fp
-      return . Just $
-        File { path    = fp
-             , mode    = m
-             , ownerID = o
-             , groupID = g
-             , content = Just content
-             }
+      content' <- fileRead fp
+      return . Just $ file fp & mode    .~ m
+                              & ownerID .~ o
+                              & groupID .~ g
+                              & content ?~ content'
 
 
 md5sum :: FilePath -> Craft String

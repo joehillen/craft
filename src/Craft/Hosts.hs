@@ -18,6 +18,7 @@ module Craft.Hosts
 where
 
 
+import Control.Lens hiding (set, noneOf)
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.List as L
 import Data.Maybe (catMaybes)
@@ -41,7 +42,7 @@ get :: Craft Hosts
 get =
   File.get hostsfp >>= \case
     Nothing -> $craftError $ hostsfp ++ " not found!"
-    Just f  -> case File.content f of
+    Just f  -> case f ^. File.content of
                  Nothing -> $craftError $ hostsfp ++ " not found!"
                  Just bs -> return . parse $ B8.unpack bs
 
@@ -57,19 +58,16 @@ instance Craftable Hosts where
 
 
 showConfigs :: Configs -> String
-showConfigs = unlines
-            . map (\(ip, as) -> unwords (show ip:map show as))
+showConfigs = unlines . map (\(ip, as) -> unwords (show ip:map show as))
 
 
 toFile :: Hosts -> File
-toFile (Hosts cfgs) =
-  (File.file hostsfp)
-     {File.content = Just . B8.pack $ showConfigs cfgs}
+toFile (Hosts cfgs) = File.file hostsfp & File.strContent .~ showConfigs cfgs
 
 
 fromFile :: File -> Hosts
 fromFile f =
-  case File.content f of
+  case f ^. File.content of
     Nothing -> Hosts []
     Just c  -> parse $ B8.unpack c
 

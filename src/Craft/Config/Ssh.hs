@@ -1,6 +1,6 @@
 module Craft.Config.Ssh where
 
-import           Control.Monad (void)
+import Control.Lens
 import           Data.Char (toLower)
 import           Data.Maybe (catMaybes)
 import qualified Data.ByteString.Char8 as B8
@@ -8,7 +8,7 @@ import           Text.Megaparsec
 
 import           Craft
 import qualified Craft.Directory as Directory
-import           Craft.File (File(File))
+import           Craft.File (File, file)
 import qualified Craft.File as File
 import           Craft.File.Mode
 import           Craft.Internal.Helpers
@@ -57,24 +57,23 @@ config fp cfgs = (configFromFile $ File.file fp) { configs = cfgs }
 
 configFromFile :: File -> Config
 configFromFile f =
-  Config { path    = File.path f
-         , mode    = File.mode f
-         , ownerID = File.ownerID f
-         , groupID = File.groupID f
-         , configs = case File.content f of
+  Config { path    = f ^. File.path
+         , mode    = f ^. File.mode
+         , ownerID = f ^. File.ownerID
+         , groupID = f ^. File.groupID
+         , configs = case f ^. File.content of
                        Nothing -> []
-                       Just bs -> Craft.Config.Ssh.parse (File.path f)
+                       Just bs -> Craft.Config.Ssh.parse (f ^. File.path)
                                                          (B8.unpack bs)
          }
 
 fileFromConfig :: Config -> File
 fileFromConfig cfg =
-  File.File { File.path    = path cfg
-            , File.mode    = mode cfg
-            , File.ownerID = ownerID cfg
-            , File.groupID = groupID cfg
-            , File.content = Just . B8.pack . show $ configs cfg
-            }
+  File.file (path cfg) &  File.mode    .~ mode cfg
+                       &  File.ownerID .~ ownerID cfg
+                       &  File.groupID .~ groupID cfg
+                       &  File.strContent .~ show (configs cfg)
+
 
 
 get :: FilePath -> Craft (Maybe Config)
@@ -115,11 +114,11 @@ cfgLookup sectionName key sections' =
 instance Craftable UserConfig where
   watchCraft cfg = do
     craft_ $ userDir $ user cfg
-    w <- watchCraft_ $ File (userPath cfg)
-                            (Mode RW O O)
-                            (User.uid $ user cfg)
-                            (Group.gid $ User.group $ user cfg)
-                            (File.strContent $ show cfg)
+    w <- watchCraft_ $ file (userPath cfg)
+                         & File.mode .~ Mode RW O O
+                         & File.ownerID .~ User.uid (user cfg)
+                         & File.groupID .~ Group.gid (User.group $ user cfg)
+                         & File.strContent .~ show cfg
     return (w, cfg)
 
 

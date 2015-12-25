@@ -1,5 +1,6 @@
 module Craft.Config.ShellFormat where
 
+import Control.Lens
 import Data.Map (Map)
 import qualified Data.Map as M
 import Data.Maybe (catMaybes)
@@ -52,23 +53,21 @@ config fp cfgs = (configFromFile $ File.file fp) { configs = cfgs }
 
 configFromFile :: File -> Config
 configFromFile f =
-  Config { path    = File.path f
-         , mode    = File.mode f
-         , ownerID = File.ownerID f
-         , groupID = File.groupID f
-         , configs = case File.content f of
+  Config { path    = f ^. File.path
+         , mode    = f ^. File.mode
+         , ownerID = f ^. File.ownerID
+         , groupID = f ^. File.groupID
+         , configs = case f ^. File.content of
                        Nothing -> M.empty
-                       Just bs -> parse (File.path f) (B8.unpack bs)
+                       Just bs -> parse (f ^. File.path) (B8.unpack bs)
          }
 
 fileFromConfig :: Config -> File
 fileFromConfig cfg =
-  File.File { File.path    = path cfg
-            , File.mode    = mode cfg
-            , File.ownerID = ownerID cfg
-            , File.groupID = groupID cfg
-            , File.content = Just . B8.pack . showConfigs $ configs cfg
-            }
+  File.file (path cfg) & File.mode       .~ mode cfg
+                       & File.ownerID    .~ ownerID cfg
+                       & File.groupID    .~ groupID cfg
+                       & File.strContent .~ showConfigs (configs cfg)
 
 
 get :: FilePath -> Craft (Maybe Config)

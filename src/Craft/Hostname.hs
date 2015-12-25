@@ -18,10 +18,10 @@ instance Craftable Hostname where
   watchCraft (Hostname hn) = do
     (Hostname oldhn) <- get
     hosts <- Hosts.get
-    if (oldhn /= hn) then do
+    if oldhn /= hn then do
       $logInfo $ "Hostname " ++ oldhn ++ " /= " ++ hn
       hosts' <- craft $ Hosts.set (Hosts.Name hn) (Hosts.IP "127.0.1.1") hosts
-      craft_ $ (File.file "/etc/hostname") { File.content = File.strContent hn }
+      craft_ $ File.file "/etc/hostname" & File.strContent .~ hn
       exec_ "hostname" [hn]
       craft_ $ Hosts.deleteName (Hosts.Name oldhn) hosts'
       (Hostname newhn) <- get
@@ -30,7 +30,7 @@ instance Craftable Hostname where
                                          ++ " Got: " ++ newhn
       return (Updated, Hostname hn)
     else do
-      craft_ $ (File.file "/etc/hostname") { File.content = File.strContent hn }
+      craft_ $ File.file "/etc/hostname" & File.strContent .~ hn
       case Hosts.lookup (Hosts.IP "127.0.1.1") hosts of
         Just names ->
           if Hosts.Name hn `elem` names then

@@ -22,29 +22,3 @@ data SourcedFile
     , source  :: FilePath
     }
   deriving (Eq, Show)
-
-
-sourcedToFile :: SourcedFile -> File.File
-sourcedToFile sf = File.File { File.path    = path sf
-                             , File.mode    = mode sf
-                             , File.ownerID = ownerID sf
-                             , File.groupID = groupID sf
-                             , File.content = Nothing
-                             }
-
-
-owner :: SourcedFile -> Craft User
-owner = File.owner . sourcedToFile
-
-
-group :: SourcedFile -> Craft Group
-group = File.group . sourcedToFile
-
-
-craft' :: SourcedFile -> Craft ()
-craft' sf = do
-  let fp = path sf
-  sourceFile (source sf) fp
-  setMode (mode sf) fp
-  setOwnerID (ownerID sf) fp
-  setGroupID (groupID sf) fp

@@ -11,9 +11,11 @@ import qualified Craft.User as User
 import qualified Craft.Group as Group
 import qualified Craft.Upstart as Upstart
 
+import Control.Lens
 import           Control.Monad (when)
 import           Data.Maybe
 import           Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as B8
 
 setup :: Directory.Path -> Craft ()
 setup home = do
@@ -61,18 +63,16 @@ service name =
   }
 
 envFile :: Directory.Path -> (String, String) -> File
-envFile envDir (en, ev) =
-  (file $ envDir </> en)
-    { File.mode    = Mode RW O O
-    , File.content = File.strContent ev
-    }
+envFile envDir (varname, varval) =
+  file (envDir </> varname) & File.mode       .~ Mode RW O O
+                            & File.strContent .~ varval
 
 getEnv :: Service -> Craft [(String, String)]
 getEnv svc = do
   fs <- Directory.getFiles (path svc)
   return $ map go fs
  where
-  go f = (File.name f, File.contentAsString f)
+  go f = (f ^. File.name, f ^. File.strContent)
 
 {-
 instance Craftable Service where

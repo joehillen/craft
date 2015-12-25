@@ -8,6 +8,7 @@ import Craft.User (UserID)
 import Craft.Group (GroupID)
 import qualified Data.ByteString.Char8 as B8
 
+import Control.Lens
 import Data.Yaml
 
 
@@ -34,38 +35,36 @@ instance ToJSON cfg => Show (Config cfg) where
 
 config :: FilePath -> cfgs -> Config cfgs
 config fp cfgs = let f = File.file fp
-                 in Config { path = File.path f
-                           , mode = File.mode f
-                           , ownerID = File.ownerID f
-                           , groupID = File.groupID f
+                 in Config { path = f ^. File.path
+                           , mode = f ^. File.mode
+                           , ownerID = f ^. File.ownerID
+                           , groupID = f ^. File.groupID
                            , configs = cfgs
                            }
 
 
 configFromFile :: FromJSON cfgs => File -> Config cfgs
 configFromFile f =
-  Config { path    = File.path f
-         , mode    = File.mode f
-         , ownerID = File.ownerID f
-         , groupID = File.groupID f
+  Config { path    = f ^. File.path
+         , mode    = f ^. File.mode
+         , ownerID = f ^. File.ownerID
+         , groupID = f ^. File.groupID
          , configs =
-             case File.content f of
-               Nothing -> error $ "Unmanaged Yaml config: " ++ File.path f
+             case f ^. File.content of
+               Nothing -> error $ "Unmanaged Yaml config: " ++ f ^. File.path
                Just bs -> case decodeEither bs of
                             Left err -> error $ "Failed to parse "
-                                                ++ File.path f ++ " : " ++ err
+                                              ++ f ^. File.path ++ " : " ++ err
                             Right x  -> x
          }
 
 
 fileFromConfig :: ToJSON cfgs => Config cfgs -> File
 fileFromConfig cfg =
-  File.File { File.path    = path cfg
-            , File.mode    = mode cfg
-            , File.ownerID = ownerID cfg
-            , File.groupID = groupID cfg
-            , File.content = Just . encode $ configs cfg
-            }
+  File.file (path cfg) & File.mode    .~ mode cfg
+                       & File.ownerID .~ ownerID cfg
+                       & File.groupID .~ groupID cfg
+                       & File.content ?~ encode (configs cfg)
 
 
 get :: (FromJSON cfgs) => FilePath -> Craft (Maybe (Config cfgs))
