@@ -71,10 +71,10 @@ configFromFile f = do
 
 fileFromConfig :: Config -> File
 fileFromConfig cfg =
-  File.file (path cfg) &  File.mode    .~ mode cfg
-                       &  File.ownerID .~ ownerID cfg
-                       &  File.groupID .~ groupID cfg
-                       &  File.strContent .~ show (configs cfg)
+  File.file (path cfg) & File.mode    .~ mode cfg
+                       & File.ownerID .~ ownerID cfg
+                       & File.groupID .~ groupID cfg
+                       & File.strContent .~ show (configs cfg)
 
 
 

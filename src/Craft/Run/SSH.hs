@@ -19,25 +19,26 @@ import Craft.Log
 
 data SSHEnv
   = SSHEnv
-    { sshKey     :: FilePath
-    , sshAddr    :: String
-    , sshUser    :: String
-    , sshSudo    :: Bool
-    , sshOptions :: [String]
+    { _sshKey     :: FilePath
+    , _sshAddr    :: String
+    , _sshUser    :: String
+    , _sshSudo    :: Bool
+    , _sshOptions :: [String]
     }
+makeLenses ''SSHEnv
 
 
 sshEnv :: String -> FilePath -> SSHEnv
 sshEnv addr key =
   SSHEnv
-  { sshAddr = addr
-  , sshKey  = key
-  , sshUser = "root"
-  , sshSudo = True
-  , sshOptions = [ "UserKnownHostsFile=/dev/null"
-                 , "StrictHostKeyChecking=no"
-                 , "LogLevel=ERROR"
-                 ]
+  { _sshAddr = addr
+  , _sshKey  = key
+  , _sshUser = "root"
+  , _sshSudo = True
+  , _sshOptions = [ "UserKnownHostsFile=/dev/null"
+                  , "StrictHostKeyChecking=no"
+                  , "LogLevel=ERROR"
+                  ]
   }
 
 data SSHSession
@@ -102,11 +103,11 @@ runCraftSSH' sshenv sshsession (SourceFile ce src dest next) = do
                -- specify the remote shell to use
              , "--rsh=ssh " ++ unwords (sshArgs sshenv sshsession)
              ] ++
-             (if sshSudo sshenv then ["--super", "--rsync-path=sudo rsync"]
-                                else [])
+             (if sshenv ^. sshSudo then ["--super", "--rsync-path=sudo rsync"]
+                                   else [])
              ++
              [ src'
-             , sshUser sshenv ++ "@" ++ sshAddr sshenv ++ ":" ++ dest
+             , sshenv ^. sshUser ++ "@" ++ sshenv ^. sshAddr ++ ":" ++ dest
              ])
   execProc_ ce (showProc p) p next
 
@@ -117,9 +118,9 @@ runCraftSSH' _ _ (Log ce loc logsource level logstr next) =
 
 sshArgs :: SSHEnv -> SSHSession -> Args
 sshArgs SSHEnv{..} SSHSession{..} =
-  [ "-i", sshKey ] ++
-  ["-o" | not (null sshOptions)] ++
-  intersperse "-o" sshOptions ++
+  [ "-i", _sshKey ] ++
+  ["-o" | not (null _sshOptions)] ++
+  intersperse "-o" _sshOptions ++
   [ "-o", "ControlMaster=auto"
   , "-o", "ControlPath=" ++ sshControlPath
   , "-o", "ControlPersist=10"
@@ -129,7 +130,7 @@ sshArgs SSHEnv{..} SSHSession{..} =
 sshProc :: SSHEnv -> SSHSession -> CraftEnv -> Command -> Args -> CreateProcess
 sshProc sshenv sshsession ce command args =
   proc "ssh" (sshArgs sshenv sshsession
-              ++ [ sshUser sshenv ++ "@" ++ sshAddr sshenv
+              ++ [ sshenv ^. sshUser ++ "@" ++ sshenv ^. sshAddr
                  , unwords cmd])
  where
   cwd = ce ^. craftExecCWD
@@ -138,7 +139,7 @@ sshProc sshenv sshsession ce command args =
         ["sh", "-c", "'", "cd", escape cwd, ";"] ++
         map escape (renderEnv env) ++ (command : map escape args) ++
         ["'"]
-  sudo = if sshSudo sshenv then ["sudo", "-H"] else []
+  sudo = if sshenv ^. sshSudo then ["sudo", "-H"] else []
   escape :: String -> String
   escape = recur backslash [" ", "*", "$", "'"]
   recur _ []     s = s

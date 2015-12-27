@@ -22,10 +22,9 @@ runCraftVagrant env configs = do
 
   runCraftSSH
     (sshEnv (cfgLookupOrError "hostname" sections)
-            (cfgLookupOrError "identityfile" sections))
-      { sshUser = cfgLookupOrError "user" sections
-      , sshSudo    = True
-      }
+            (cfgLookupOrError "identityfile" sections)
+            & sshUser .~ cfgLookupOrError "user" sections
+            & sshSudo .~ True)
     env
     configs
 
