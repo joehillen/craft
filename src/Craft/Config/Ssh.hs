@@ -28,7 +28,7 @@ data UserConfig
 
 
 userPath :: UserConfig -> FilePath
-userPath UserConfig{..} = Directory.path (userDir user) </> "config"
+userPath UserConfig{..} = userDir user ^. Directory.path </> "config"
 
 data Config
   = Config

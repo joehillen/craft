@@ -29,39 +29,40 @@ type Path = FilePath
 
 data Directory =
   Directory
-  { path    :: Path
-  , mode    :: Mode
-  , ownerID :: UserID
-  , groupID :: GroupID
+  { _path    :: Path
+  , _mode    :: Mode
+  , _ownerID :: UserID
+  , _groupID :: GroupID
   }
   deriving (Eq, Show)
+makeLenses ''Directory
 
 
 owner :: Directory -> Craft User
 owner d =
-  User.fromID (ownerID d) >>= \case
+  User.fromID (d ^. ownerID) >>= \case
     Nothing -> $craftError
                $ formatToString ("No such owner with id `"%shown%"` for: "%shown)
-                                (ownerID d) d
+                                (d ^. ownerID) d
     Just g  -> return g
 
 
 group :: Directory -> Craft Group
 group d =
-  Group.fromID (groupID d) >>= \case
+  Group.fromID (d ^. groupID) >>= \case
     Nothing -> $craftError
                $ formatToString ("No such group with id `"%shown%"` for: "%shown)
-                                (groupID d) d
+                                (d ^. groupID) d
     Just g -> return g
 
 
 directory :: Path -> Directory
 directory dp =
   Directory
-  { path    = dp
-  , mode    = Mode RWX RX RX
-  , ownerID = 0
-  , groupID = 0
+  { _path    = dp
+  , _mode    = Mode RWX RX RX
+  , _ownerID = 0
+  , _groupID = 0
   }
 
 
@@ -72,9 +73,9 @@ multiple paths mode owner' group' = map go paths
 
 
 multipleRootOwned :: [Path] -> Mode -> [Directory]
-multipleRootOwned paths mode = map go paths
+multipleRootOwned paths m = map go paths
  where
-  go path = (directory path) { mode = mode }
+  go path = directory path & mode .~ m
 
 
 exists :: Path -> Craft Bool
@@ -83,38 +84,38 @@ exists p = isExecSucc <$> exec "/usr/bin/test" ["-d", p]
 
 instance Craftable Directory where
   watchCraft d = do
-    let dp = path d
-        setMode'  = setMode (mode d) dp
-        setOwner' = setOwnerID (ownerID d) dp
-        setGroup' = setGroupID (groupID d) dp
+    let dp = d ^. path
+        setMode'  = setMode (d ^. mode) dp
+        setOwner' = setOwnerID (d ^. ownerID) dp
+        setGroup' = setGroupID (d ^. groupID) dp
         error' str = $craftError
            $ formatToString ("craft Directory `"%string%"` failed! "%string)
                             dp str
         verifyMode m =
-          when (m /= mode d) $
+          when (m /= d ^. mode) $
             error' $ formatToString ("Wrong Mode: "%shown%" Expected: "%shown)
-                                    m (mode d)
+                                    m (d ^. mode)
         verifyOwner o =
-          when (o /= ownerID d) $
+          when (o /= d ^. ownerID) $
             error' $ formatToString ("Wrong Owner ID: "%shown%" Expected: "%shown)
-                                    o (ownerID d)
+                                    o (d ^. ownerID)
         verifyGroup g =
-          when (g /= groupID d) $
+          when (g /= d ^. groupID) $
             error' $ formatToString ("Wrong Group ID: "%shown%" Expected: "%shown)
-                                    g (groupID d)
+                                    g (d ^. groupID)
         verifyStats (m, o, g) =
           verifyMode m >> verifyOwner o >> verifyGroup g
     getStats dp >>= \case
       Nothing -> do
-        exec_ "mkdir" ["-p", path d]
+        exec_ "mkdir" ["-p", dp]
         setMode' >> setOwner' >> setGroup'
         getStats dp >>= \case
           Nothing -> error' "Not Found."
           Just stats' -> verifyStats stats' >> return (Created, d)
       Just (m', o', g') -> do
-        let checks = [ (mode d == m', setMode')
-                     , (ownerID d == o', setOwner')
-                     , (groupID d == g', setGroup')
+        let checks = [ (d^.mode    == m', setMode')
+                     , (d^.ownerID == o', setOwner')
+                     , (d^.groupID == g', setGroup')
                      ]
         mapM_ (uncurry unless) checks
         if all fst checks then

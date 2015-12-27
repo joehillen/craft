@@ -9,7 +9,6 @@ import           Craft.File.Mode
 import           Craft.User (User)
 import qualified Craft.User as User
 import qualified Craft.Group as Group
-import qualified Data.ByteString.Char8 as B8
 
 import Control.Lens
 
@@ -22,7 +21,7 @@ data PrivateKey
   deriving (Eq, Show)
 
 path :: PrivateKey -> FilePath
-path PrivateKey{..} = Directory.path (userDir user) </> name
+path PrivateKey{..} = (userDir user ^. Directory.path) </> name
 
 instance Craftable PrivateKey where
   watchCraft pk = do

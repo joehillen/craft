@@ -12,7 +12,8 @@ import           Craft
 import           Craft.Hostname (Hostname(..))
 import           Craft.Apt (Apt(..))
 import qualified Craft.Apt as Apt
-import           Craft.Directory (Directory(..))
+import           Craft.Directory (Directory(..), directory)
+import qualified Craft.Directory as Dir
 import           Craft.File (File(..), file)
 import qualified Craft.File as File
 import           Craft.File.Mode
@@ -93,10 +94,9 @@ normalUser name fullname sshPubKey UserOptions{..} = do
                                     }
 
   -- create the user's home directory
-  craft_ $ Directory homepath
-                     (Mode RWX RX RX)
-                     (User.uid user)
-                     (Group.gid $ User.group user)
+  craft_ $ directory homepath & Dir.mode .~ Mode RWX RX RX
+                              & Dir.ownerID .~ User.uid user
+                              & Dir.groupID .~ Group.gid (User.group user)
 
   -- add the user's public key
   void $ Ssh.addAuthorizedKey user $ Ssh.PublicKey sshPubKey optSshPubKeyType

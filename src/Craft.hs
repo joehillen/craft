@@ -17,7 +17,7 @@ import qualified System.IO as Sys.IO
 
 
 withCWD :: Dir.Directory -> Craft a -> Craft a
-withCWD dir = local (\r -> r & craftExecCWD .~ Dir.path dir)
+withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. Dir.path)
 
 
 craftEnv :: CraftEnv NoPackageManager
