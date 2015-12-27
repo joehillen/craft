@@ -15,6 +15,7 @@ import qualified System.Process.ByteString as Proc.BS
 import Craft.Types
 import Craft.Helpers
 import Craft.Run.Internal
+import Craft.Log
 
 data SSHEnv
   = SSHEnv
@@ -52,7 +53,7 @@ newSSHSession = do
 
 
 -- | runCraftSSH
-runCraftSSH :: SSHEnv -> CraftEnv pm -> ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a -> IO a
+runCraftSSH :: PackageManager pm => SSHEnv -> CraftEnv pm -> ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a -> IO a
 runCraftSSH sshenv ce prog = do
   sshSession <- newSSHSession
   let controlpath = sshControlPath sshSession
@@ -63,7 +64,7 @@ runCraftSSH sshenv ce prog = do
 
 
 -- | runCraftSSH implementation
-runCraftSSH' :: SSHEnv -> SSHSession -> (CraftDSL pm) (IO a) -> IO a
+runCraftSSH' :: PackageManager pm => SSHEnv -> SSHSession -> (CraftDSL pm) (IO a) -> IO a
 runCraftSSH' sshenv sshsession (Exec ce command args next) = do
   let p = sshProc sshenv sshsession ce command args
   execProc ce p next
@@ -76,18 +77,20 @@ runCraftSSH' sshenv sshsession (FileRead ce fp next) = do
   let ce' = ce & craftExecEnv .~ []
                & craftExecCWD .~ "/"
       p = sshProc sshenv sshsession ce' "cat" [fp]
-  (ec, content, stderr) <- liftIO $ Proc.BS.readCreateProcessWithExitCode p ""
+  (ec, content, stderr') <- liftIO $ Proc.BS.readCreateProcessWithExitCode p ""
   unless (isSuccess ec) $
-    error $ "Failed to read file '"++ fp ++"': " ++ B8.unpack stderr
+    runCraftSSH sshenv ce $
+      $craftError $ "Failed to read file '"++ fp ++"': " ++ B8.unpack stderr'
   next content
 
 runCraftSSH' sshenv sshsession (FileWrite ce fp content next) = do
   let ce' = ce & craftExecEnv .~ []
                & craftExecCWD .~ "/"
       p = sshProc sshenv sshsession ce' "tee" [fp]
-  (ec, _, stderr) <- liftIO $ Proc.BS.readCreateProcessWithExitCode p content
+  (ec, _, stderr') <- liftIO $ Proc.BS.readCreateProcessWithExitCode p content
   unless (isSuccess ec) $
-    error $ "Failed to write file '"++ fp ++"': " ++ B8.unpack stderr
+    runCraftSSH sshenv ce $
+      $craftError $ "Failed to write file '"++ fp ++"': " ++ B8.unpack stderr'
   next
 
 runCraftSSH' sshenv sshsession (SourceFile ce src dest next) = do

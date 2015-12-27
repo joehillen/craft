@@ -11,7 +11,9 @@ data Hostname = Hostname String
 
 
 get :: Craft Hostname
-get = Hostname . view (errorOnFail . stdout) <$> exec "hostname" []
+get = do
+  r <- $errorOnFail =<< exec "hostname" []
+  return . Hostname $ r ^. stdout
 
 
 instance Craftable Hostname where

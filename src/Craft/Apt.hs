@@ -56,7 +56,7 @@ dpkgQueryStatus pn = dpkgQuery ["-s", pn]
 
 expectOutput :: String -> [String] -> Craft String
 expectOutput cmd args = do
-  r <- view (errorOnFail . stdout) <$> exec cmd args
+  r <- view stdout <$> ($errorOnFail =<< exec cmd args)
   when (null r) $
     $craftError $ formatToString ("'"%string%"' returned an empty result!")
                                  (unwords $ cmd:args)

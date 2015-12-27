@@ -9,12 +9,14 @@ import Text.Megaparsec.String
 
 
 import Craft.Hosts.Types
+import Craft.Types
+import Craft.Log
 
-parseLine :: Int -> String -> Maybe (IP, [Name])
+parseLine :: Int -> String -> Craft (Maybe (IP, [Name]))
 parseLine ln s =
   case runParser lineParser hostsfp s of
-    Right x  -> x
-    Left err -> error $ show err
+    Right x  -> return x
+    Left err -> $craftError $ show err
  where
   lineParser :: Parser (Maybe (IP, [Name]))
   lineParser = do

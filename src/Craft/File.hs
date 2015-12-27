@@ -215,13 +215,14 @@ get fp =
 
 
 md5sum :: FilePath -> Craft String
-md5sum fp = view (errorOnFail . stdout . to words . _head) <$> exec "md5sum" [fp]
+md5sum fp = do
+  r <- $errorOnFail =<< exec "md5sum" [fp]
+  return $ r ^. stdout . to words . _head
 
 
 -- | A thin wrapper over the Unix find program.
 find :: FilePath -> Args -> Craft [File]
 find dir args = do
-  filenames <- filter (`notElem` [".", "..", ""])
-               . view (errorOnFail . stdout . to lines)
-               <$> exec "find" ([dir, "-type", "f"] ++ args)
+  r <- $errorOnFail =<< exec "find" ([dir, "-type", "f"] ++ args)
+  let filenames = filter (`notElem` [".", "..", ""]) $ r ^. stdout . to lines
   catMaybes <$> mapM get filenames

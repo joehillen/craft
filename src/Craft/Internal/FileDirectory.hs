@@ -27,26 +27,29 @@ stat = exec "stat"
 getMode :: FilePath -> Craft Mode
 getMode fp = do
   r <- stat ["-c", "%a", fp]
-  return $ parseExecResult r modeParser (r ^. errorOnFail . stdout)
+  success <- $errorOnFail r
+  parseExecResult r modeParser (success ^. stdout)
 
 
 getOwnerID :: FilePath -> Craft UserID
 getOwnerID fp = do
   r <- stat ["-c", "%u", fp]
-  return $ parseExecResult r digitParser (r ^. errorOnFail . stdout)
+  success <- $errorOnFail r
+  parseExecResult r digitParser (success ^. stdout)
 
 
 getGroupID :: FilePath -> Craft GroupID
 getGroupID fp = do
   r <- stat ["-c", "%g", fp]
-  return $ parseExecResult r digitParser (r ^. errorOnFail . stdout)
+  success <- $errorOnFail r
+  parseExecResult r digitParser (success ^. stdout)
 
 
 getStats :: FilePath -> Craft (Maybe (Mode, UserID, GroupID))
-getStats fp = stat ["-c", "%a:%u:%g", fp] >>= \case
-  ExecFail _ -> return Nothing
-  ExecSucc r ->
-    return . Just $ parseExecResult (ExecSucc r) statsParser $ r ^. stdout
+getStats fp =
+  stat ["-c", "%a:%u:%g", fp] >>= \case
+    ExecFail _ -> return Nothing
+    ExecSucc r -> Just <$> parseExecResult (ExecSucc r) statsParser (r ^. stdout)
 
 
 statsParser :: Parser (Mode, UserID, GroupID)

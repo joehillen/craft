@@ -16,7 +16,8 @@ runCraftVagrant env configs = do
                                       & craftExecCWD .~ cwd
                                       ) $ do
     r <- exec "vagrant" ["ssh-config"]
-    return $ parseExecResult r parser $ r ^. errorOnFail . stdout
+    success <- $errorOnFail r
+    parseExecResult r parser $ success ^. stdout
 
   runCraftSSH
     (sshEnv (cfgLookupOrError "hostname" sections)

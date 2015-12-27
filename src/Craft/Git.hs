@@ -70,7 +70,9 @@ git cmd args = exec_ gitBin $ cmd : args
 
 
 remotes :: Craft [String]
-remotes = view (errorOnFail . stdout . to lines) <$> exec gitBin ["remote"]
+remotes = do
+  r <- $errorOnFail =<< exec gitBin ["remote"]
+  return $ r ^. stdout . to lines
 
 
 setURL :: URL -> Craft ()
@@ -85,9 +87,11 @@ setURL url = do
 getURL :: Craft URL
 getURL = do
   r <- exec gitBin ["remote", "-v"]
-  let results = parseExecResult r repoURLParser $ r ^. errorOnFail . stdout
-  return $ fromMaybe (error $ "git remote `" ++ origin ++ "` not found.")
-                     (lookup (origin, "fetch") results)
+  success <- $errorOnFail r
+  results <- parseExecResult r repoURLParser $ success ^. stdout
+  case lookup (origin, "fetch") results of
+    Nothing -> $craftError $ "git remote `" ++ origin ++ "` not found."
+    Just x  -> return x
 
 
 -- TESTME
@@ -105,10 +109,8 @@ repoURLParser = some $ do
 getVersion :: Craft Version
 getVersion = do
   r <- exec gitBin ["rev-parse", "HEAD"]
-  return . Commit $ parseExecResult r parser $ r ^. errorOnFail . stdout
- where
-  parser :: Parser String
-  parser = some alphaNumChar
+  success <- $errorOnFail r
+  Commit <$> parseExecResult r (some alphaNumChar) (success ^. stdout)
 
 
 get :: Directory.Path -> Craft (Maybe Repo)
@@ -130,7 +132,7 @@ instance Craftable Repo where
   watchCraft r = do
     let dp = directory r
         ver = version r
-        verify ver' = do
+        verify ver' =
           case ver of
             Commit _ ->
               when (ver' /= ver) $

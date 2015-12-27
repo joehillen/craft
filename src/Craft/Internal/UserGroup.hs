@@ -61,7 +61,7 @@ userFromName name =
             parseGetent passwdParser "passwd" name (r ^. stdout)
       grp <- fromJust <$> groupFromID gid'
       grps <- getGroups nameS
-      shadowResult <- view errorOnFail <$> getent "shadow" nameS
+      shadowResult <- $errorOnFail =<< getent "shadow" nameS
       let passwordHash' = parseGetent shadowParser "shadow" nameS
                             $ shadowResult ^. stdout
       return . Just
@@ -76,7 +76,10 @@ userFromName name =
                     }
 
 getGroups :: UserName -> Craft [GroupName]
-getGroups name =  view (errorOnFail . stdout . to words) <$> exec "id" ["-nG", name]
+getGroups name = do
+  r <- $errorOnFail =<< exec "id" ["-nG", name]
+  return $ r ^. stdout . to words
+
 
 getent :: String -> String -> Craft ExecResult
 getent dbase key = exec "getent" [dbase, key]

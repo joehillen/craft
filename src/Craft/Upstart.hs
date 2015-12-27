@@ -3,7 +3,6 @@ module Craft.Upstart where
 import           Craft
 
 import           Control.Lens hiding (noneOf)
-import           Control.Monad
 import           Text.Megaparsec
 
 type ServiceName = String
@@ -19,8 +18,8 @@ get :: ServiceName -> Craft (Maybe Service)
 get sn =
   exec "/sbin/status" [sn] >>= \case
     ExecFail _ -> return Nothing
-    ExecSucc r -> return . Just . Service sn
-                  $ parseExecResult (ExecSucc r) (statusParser sn) (r^.stdout)
+    ExecSucc r -> Just . Service sn
+                  <$> parseExecResult (ExecSucc r) (statusParser sn) (r^.stdout)
 
 
 statusParser :: String -> Parsec String String

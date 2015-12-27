@@ -19,6 +19,7 @@ where
 
 
 import Control.Lens hiding (set, noneOf)
+import Control.Monad (zipWithM)
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.List as L
 import Data.Maybe (catMaybes)
@@ -44,17 +45,20 @@ get =
     Nothing -> $craftError $ hostsfp ++ " not found!"
     Just f  -> case f ^. File.content of
                  Nothing -> $craftError $ hostsfp ++ " not found!"
-                 Just bs -> return . parse $ B8.unpack bs
+                 Just bs -> parse $ B8.unpack bs
 
 
-parse :: String -> Hosts
-parse = Hosts . catMaybes . zipWith parseLine [1..] . lines
+parse :: String -> Craft Hosts
+parse s = do
+  r <- zipWithM parseLine [1..] $ lines s
+  return . Hosts $ catMaybes r
 
 
 instance Craftable Hosts where
   watchCraft hosts = do
     (w, f) <- watchCraft $ toFile hosts
-    return (w, fromFile f)
+    r <- fromFile f
+    return (w, r)
 
 
 showConfigs :: Configs -> String
@@ -65,10 +69,10 @@ toFile :: Hosts -> File
 toFile (Hosts cfgs) = File.file hostsfp & File.strContent .~ showConfigs cfgs
 
 
-fromFile :: File -> Hosts
+fromFile :: File -> Craft Hosts
 fromFile f =
   case f ^. File.content of
-    Nothing -> Hosts []
+    Nothing -> return $ Hosts []
     Just c  -> parse $ B8.unpack c
 
 

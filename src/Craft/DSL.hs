@@ -54,12 +54,12 @@ readSourceFile fp = do
 
 
 -- | better than grep
-parseExecResult :: ExecResult -> Parsec String a -> String -> a
+parseExecResult :: ExecResult -> Parsec String a -> String -> Craft a
 parseExecResult execr parser str =
   case parse parser (showProc $ execResultProc execr) str of
-    Right x -> x
+    Right x -> return x
     Left err ->
-      error $ concatMap appendNL
+      $craftError $ concatMap appendNL
         [ "parseExecResult error:"
         , "<<<< process >>>>"
         , showProc $ execResultProc execr
@@ -107,15 +107,6 @@ withEnvVar name val go = do
 isExecSucc :: ExecResult -> Bool
 isExecSucc (ExecSucc _) = True
 isExecSucc (ExecFail _) = False
-
-
-errorOnFail :: Getter ExecResult SuccResult
-errorOnFail = to justdoit
- where
-  justdoit (ExecSucc r) = r
-  justdoit (ExecFail r) = error $ show r
-
-
 
 
 -- | Free CraftDSL functions

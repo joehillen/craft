@@ -37,8 +37,8 @@ get pn = do
   r <- withPath ["/usr/local/bin", "/usr/bin"] $ exec "pip" ["show", pn]
   case r of
     ExecFail _     -> return Nothing
-    ExecSucc succr ->
-      let results = parseExecResult r pipShowParser (succr ^. stdout) in
+    ExecSucc succr -> do
+      results <- parseExecResult r pipShowParser (succr ^. stdout)
       if null results then
         return Nothing
       else case lookup "Version" results of

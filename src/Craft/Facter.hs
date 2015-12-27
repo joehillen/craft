@@ -10,8 +10,8 @@ setup = craft_ $ package "facter"
 
 fact :: String -> Craft String
 fact f = do
-  r <- exec "/usr/bin/facter" [f]
-  return $ r ^. errorOnFail . stdout . to rmTrailingNL
+  r <- $errorOnFail =<< exec "/usr/bin/facter" [f]
+  return $ r ^. stdout . to rmTrailingNL
 
 
 rmTrailingNL :: String -> String
