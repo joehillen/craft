@@ -141,36 +141,36 @@ instance Craftable Repo where
                                  r ver ver'
 
             _ -> return ()
+        checkoutCommit :: Craft Version
+        checkoutCommit = do
+          setURL $ url r
+          git "fetch" [origin]
+          git "checkout" ["--force", show ver]
+          git "reset" ["--hard"]
+          ver' <- getVersion
+          verify ver'
+          return ver'
     Directory.get dp >>= \case
       Nothing -> do
         case depth r of
           Nothing -> git "clone" [url r, dp]
           Just d  -> git "clone" ["--depth", show d, url r, dp]
         Directory.get dp >>= \case
-          Nothing -> error $ "craft Git.Repo `" ++ show r ++ "` failed! "
-                          ++ "Clone Failed. Directory `" ++ dp ++ "` not found."
+          Nothing ->
+            $craftError $ "craft Git.Repo `" ++ show r ++ "` failed! "
+                       ++ "Clone Failed. Directory `" ++ dp ++ "` not found."
           Just dir ->
             withCWD dir $ do
-              setURL (url r)
-              git "fetch" [origin]
-              git "checkout" ["--force", show ver]
-              git "reset" ["--hard"]
-              ver' <- getVersion
-              verify ver'
+              ver' <- checkoutCommit
               return (Created, r { version = ver' })
 
       Just dir ->
         withCWD dir $ do
           !beforeVersion <- getVersion
-          setURL (url r)
-          git "fetch" [origin]
-          git "checkout" ["--force", show ver]
-          git "reset" ["--hard"]
+          ver' <- checkoutCommit
           case ver of
             Latest branchName -> git "pull" [origin, branchName]
             _                 -> return ()
-          !ver' <- getVersion
-          verify ver'
           return ( if beforeVersion == ver' then Unchanged
                                             else Updated
                 , r { version = ver' })

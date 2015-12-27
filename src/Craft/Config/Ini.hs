@@ -18,10 +18,6 @@ import Craft.User (UserID)
 import Craft.Group (GroupID)
 
 
-instance Eq Ini where
-  a == b = show a == show b
-
-
 data Config
   = Config
     { _path    :: FilePath
@@ -30,7 +26,7 @@ data Config
     , _groupID :: GroupID
     , _configs :: Ini
     }
-    deriving (Show, Eq)
+    deriving (Show)
 makeLenses ''Config
 
 
@@ -44,20 +40,21 @@ config fp cfgs = let f = File.file fp
                            }
 
 
-configFromFile :: File -> Config
-configFromFile f =
-  Config { _path    = f ^. File.path
-         , _mode    = f ^. File.mode
-         , _ownerID = f ^. File.ownerID
-         , _groupID = f ^. File.groupID
-         , _configs =
-             case f ^. File.content of
-               Nothing -> error $ "Unmanaged Ini config: " ++ f ^. File.path
-               Just bs -> case parseIni (decodeUtf8 bs) of
-                            Left err -> error $ "Failed to parse "
-                                                ++ f ^. File.path ++ " : " ++ err
-                            Right x  -> x
-         }
+configFromFile :: File -> Craft Config
+configFromFile f = do
+  cfgs <- case f ^. File.content of
+            Nothing -> $craftError $ "Unmanaged Ini config: " ++ f ^. File.path
+            Just bs -> case parseIni (decodeUtf8 bs) of
+                         Left err ->
+                           $craftError $ "Failed to parse "
+                                       ++ f ^. File.path ++ ": " ++ err
+                         Right x  -> return x
+  return Config { _path    = f ^. File.path
+                , _mode    = f ^. File.mode
+                , _ownerID = f ^. File.ownerID
+                , _groupID = f ^. File.groupID
+                , _configs = cfgs
+                }
 
 
 fileFromConfig :: Config -> File
@@ -71,13 +68,17 @@ fileFromConfig cfg =
 
 
 get :: FilePath -> Craft (Maybe Config)
-get fp = fmap configFromFile <$> File.get fp
+get fp =
+  File.get fp >>= \case
+    Nothing -> return Nothing
+    Just f  -> Just <$> configFromFile f
 
 
 instance Craftable Config where
   watchCraft cfg = do
     (w, f) <- watchCraft $ fileFromConfig cfg
-    return (w, configFromFile f)
+    r <- configFromFile f
+    return (w, r)
 
 {-
 instance Destroyable Config where

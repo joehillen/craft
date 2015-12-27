@@ -46,20 +46,21 @@ config fp cfgs = let f = File.file fp
                            }
 
 
-configFromFile :: FromJSON cfgs => File -> Config cfgs
-configFromFile f =
-  Config { path    = f ^. File.path
-         , mode    = f ^. File.mode
-         , ownerID = f ^. File.ownerID
-         , groupID = f ^. File.groupID
-         , configs =
-             case f ^. File.content of
-               Nothing -> error $ "Unmanaged Yaml config: " ++ f ^. File.path
-               Just bs -> case eitherDecodeStrict bs of
-                            Left err -> error $ "Failed to parse "
-                                              ++ f ^. File.path ++ " : " ++ err
-                            Right x  -> x
-         }
+configFromFile :: FromJSON cfgs => File -> Craft (Config cfgs)
+configFromFile f = do
+  cfgs <- case f ^. File.content of
+            Nothing -> $craftError $ "Unmanaged Yaml config: " ++ f ^. File.path
+            Just bs -> case eitherDecodeStrict bs of
+                        Left err ->
+                          $craftError $ "Failed to parse "
+                                      ++ f ^. File.path ++ " : " ++ err
+                        Right x  -> return x
+  return Config { path    = f ^. File.path
+                , mode    = f ^. File.mode
+                , ownerID = f ^. File.ownerID
+                , groupID = f ^. File.groupID
+                , configs = cfgs
+                }
 
 
 fileFromConfig :: ToJSON cfgs => Config cfgs -> File
@@ -71,7 +72,10 @@ fileFromConfig cfg =
 
 
 get :: (FromJSON cfgs) => FilePath -> Craft (Maybe (Config cfgs))
-get fp = fmap configFromFile <$> File.get fp
+get fp =
+  File.get fp >>= \case
+    Nothing -> return Nothing
+    Just f  -> Just <$> configFromFile f
 
 
 instance (Eq cfg, ToJSON cfg, FromJSON cfg) => Craftable (Config cfg) where

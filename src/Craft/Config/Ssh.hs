@@ -51,21 +51,23 @@ instance Show Config where
            "}"
 
 
-config :: FilePath -> [Section] -> Config
-config fp cfgs = (configFromFile $ File.file fp) { configs = cfgs }
+config :: FilePath -> [Section] -> Craft Config
+config fp cfgs = do
+  f <- configFromFile $ File.file fp
+  return f { configs = cfgs }
 
 
-configFromFile :: File -> Config
-configFromFile f =
-  Config { path    = f ^. File.path
-         , mode    = f ^. File.mode
-         , ownerID = f ^. File.ownerID
-         , groupID = f ^. File.groupID
-         , configs = case f ^. File.content of
-                       Nothing -> []
-                       Just bs -> Craft.Config.Ssh.parse (f ^. File.path)
-                                                         (B8.unpack bs)
-         }
+configFromFile :: File -> Craft Config
+configFromFile f = do
+  cfgs <- case f ^. File.content of
+            Nothing -> return []
+            Just bs -> Craft.Config.Ssh.parse (f ^. File.path) (B8.unpack bs)
+  return Config { path    = f ^. File.path
+                , mode    = f ^. File.mode
+                , ownerID = f ^. File.ownerID
+                , groupID = f ^. File.groupID
+                , configs = cfgs
+                }
 
 fileFromConfig :: Config -> File
 fileFromConfig cfg =
@@ -77,7 +79,10 @@ fileFromConfig cfg =
 
 
 get :: FilePath -> Craft (Maybe Config)
-get fp = fmap configFromFile <$> File.get fp
+get fp =
+  File.get fp >>= \case
+    Nothing -> return Nothing
+    Just f  -> Just <$> configFromFile f
 
 
 data Section
@@ -122,11 +127,11 @@ instance Craftable UserConfig where
     return (w, cfg)
 
 
-parse :: String -> String -> [Section]
+parse :: String -> String -> Craft [Section]
 parse fp s =
   case runParser parser fp s of
-    Left err       -> error $ show err
-    Right sections -> sections
+    Left err       -> $craftError $ show err
+    Right sections -> return sections
 
 
 instance Show UserConfig where
@@ -146,7 +151,7 @@ parseTitle :: Parsec String (String, String)
 parseTitle = do
   space
   type' <- try (string' "host") <|> string' "match"
-  void $ spaceChar
+  void spaceChar
   notFollowedBy eol
   space
   name <- someTill anyChar eol
@@ -165,7 +170,7 @@ bodyLine = do
   notFollowedBy eol
   space
   val <- someTill anyChar (void eol <|> eof)
-  void $ optional $ (space <|> void (many eol))
+  void $ optional (space <|> void (many eol))
   return (name, trim val)
 
 
@@ -176,8 +181,7 @@ parseSection = do
   return $ case map toLower (fst title) of
     "host"  -> Host (snd title) body
     "match" -> Match (snd title) body
-    _       -> error $ "Craft.Config.Ssh.parse failed. " ++
-                       "This should be impossible."
+    _       -> error "Craft.Config.Ssh.parse failed. This should be impossible."
 
 
 parser :: Parsec String [Section]

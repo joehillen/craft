@@ -27,7 +27,7 @@ s3file path source =
 
 
 getS3Sum :: String -> Craft (Maybe String)
-getS3Sum = notImplemented "getS3Sum"
+getS3Sum url = $notImplemented "getS3Sum"
 
 -- getS3Sum :: String -> IO (Maybe String)
 -- getS3Sum url = do

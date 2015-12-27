@@ -47,20 +47,23 @@ instance Show Config where
            "}"
 
 
-config :: FilePath -> Configs -> Config
-config fp cfgs = (configFromFile $ File.file fp) { configs = cfgs }
+config :: FilePath -> Configs -> Craft Config
+config fp cfgs = do
+  f <- configFromFile $ File.file fp
+  return f { configs = cfgs }
 
 
-configFromFile :: File -> Config
-configFromFile f =
-  Config { path    = f ^. File.path
-         , mode    = f ^. File.mode
-         , ownerID = f ^. File.ownerID
-         , groupID = f ^. File.groupID
-         , configs = case f ^. File.content of
-                       Nothing -> M.empty
-                       Just bs -> parse (f ^. File.path) (B8.unpack bs)
-         }
+configFromFile :: File -> Craft Config
+configFromFile f = do
+  cfgs <- case f ^. File.content of
+            Nothing -> return M.empty
+            Just bs -> parse (f ^. File.path) (B8.unpack bs)
+  return Config { path    = f ^. File.path
+                , mode    = f ^. File.mode
+                , ownerID = f ^. File.ownerID
+                , groupID = f ^. File.groupID
+                , configs = cfgs
+                }
 
 fileFromConfig :: Config -> File
 fileFromConfig cfg =
@@ -71,7 +74,10 @@ fileFromConfig cfg =
 
 
 get :: FilePath -> Craft (Maybe Config)
-get fp = fmap configFromFile <$> File.get fp
+get fp =
+  File.get fp >>= \case
+    Nothing -> return Nothing
+    Just f  -> Just <$> configFromFile f
 
 
 instance Craftable Config where
@@ -112,8 +118,8 @@ item = do
   return (name, trim val)
 
 
-parse :: FilePath -> String -> Configs
+parse :: FilePath -> String -> Craft Configs
 parse fp s =
   case runParser parser fp s of
-    Left err   -> error $ show err
-    Right cfgs -> cfgs
+    Left err   -> $craftError $ show err
+    Right cfgs -> return cfgs

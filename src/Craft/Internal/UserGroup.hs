@@ -57,13 +57,12 @@ userFromName name =
   getent "passwd" name >>= \case
     ExecFail _ -> return Nothing
     ExecSucc r -> do
-      let (nameS, uid', gid', comment', home', shell') =
+      (nameS, uid', gid', comment', home', shell') <-
             parseGetent passwdParser "passwd" name (r ^. stdout)
       grp <- fromJust <$> groupFromID gid'
       grps <- getGroups nameS
       shadowResult <- $errorOnFail =<< getent "shadow" nameS
-      let passwordHash' = parseGetent shadowParser "shadow" nameS
-                            $ shadowResult ^. stdout
+      passwordHash' <- parseGetent shadowParser "shadow" nameS $ shadowResult ^. stdout
       return . Just
             $ User { username     = nameS
                     , uid          = uid'
@@ -84,11 +83,12 @@ getGroups name = do
 getent :: String -> String -> Craft ExecResult
 getent dbase key = exec "getent" [dbase, key]
 
-parseGetent :: Parsec String a -> String -> String -> String -> a
+
+parseGetent :: Parsec String a -> String -> String -> String -> Craft a
 parseGetent parser dbase key input =
   case parse parser (unwords ["getent", dbase, key]) input of
-    Left  err -> error $ show err
-    Right r   -> r
+    Left  err -> $craftError $ show err
+    Right r   -> return r
 
 
 userFromID :: UserID -> Craft (Maybe User)
@@ -124,13 +124,13 @@ instance Craftable User where
       Just user' -> do
         res <- mapM (\(cond, act) -> if cond then return True
                                              else act >> return False)
-                 [ (username user' == username user, notImplemented "set username")
-                 , (uid user' == uid user, notImplemented "set uid")
-                 , (groupname (group user') == groupname (group user), notImplemented "set group")
-                 , (groups user' == groups user, notImplemented "set groups")
-                 , (home user' == home user, notImplemented "set home")
-                 , (passwordHash user' == passwordHash user', notImplemented "set passwordHash")
-                 , (shell user' == shell user, notImplemented "set shell")
+                 [ (username user' == username user, $notImplemented "set username")
+                 , (uid user' == uid user, $notImplemented "set uid")
+                 , (groupname (group user') == groupname (group user), $notImplemented "set group")
+                 , (groups user' == groups user, $notImplemented "set groups")
+                 , (home user' == home user, $notImplemented "set home")
+                 , (passwordHash user' == passwordHash user', $notImplemented "set passwordHash")
+                 , (shell user' == shell user, $notImplemented "set shell")
                  ]
         if and res then
           return (Unchanged, user')
@@ -142,7 +142,7 @@ instance Craftable User where
               return (Updated, user'')
 
    where
-    verify user' user = notImplemented "verify User"
+    verify user' user = $notImplemented "verify User"
 
 
 type GroupName = String
@@ -170,9 +170,7 @@ groupFromName :: GroupName -> Craft (Maybe Group)
 groupFromName gname =
   getent "group" gname >>= \case
     ExecFail _ -> return Nothing
-    ExecSucc r -> return
-                  . Just
-                  $ parseGetent groupParser "group" gname $ r ^. stdout
+    ExecSucc r -> Just <$> parseGetent groupParser "group" gname (r ^. stdout)
 
 
 groupFromID :: GroupID -> Craft (Maybe Group)
@@ -181,7 +179,7 @@ groupFromID = groupFromName . show
 
 instance Craftable Group where
   watchCraft grp = do
-    notImplemented "craft Group"
+    $notImplemented "craft Group"
     -- groupFromName . groupname
     exec_ "/usr/sbin/groupadd" $ toArg "--gid" (gid grp) ++ [(groupname grp)]
     exec_ "/usr/bin/gpasswd" ["--members", intercalate "," (members grp), (groupname grp)]

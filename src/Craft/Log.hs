@@ -35,7 +35,6 @@ OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 -}
 
-import Control.Lens (to)
 import qualified Data.ByteString as BS
 import qualified Control.Monad.Reader as R
 import Control.Monad.Free as Free
@@ -49,7 +48,11 @@ import Craft.Types
 
 -- |Log an error and throw a runtime exception
 craftError :: Q Exp
-craftError = [|\msg -> $(logError) msg >> error msg|]
+craftError = [|\m -> $(logError) m >> error m|]
+
+
+notImplemented :: Q Exp
+notImplemented = [|\m -> $craftError $ "Not Implemented! " ++ m |]
 
 
 errorOnFail :: Q Exp

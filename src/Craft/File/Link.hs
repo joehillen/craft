@@ -39,10 +39,11 @@ instance Craftable Link where
 
   craft_ l = do
     let lp = path l
-    exec_ "ln" ["-snf", (target l), (path l)]
+    exec_ "ln" ["-snf", target l, path l]
     readlink lp >>= \case
-      Nothing -> error $ "craft Link `" ++ lp ++ "` failed! Not Found."
+      Nothing -> $craftError $ "craft Link `" ++ lp ++ "` failed! Not Found."
       Just target' ->
         when (target' /= target l) $
-          error $ "craft Link `" ++ lp ++ "` failed! Wrong Target: " ++ target'
-                                                 ++" Expected: " ++ target l
+          $craftError $
+            "craft Link `" ++ lp ++ "` failed! Wrong Target: " ++ target'
+                                               ++" Expected: " ++ target l

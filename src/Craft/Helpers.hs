@@ -24,10 +24,6 @@ color c action = do
   return r
 
 
-notImplemented :: String -> a
-notImplemented m = error $ "ERROR: Not Implemented! " ++ m
-
-
 trimTrailing :: String -> String
 trimTrailing = reverse . dropWhile (`elem` ("\n\r\t " :: String)) . reverse
 
