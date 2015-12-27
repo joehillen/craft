@@ -88,7 +88,7 @@ noLogger :: Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 noLogger _ _ _ _ = return ()
 
 
-logF :: CraftEnv pm -> Loc -> LogSource -> LogLevel -> LogStr -> Free (CraftDSL pm) ()
+logF :: CraftEnv -> Loc -> LogSource -> LogLevel -> LogStr -> Free CraftDSL ()
 logF ce loc logsource level logstr = liftF $ Log ce loc logsource level logstr ()
 
 

@@ -12,12 +12,12 @@ import Craft.Run.Internal
 
 
 -- | runCraftLocal
-runCraftLocal :: CraftEnv pm -> ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a -> IO a
+runCraftLocal :: CraftEnv -> ReaderT CraftEnv (Free CraftDSL) a -> IO a
 runCraftLocal ce = iterM runCraftLocal' . flip runReaderT ce
 
 
 -- | runCraftLocal implementation
-runCraftLocal' :: CraftDSL pm (IO a) -> IO a
+runCraftLocal' :: CraftDSL (IO a) -> IO a
 runCraftLocal' (Exec ce command args next) =
   let p = localProc ce command args in execProc ce p next
 runCraftLocal' (Exec_ ce command args next) =
@@ -34,7 +34,7 @@ runCraftLocal' (Log ce loc logsource level logstr next) =
   in logger loc logsource level logstr >> next
 
 
-localProc :: CraftEnv pm -> Command -> Args -> CreateProcess
+localProc :: CraftEnv -> Command -> Args -> CreateProcess
 localProc ce prog args =
   (proc prog args)
     { env           = Just (ce ^. craftExecEnv)

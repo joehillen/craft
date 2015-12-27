@@ -33,7 +33,7 @@ isSuccess ExitSuccess     = True
 isSuccess (ExitFailure _) = False
 
 
-execProc :: CraftEnv pm -> CreateProcess -> (ExecResult -> IO a) -> IO a
+execProc :: CraftEnv -> CreateProcess -> (ExecResult -> IO a) -> IO a
 execProc ce p next = do
   let logger = ce ^. craftLogger
   logger defaultLoc "exec|process" LevelDebug $ toLogStr $ showProc p
@@ -45,7 +45,7 @@ execProc ce p next = do
            ExitFailure code -> ExecFail $ FailResult code stdout' stderr' p
 
 
-execProc_ :: CraftEnv pm -> String -> CreateProcess -> IO a -> IO a
+execProc_ :: CraftEnv -> String -> CreateProcess -> IO a -> IO a
 execProc_ ce src p next = do
   let p' = p { std_in  = CreatePipe
              , std_out = CreatePipe
@@ -75,7 +75,7 @@ trimNL = reverse . rmNL . reverse
   rmNL xs = xs
 
 
-findSourceFile :: CraftEnv pm -> FilePath -> IO FilePath
+findSourceFile :: CraftEnv -> FilePath -> IO FilePath
 findSourceFile ce name = do
   let fps = ce ^. craftSourcePaths
   files <- filterM (\fp -> doesFileExist $ fp </> name) fps
@@ -86,7 +86,7 @@ findSourceFile ce name = do
     return $ head files </> name
 
 
-readSourceFileIO :: CraftEnv pm -> FilePath -> IO ByteString
+readSourceFileIO :: CraftEnv -> FilePath -> IO ByteString
 readSourceFileIO ce name =
   BS.readFile =<< findSourceFile ce name
 

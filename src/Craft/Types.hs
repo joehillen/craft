@@ -13,6 +13,9 @@ import System.Process
 import Craft.Helpers
 
 
+type Craft a = ReaderT CraftEnv (Free CraftDSL) a
+
+
 type StdOut = String
 type StdErr = String
 type Args = [String]
@@ -26,14 +29,11 @@ data Watched
   | Removed
   deriving (Eq, Show)
 
-makePrisms ''Watched
-
 
 data SuccResult = SuccResult { _stdout   :: StdOut
                              , _stderr   :: StdErr
                              , _succProc :: CreateProcess
                              }
-makeLenses ''SuccResult
 
 
 data FailResult = FailResult { _exitcode   :: Int
@@ -41,9 +41,6 @@ data FailResult = FailResult { _exitcode   :: Int
                              , _failStderr :: StdErr
                              , _failProc   :: CreateProcess
                              }
-
-makeLenses ''FailResult
-
 
 data ExecResult = ExecFail FailResult | ExecSucc SuccResult
 
@@ -58,7 +55,6 @@ data Version
   | AnyVersion
   | Latest
   deriving (Show)
-makePrisms ''Version
 
 
 -- Note: This may or may not make sense.
@@ -78,44 +74,49 @@ data Package =
   , _pkgVersion :: Version
   }
   deriving (Eq, Show)
-makeLenses ''Package
 
 
-data CraftDSL pm next
-  = Exec  (CraftEnv pm) Command Args (ExecResult -> next)
-  | Exec_ (CraftEnv pm) Command Args next
-  | FileRead (CraftEnv pm) FilePath (ByteString -> next)
-  | FileWrite (CraftEnv pm) FilePath ByteString next
-  | SourceFile (CraftEnv pm) FilePath FilePath next
-  | ReadSourceFile (CraftEnv pm) FilePath (ByteString -> next)
-  | Log (CraftEnv pm) Loc LogSource LogLevel LogStr next
- deriving Functor
+data PackageManager
+ = PackageManager
+   { _pmGetter         :: PackageName -> Craft (Maybe Package)
+   , _pmInstaller      :: Package     -> Craft ()
+   , _pmUpgrader       :: Package     -> Craft ()
+   , _pmUninstaller    :: Package     -> Craft ()
+   , _pmMultiInstaller :: [Package]   -> Craft ()
+   }
 
 
-type Craft a = forall pm. PackageManager pm
-             => ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a
-
-
-
-class PackageManager pm where
-  pkgGetter      :: pm -> PackageName -> Craft (Maybe Package)
-  installer      :: pm -> Package     -> Craft ()
-  upgrader       :: pm -> Package     -> Craft ()
-  uninstaller    :: pm -> Package     -> Craft ()
-  multiInstaller :: pm -> [Package]   -> Craft ()
-
-type LogFunc = Loc -> LogSource -> LogLevel -> LogStr -> IO ()
-
-
-data CraftEnv pm
+data CraftEnv
   = CraftEnv
-    { _craftPackageManager :: PackageManager pm => pm
+    { _craftPackageManager :: PackageManager
     , _craftSourcePaths    :: [FilePath]
     , _craftExecEnv        :: ExecEnv
     , _craftExecCWD        :: FilePath
     , _craftLogger         :: LogFunc
     }
+
+
+data CraftDSL next
+  = Exec  CraftEnv Command Args (ExecResult -> next)
+  | Exec_ CraftEnv Command Args next
+  | FileRead CraftEnv FilePath (ByteString -> next)
+  | FileWrite CraftEnv FilePath ByteString next
+  | SourceFile CraftEnv FilePath FilePath next
+  | ReadSourceFile CraftEnv FilePath (ByteString -> next)
+  | Log CraftEnv Loc LogSource LogLevel LogStr next
+ deriving Functor
+
+
+type LogFunc = Loc -> LogSource -> LogLevel -> LogStr -> IO ()
+
+
+makeLenses ''PackageManager
 makeLenses ''CraftEnv
+makePrisms ''Watched
+makeLenses ''Package
+makePrisms ''Version
+makeLenses ''FailResult
+makeLenses ''SuccResult
 
 
 class Craftable a where
@@ -198,17 +199,6 @@ package n = Package n AnyVersion
 latest :: PackageName -> Package
 latest n = Package n Latest
 
-data NoPackageManager = NoPackageManager
-
-instance PackageManager NoPackageManager where
-  pkgGetter      _ _ = noPMerror
-  installer      _ _ = noPMerror
-  upgrader       _ _ = noPMerror
-  uninstaller    _ _ = noPMerror
-  multiInstaller _ _ = noPMerror
-
-noPMerror :: a
-noPMerror = error "NoPackageManager"
 
 instance Craftable Package where
   watchCraft pkg = do
@@ -216,9 +206,9 @@ instance Craftable Package where
     let pm = ce ^. craftPackageManager
         name = pkg ^. pkgName
         ver  = pkg ^. pkgVersion
-        get  = pkgGetter pm name
-        install = installer pm pkg
-        upgrade = upgrader pm pkg
+        get  = (pm ^. pmGetter) name
+        install = (pm ^. pmInstaller) pkg
+        upgrade = (pm ^. pmUpgrader) pkg
         error' str = error $ "craft Package `" ++ name ++ "` failed! " ++ str
         notFound = error' "Not Found."
         wrongVersion got = error' $ "Wrong Version: " ++ show got
@@ -273,11 +263,11 @@ instance Destroyable Package where
     ce <- ask
     let pm   = ce ^. craftPackageManager
         name = pkg ^. pkgName
-        get  = pkgGetter pm name
+        get  = (pm ^. pmGetter) name
     get >>= \case
       Nothing -> return (Unchanged, Nothing)
       Just pkg' -> do
-        uninstaller pm pkg
+        (pm ^. pmUninstaller) pkg
         get >>= \case
           Nothing -> return (Removed, Just pkg')
           Just pkg'' -> error $ "destroy Package `" ++ name ++ "` failed! "

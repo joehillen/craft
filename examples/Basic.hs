@@ -10,9 +10,9 @@ import           Data.Maybe
 
 import           Craft
 import           Craft.Hostname (Hostname(..))
-import           Craft.Apt (Apt(..))
+import           Craft.Apt (apt)
 import qualified Craft.Apt as Apt
-import           Craft.Directory (Directory(..), directory)
+import           Craft.Directory (directory)
 import qualified Craft.Directory as Dir
 import           Craft.File (File(..), file)
 import qualified Craft.File as File
@@ -27,14 +27,12 @@ import           Craft.Run.Vagrant
 
 main :: IO ()
 main =
-  runCraftVagrant
-    (craftEnv { craftPackageManager = Apt
-              }) $ do
-      craft_ $ Hostname "craft-example-basic"
-      Apt.update
-      Pip.setup
-      void addAdmins
-      packages
+  runCraftVagrant (craftEnv apt) $ do
+    craft_ $ Hostname "craft-example-basic"
+    Apt.update
+    Pip.setup
+    void addAdmins
+    packages
 
 
 bash,zsh :: FilePath

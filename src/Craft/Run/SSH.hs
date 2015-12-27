@@ -53,7 +53,7 @@ newSSHSession = do
 
 
 -- | runCraftSSH
-runCraftSSH :: PackageManager pm => SSHEnv -> CraftEnv pm -> ReaderT (CraftEnv pm) (Free (CraftDSL pm)) a -> IO a
+runCraftSSH :: SSHEnv -> CraftEnv -> ReaderT CraftEnv (Free CraftDSL) a -> IO a
 runCraftSSH sshenv ce prog = do
   sshSession <- newSSHSession
   let controlpath = sshControlPath sshSession
@@ -64,7 +64,7 @@ runCraftSSH sshenv ce prog = do
 
 
 -- | runCraftSSH implementation
-runCraftSSH' :: PackageManager pm => SSHEnv -> SSHSession -> (CraftDSL pm) (IO a) -> IO a
+runCraftSSH' :: SSHEnv -> SSHSession -> CraftDSL (IO a) -> IO a
 runCraftSSH' sshenv sshsession (Exec ce command args next) = do
   let p = sshProc sshenv sshsession ce command args
   execProc ce p next
@@ -126,7 +126,7 @@ sshArgs SSHEnv{..} SSHSession{..} =
   ,"-o", "BatchMode=yes" -- never prompt for a password
   ]
 
-sshProc :: SSHEnv -> SSHSession -> CraftEnv pm -> Command -> Args -> CreateProcess
+sshProc :: SSHEnv -> SSHSession -> CraftEnv -> Command -> Args -> CreateProcess
 sshProc sshenv sshsession ce command args =
   proc "ssh" (sshArgs sshenv sshsession
               ++ [ sshUser sshenv ++ "@" ++ sshAddr sshenv

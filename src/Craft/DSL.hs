@@ -70,7 +70,7 @@ parseExecResult execr parser str =
         ]
 
 
-craftExecPath :: CraftEnv a -> [FilePath]
+craftExecPath :: CraftEnv -> [FilePath]
 craftExecPath = maybe [] (splitOn ":") . lookup "PATH" . view craftExecEnv
 
 
@@ -110,25 +110,25 @@ isExecSucc (ExecFail _) = False
 
 
 -- | Free CraftDSL functions
-execF :: CraftEnv pm  -> Command -> Args -> Free (CraftDSL pm) ExecResult
+execF :: CraftEnv -> Command -> Args -> Free CraftDSL ExecResult
 execF ce cmd args = liftF $ Exec ce cmd args id
 
 
-execF_ :: CraftEnv pm -> Command -> Args -> Free (CraftDSL pm) ()
+execF_ :: CraftEnv -> Command -> Args -> Free CraftDSL ()
 execF_ ce cmd args = liftF $ Exec_ ce cmd args ()
 
 
-fileReadF :: CraftEnv pm -> FilePath -> Free (CraftDSL pm) BS.ByteString
+fileReadF :: CraftEnv -> FilePath -> Free CraftDSL BS.ByteString
 fileReadF ce fp = liftF $ FileRead ce fp id
 
 
-fileWriteF :: CraftEnv pm -> FilePath -> BS.ByteString -> Free (CraftDSL pm) ()
+fileWriteF :: CraftEnv -> FilePath -> BS.ByteString -> Free CraftDSL ()
 fileWriteF ce fp content = liftF $ FileWrite ce fp content ()
 
 
-sourceFileF :: CraftEnv pm -> FilePath -> FilePath -> Free (CraftDSL pm) ()
+sourceFileF :: CraftEnv -> FilePath -> FilePath -> Free CraftDSL ()
 sourceFileF ce src dest = liftF $ SourceFile ce src dest ()
 
 
-readSourceFileF :: CraftEnv pm -> FilePath -> Free (CraftDSL pm) BS.ByteString
+readSourceFileF :: CraftEnv -> FilePath -> Free CraftDSL BS.ByteString
 readSourceFileF ce fp = liftF $ ReadSourceFile ce fp id

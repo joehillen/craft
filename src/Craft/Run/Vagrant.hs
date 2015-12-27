@@ -8,11 +8,12 @@ import qualified System.Environment
 import qualified System.Directory
 import Data.Maybe (fromMaybe)
 
-runCraftVagrant :: PackageManager pm => CraftEnv pm -> Craft a -> IO a
+runCraftVagrant :: CraftEnv -> Craft a -> IO a
 runCraftVagrant env configs = do
   sysEnv <- System.Environment.getEnvironment
   cwd <- System.Directory.getCurrentDirectory
-  sections <- runCraftLocal (craftEnv & craftExecEnv .~ sysEnv
+  sections <- runCraftLocal (craftEnv (env ^. craftPackageManager)
+                                      & craftExecEnv .~ sysEnv
                                       & craftExecCWD .~ cwd
                                       ) $ do
     r <- exec "vagrant" ["ssh-config"]

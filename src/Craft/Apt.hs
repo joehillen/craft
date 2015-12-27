@@ -1,6 +1,5 @@
 module Craft.Apt where
 
-import Control.Lens
 import Craft
 import Craft.File (File)
 import qualified Craft.File as File
@@ -14,16 +13,15 @@ import Data.String.Utils (replace)
 import Formatting
 
 
-data Apt = Apt
-  deriving (Eq, Show)
-
-
-instance PackageManager Apt where
-  pkgGetter      _ = getAptPackage
-  installer      _ = aptInstall
-  upgrader       _ = aptInstall
-  uninstaller    _ = aptRemove
-  multiInstaller _ = aptMultiInstaller
+apt :: PackageManager
+apt =
+  PackageManager
+  { _pmGetter         = getAptPackage
+  , _pmInstaller      = aptInstall
+  , _pmUpgrader       = aptInstall
+  , _pmUninstaller    = aptRemove
+  , _pmMultiInstaller = aptMultiInstaller
+  }
 
 
 aptMultiInstaller :: [Package] -> Craft ()
