@@ -3,82 +3,48 @@ module Craft.Config.Ssh where
 import Control.Lens
 import           Data.Char (toLower)
 import           Data.Maybe (catMaybes)
-import qualified Data.ByteString.Char8 as B8
 import           Text.Megaparsec
 
-import           Craft
+import Craft
+import Craft.Config
 import qualified Craft.Directory as Directory
-import           Craft.File (File, file)
+import           Craft.File (file)
 import qualified Craft.File as File
 import           Craft.File.Mode
 import           Craft.Internal.Helpers
 import           Craft.Ssh
-import           Craft.User (User, UserID)
+import           Craft.User (User)
 import qualified Craft.User as User
-import           Craft.Group (GroupID)
 import qualified Craft.Group as Group
+
+
+newtype SshConfig = SshConfig { _sshfmt :: Sections }
+  deriving Eq
+
+
+instance Show SshConfig where
+  show sshcfg = unlines . map show $ _sshfmt sshcfg
+
+
+instance ConfigFormat SshConfig where
+  showConfig = show
+  parse = sshConfigParse
 
 
 data UserConfig
   = UserConfig
     { user        :: User
-    , userConfigs :: [Section]
+    , userConfigs :: SshConfig
     }
   deriving Eq
+
 
 
 userPath :: UserConfig -> FilePath
 userPath UserConfig{..} = userDir user ^. Directory.path </> "config"
 
-data Config
-  = Config
-    { path    :: FilePath
-    , mode    :: Mode
-    , ownerID :: UserID
-    , groupID :: GroupID
-    , configs :: [Section]
-    }
-    deriving (Eq)
 
-
-instance Show Config where
-  show f = "Ssh.Config " ++
-           "{ path = " ++ show (path f) ++
-           ", mode = " ++ show (mode f) ++
-           ", ownerID = " ++ show (ownerID f) ++
-           ", groupID = " ++ show (groupID f) ++
-           ", configs = \"" ++ show (configs f) ++ "\"" ++
-           "}"
-
-
-config :: FilePath -> [Section] -> Craft Config
-config fp cfgs = do
-  f <- configFromFile $ File.file fp
-  return f { configs = cfgs }
-
-
-configFromFile :: File -> Craft Config
-configFromFile f = do
-  cfgs <- case f ^. File.content of
-            Nothing -> return []
-            Just bs -> Craft.Config.Ssh.parse (f ^. File.path) (B8.unpack bs)
-  return Config { path    = f ^. File.path
-                , mode    = f ^. File.mode
-                , ownerID = f ^. File.ownerID
-                , groupID = f ^. File.groupID
-                , configs = cfgs
-                }
-
-fileFromConfig :: Config -> File
-fileFromConfig cfg =
-  File.file (path cfg) & File.mode    .~ mode cfg
-                       & File.ownerID .~ ownerID cfg
-                       & File.groupID .~ groupID cfg
-                       & File.strContent .~ show (configs cfg)
-
-
-
-get :: FilePath -> Craft (Maybe Config)
+get :: FilePath -> Craft (Maybe (Config SshConfig))
 get fp =
   File.get fp >>= \case
     Nothing -> return Nothing
@@ -102,8 +68,8 @@ bodyLookup key body =
   lookup (map toLower key) $ map ((,) <$> map toLower . fst <*> snd) body
 
 
-cfgLookup :: String -> String -> Sections -> Maybe String
-cfgLookup sectionName key sections' =
+cfgLookup :: String -> String -> SshConfig -> Maybe String
+cfgLookup sectionName key (SshConfig sections') =
   case body of
     Just b -> bodyLookup key b
     Nothing -> Nothing
@@ -127,15 +93,15 @@ instance Craftable UserConfig where
     return (w, cfg)
 
 
-parse :: String -> String -> Craft [Section]
-parse fp s =
+sshConfigParse :: FilePath -> String -> Craft SshConfig
+sshConfigParse fp s =
   case runParser parser fp s of
-    Left err       -> $craftError $ show err
-    Right sections -> return sections
+    Left err   -> $craftError $ show err
+    Right secs -> return $ SshConfig secs
 
 
 instance Show UserConfig where
-  show UserConfig{..} = unlines $ fmap show userConfigs
+  show UserConfig{..} = show userConfigs
 
 
 showBody :: Body -> String
@@ -184,5 +150,8 @@ parseSection = do
     _       -> error "Craft.Config.Ssh.parse failed. This should be impossible."
 
 
-parser :: Parsec String [Section]
+parser :: Parsec String Sections
 parser = some parseSection
+
+
+makeLenses ''SshConfig

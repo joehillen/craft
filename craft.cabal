@@ -52,8 +52,9 @@ library
                      , Craft.Types
                      , Craft.Upstart
                      , Craft.User
+                     , Craft.Config
                      , Craft.Config.Ini
-                     , Craft.Config.ShellFormat
+                     , Craft.Config.Shell
                      , Craft.Config.Ssh
                      , Craft.Config.Yaml
                      , Craft.Config.Json

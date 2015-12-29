@@ -12,24 +12,24 @@ runCraftVagrant :: CraftEnv -> Craft a -> IO a
 runCraftVagrant env configs = do
   sysEnv <- System.Environment.getEnvironment
   cwd <- System.Directory.getCurrentDirectory
-  sections <- runCraftLocal (craftEnv (env ^. craftPackageManager)
-                                      & craftExecEnv .~ sysEnv
-                                      & craftExecCWD .~ cwd
-                                      ) $ do
+  sshcfg <- runCraftLocal (craftEnv (env ^. craftPackageManager)
+                                    & craftExecEnv .~ sysEnv
+                                    & craftExecCWD .~ cwd
+                                    ) $ do
     r <- exec "vagrant" ["ssh-config"]
     success <- $errorOnFail r
-    parseExecResult r parser $ success ^. stdout
+    SshConfig <$> parseExecResult r parser (success ^. stdout)
 
   runCraftSSH
-    (sshEnv (cfgLookupOrError "hostname" sections)
-            (cfgLookupOrError "identityfile" sections)
-            & sshUser .~ cfgLookupOrError "user" sections
+    (sshEnv (cfgLookupOrError "hostname" sshcfg)
+            (cfgLookupOrError "identityfile" sshcfg)
+            & sshUser .~ cfgLookupOrError "user" sshcfg
             & sshSudo .~ True)
     env
     configs
 
-cfgLookupOrError :: String -> Sections -> String
-cfgLookupOrError name sections =
+cfgLookupOrError :: String -> SshConfig -> String
+cfgLookupOrError name sshcfg =
   fromMaybe
     (error $ "'" ++ name ++ "' not found in output of 'vagrant ssh-config'")
-    (cfgLookup "default" name sections)
+    (cfgLookup "default" name sshcfg)
