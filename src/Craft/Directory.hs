@@ -67,9 +67,9 @@ directory dp =
 
 
 multiple :: [Path] -> Mode -> User -> Group -> [Directory]
-multiple paths mode owner' group' = map go paths
+multiple paths mode' owner' group' = map go paths
  where
-  go path = Directory path mode (User.uid owner') (Group.gid group')
+  go path = Directory path mode' (owner' ^. User.uid) (group' ^. Group.gid)
 
 
 multipleRootOwned :: [Path] -> Mode -> [Directory]

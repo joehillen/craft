@@ -1,10 +1,13 @@
 module Craft.Group
 ( module Craft.Group
 , Group(..)
+, gid
+, members
 , GroupID
 )
 where
 
+import Control.Lens
 import           Data.List (intercalate)
 
 import           Craft.Internal
@@ -13,7 +16,7 @@ import           Craft.Internal.UserGroup
 
 type Name = GroupName
 
-name :: Group -> Name
+name :: Lens' Group String
 name = groupname
 
 data Options =

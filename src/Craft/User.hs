@@ -3,24 +3,39 @@ module Craft.User
 ( module Craft.User
 , User(..)
 , UserID
+, username
+, uid
+, comment
+, group
+, groups
+, home
+, passwordHash
+, shell
 )
 where
 
-import           Control.Lens
-import           Control.Monad (when, unless)
+import           Control.Lens hiding (un)
 import qualified Data.Set as S
 import           Data.List (intercalate)
 
 import           Craft.Internal
 import           Craft.Internal.Helpers
 import qualified Craft.Group as Group
-import           Craft.Internal.UserGroup
+import           Craft.Internal.UserGroup hiding (gid)
+import qualified Craft.Internal.UserGroup as UG
 import Formatting
+
 
 type Name = UserName
 
-name :: User -> Name
+
+name :: Lens' User Name
 name = username
+
+
+gid :: Lens' User GroupID
+gid = group . UG.gid
+
 
 data Options =
   Options
@@ -80,25 +95,31 @@ opts =
   , optSystem     = False
   }
 
+
 userMod :: UserName -> [String] -> Craft ()
 userMod un args =
   exec_ "/usr/sbin/usermod" $ args ++ [un]
 
+
 getUID :: UserName -> Craft (Maybe UserID)
 getUID "root" = return . Just $ 0
-getUID un = do
+getUID un =
   exec "/usr/bin/id" ["--user", un] >>= \case
     ExecSucc r -> return . Just . read $ r ^. stdout
     ExecFail _ -> return Nothing
 
+
 setUID :: UserName -> UserID -> Craft ()
-setUID un uid = userMod un ["--uid", show uid]
+setUID un uid' = userMod un ["--uid", show uid']
+
 
 setShell :: UserName -> FilePath -> Craft ()
-setShell un shell = userMod un ["--shell", shell]
+setShell un shell' = userMod un ["--shell", shell']
+
 
 setComment :: UserName -> String -> Craft ()
-setComment un comment = userMod un ["--comment", comment]
+setComment un comment' = userMod un ["--comment", comment']
+
 
 setGroup :: UserName -> GroupName -> Craft ()
 setGroup un gn =
@@ -107,7 +128,7 @@ setGroup un gn =
       $craftError
       $ formatToString ("setGroup `"%string%"` `"%string%"` failed. Group `"%string%"` not found!")
                        un gn gn
-    Just g  -> userMod un ["--gid", show $ gid g]
+    Just g  -> userMod un ["--gid", show $ g ^. UG.gid]
 
 setGroups :: UserName -> [GroupName] -> Craft ()
 setGroups _  []  = return ()
@@ -127,22 +148,22 @@ createUser un uopts@Options{..} = do
   case user' of
     Nothing   -> notfound
     Just user -> do
-      handleOpt optUID (uid user) $
+      handleOpt optUID (user ^. uid) $
         setUID un
 
-      when (optComment /= comment user) $
+      when (optComment /= user ^. comment) $
         setComment un optComment
 
-      handleOpt optGroup (groupname . group $ user) $
+      handleOpt optGroup (user ^. group . groupname) $
         setGroup un
 
-      handleOpt optHome (home user) $
+      handleOpt optHome (user ^. home) $
         setHome un
 
-      unless (sameElems optGroups $ groups user) $
+      unless (sameElems optGroups $ user ^. groups) $
         setGroups un optGroups
 
-      handleOpt optShell (shell user) $
+      handleOpt optShell (user ^. shell) $
         setShell un
 
       --TODO: setPassword, setSalt
@@ -178,7 +199,7 @@ createUser' un Options{..} = do
       Nothing -> $craftError $
         "Failed to create User `" ++ un ++ "` "
         ++ "with group `" ++ gn ++ "`. Group not found!"
-      Just g -> return $ toArg "--gid" $ Group.gid g
+      Just g -> return $ toArg "--gid" $ g ^. Group.gid
   groupsArg = toArg "--groups" $ intercalate "," optGroups
   optsToArgs =
     concat

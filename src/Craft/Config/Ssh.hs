@@ -17,40 +17,6 @@ import           Craft.User (User)
 import qualified Craft.User as User
 import qualified Craft.Group as Group
 
-
-newtype SshConfig = SshConfig { _sshfmt :: Sections }
-  deriving Eq
-
-
-instance Show SshConfig where
-  show sshcfg = unlines . map show $ _sshfmt sshcfg
-
-
-instance ConfigFormat SshConfig where
-  showConfig = show
-  parse = sshConfigParse
-
-
-data UserConfig
-  = UserConfig
-    { user        :: User
-    , userConfigs :: SshConfig
-    }
-  deriving Eq
-
-
-
-userPath :: UserConfig -> FilePath
-userPath UserConfig{..} = userDir user ^. Directory.path </> "config"
-
-
-get :: FilePath -> Craft (Maybe (Config SshConfig))
-get fp =
-  File.get fp >>= \case
-    Nothing -> return Nothing
-    Just f  -> Just <$> configFromFile f
-
-
 data Section
   = Host  String Body
   | Match String Body
@@ -61,6 +27,39 @@ type Sections = [Section]
 
 
 type Body = [(String, String)]
+
+
+newtype SshConfig = SshConfig { _sshfmt :: Sections }
+  deriving Eq
+
+
+instance Show SshConfig where
+  show sshcfg = unlines . map show $ _sshfmt sshcfg
+
+
+data UserConfig
+  = UserConfig
+    { _user        :: User
+    , _userConfigs :: SshConfig
+    }
+  deriving Eq
+makeLenses ''SshConfig
+makeLenses ''UserConfig
+
+instance ConfigFormat SshConfig where
+  showConfig = show
+  parse = sshConfigParse
+
+
+userPath :: UserConfig -> FilePath
+userPath uc = userDir (uc ^. user) ^. Directory.path </> "config"
+
+
+get :: FilePath -> Craft (Maybe (Config SshConfig))
+get fp =
+  File.get fp >>= \case
+    Nothing -> return Nothing
+    Just f  -> Just <$> configFromFile f
 
 
 bodyLookup :: String -> Body -> Maybe String
@@ -84,11 +83,11 @@ cfgLookup sectionName key (SshConfig sections') =
 
 instance Craftable UserConfig where
   watchCraft cfg = do
-    craft_ $ userDir $ user cfg
+    craft_ $ userDir $ cfg ^. user
     w <- watchCraft_ $ file (userPath cfg)
                          & File.mode .~ Mode RW O O
-                         & File.ownerID .~ User.uid (user cfg)
-                         & File.groupID .~ Group.gid (User.group $ user cfg)
+                         & File.ownerID .~ cfg ^. user . User.uid
+                         & File.groupID .~ cfg ^. user . User.gid
                          & File.strContent .~ show cfg
     return (w, cfg)
 
@@ -101,7 +100,7 @@ sshConfigParse fp s =
 
 
 instance Show UserConfig where
-  show UserConfig{..} = show userConfigs
+  show uc = show $ uc ^. userConfigs
 
 
 showBody :: Body -> String
@@ -153,5 +152,3 @@ parseSection = do
 parser :: Parsec String Sections
 parser = some parseSection
 
-
-makeLenses ''SshConfig

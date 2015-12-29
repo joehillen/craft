@@ -107,9 +107,9 @@ fromSource sourcefp fp = do
 
 
 multiple :: [FilePath] -> Mode -> User -> Group -> Maybe ByteString -> [File]
-multiple paths mode owner' group' content = map go paths
+multiple paths mode' owner' group' content' = map go paths
  where
-  go path = File path mode (User.uid owner') (Group.gid group') content
+  go path' = File path' mode' (owner' ^. User.uid) (group' ^. Group.gid) content'
 
 
 

@@ -14,21 +14,22 @@ import Control.Lens
 
 data PrivateKey
   = PrivateKey
-    { user :: User
-    , name :: String
-    , content :: String
+    { _user :: User
+    , _name :: String
+    , _content :: String
     }
   deriving (Eq, Show)
+makeLenses ''PrivateKey
 
 path :: PrivateKey -> FilePath
-path PrivateKey{..} = (userDir user ^. Directory.path) </> name
+path pk = userDir (pk ^. user) ^. Directory.path </> (pk ^. name)
 
 instance Craftable PrivateKey where
   watchCraft pk = do
-    craft_ $ userDir $ user pk
-    w <- watchCraft_ $ file (Craft.Ssh.PrivateKey.path pk)
+    craft_ $ userDir $ pk ^. user
+    w <- watchCraft_ $ file (path pk)
                          & File.mode       .~ Mode RW O O
-                         & File.ownerID    .~ User.uid (user pk)
-                         & File.groupID    .~ Group.gid (User.group $ user pk)
-                         & File.strContent .~ content pk
+                         & File.ownerID    .~ pk ^. user . User.uid
+                         & File.groupID    .~ pk ^. user . User.gid
+                         & File.strContent .~ pk ^. content
     return (w, pk)
