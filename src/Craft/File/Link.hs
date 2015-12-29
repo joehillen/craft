@@ -4,46 +4,60 @@ import Craft
 import Control.Lens
 
 
+newtype Target = Target FilePath
+  deriving (Show, Eq)
+
+newtype Path = Path FilePath
+  deriving (Show, Eq)
+
 data Link
  = Link
-   { target :: FilePath
-   , path   :: FilePath
+   { _target :: Target
+   , _path   :: Path
    }
   deriving (Eq, Show)
+makeLenses ''Link
 
 
 exists :: FilePath -> Craft Bool
 exists lp = isExecSucc <$> exec "/usr/bin/test" ["-L", lp]
 
 
-readlink :: FilePath -> Craft (Maybe FilePath)
-readlink lp =
+readlink :: Path -> Craft (Maybe FilePath)
+readlink (Path lp) =
   exec "/bin/readlink" [lp] >>= \case
     ExecFail _ -> return Nothing
     ExecSucc r -> return . Just . trimTrailing $ r ^. stdout
 
 
+create :: Link -> Craft ()
+create (Link t p) = justdoit t p
+ where
+  justdoit (Target tp) (Path lp) = exec_ "ln" ["-snf", tp, lp]
+
+
 instance Craftable Link where
   watchCraft l = do
-    let lp = path l
+    let lp = l ^. path
     readlink lp >>= \case
       Nothing -> do
         craft_ l
         return (Created, l)
       Just target' ->
-        if target' == target l then
+        if Target target' == l ^. target then
           return (Unchanged, l)
         else do
           craft_ l
           return (Updated, l)
 
   craft_ l = do
-    let lp = path l
-    exec_ "ln" ["-snf", target l, path l]
+    let lp = l ^. path
+    let tp = l ^. target
+    create l
     readlink lp >>= \case
-      Nothing -> $craftError $ "craft Link `" ++ lp ++ "` failed! Not Found."
+      Nothing -> $craftError $ "craft `" ++ show l ++ "` failed! Not Found."
       Just target' ->
-        when (target' /= target l) $
-          $craftError $
-            "craft Link `" ++ lp ++ "` failed! Wrong Target: " ++ target'
-                                               ++" Expected: " ++ target l
+        when (Target target' /= tp) $
+          $craftError $ "craft `" ++ show l ++ "` failed! "
+                     ++ "Wrong Target: " ++ target' ++ " "
+                     ++ "Expected: "    ++ show (l ^. target)
