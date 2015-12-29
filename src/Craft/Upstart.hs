@@ -9,9 +9,11 @@ type ServiceName = String
 
 data Service
   = Service
-    { name   :: String
-    , status :: String
+    { _name   :: String
+    , _status :: String
     }
+
+makeLenses ''Service
 
 
 get :: ServiceName -> Craft (Maybe Service)
@@ -30,9 +32,9 @@ statusParser sn = do
 
 start :: Service -> Craft ()
 start Service{..} =
-  when (status /= "running") $ exec_ "/sbin/start" [name]
+  when (_status /= "running") $ exec_ "/sbin/start" [_name]
 
 
 restart :: Service -> Craft ()
 restart Service{..} =
-  exec_ "/sbin/restart" [name]
+  exec_ "/sbin/restart" [_name]
