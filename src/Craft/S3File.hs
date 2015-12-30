@@ -4,25 +4,27 @@ import           Craft
 import           Craft.File (File)
 import qualified Craft.File as File
 
-import           Data.Maybe
+import Control.Lens
+
 
 data S3File
   = S3File
-    { file    :: File
-    , source  :: String
-    , domain  :: String
-    , version :: Version
+    { _file    :: File
+    , _source  :: String
+    , _domain  :: String
+    , _version :: Version
     }
     deriving (Eq, Show)
+makeLenses ''S3File
 
 
 s3file :: FilePath -> String -> S3File
-s3file path source =
+s3file fp source' =
   S3File
-  { file    = File.file path
-  , domain  = "s3.amazonaws.com"
-  , source  = source
-  , version = AnyVersion
+  { _file    = File.file fp
+  , _domain  = "s3.amazonaws.com"
+  , _source  = source'
+  , _version = AnyVersion
   }
 
 
