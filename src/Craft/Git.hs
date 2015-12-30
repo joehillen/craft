@@ -1,7 +1,6 @@
 module Craft.Git where
 
 import           Control.Lens hiding (noneOf)
-import           Data.Maybe (isJust, fromMaybe)
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 import Formatting hiding (char)
@@ -43,21 +42,22 @@ type URL = String
 
 data Repo
   = Repo
-    { url       :: URL
-    , directory :: Directory.Path
-    , version   :: Version
-    , depth     :: Maybe Int
+    { _url       :: URL
+    , _directory :: Directory.Path
+    , _version   :: Version
+    , _depth     :: Maybe Int
     }
   deriving (Eq, Show)
+makeLenses ''Repo
 
 
 repo :: URL -> Directory.Path -> Repo
-repo url directory =
+repo url' directory' =
   Repo
-  { url       = url
-  , directory = directory
-  , version   = master
-  , depth     = Nothing
+  { _url       = url'
+  , _directory = directory'
+  , _version   = master
+  , _depth     = Nothing
   }
 
 
@@ -76,12 +76,12 @@ remotes = do
 
 
 setURL :: URL -> Craft ()
-setURL url = do
+setURL url' = do
   rs <- remotes
   if origin `elem` rs then
-    git "remote" ["set-url", origin, url]
+    git "remote" ["set-url", origin, url']
   else
-    git "remote" ["add", origin, url]
+    git "remote" ["add", origin, url']
 
 
 getURL :: Craft URL
@@ -98,9 +98,9 @@ getURL = do
 repoURLParser :: Parser [((String, String), String)]
 repoURLParser = some $ do
   remote <- word
-  url <- word
+  url' <- word
   direction <- char '(' *> some alphaNumChar <* char ')' <* newline
-  return ((remote, direction), url)
+  return ((remote, direction), url')
  where
   word :: Parser String
   word = some (noneOf " \t") <* some (spaceChar <|> tab)
@@ -121,17 +121,17 @@ get path =
       !url'     <- getURL
       !version' <- getVersion
       return . Just
-             $ Repo { directory = path
-                    , url       = url'
-                    , version   = version'
-                    , depth     = Nothing
+             $ Repo { _directory = path
+                    , _url       = url'
+                    , _version   = version'
+                    , _depth     = Nothing
                     }
 
 
 instance Craftable Repo where
   watchCraft r = do
-    let dp = directory r
-        ver = version r
+    let dp = r ^. directory
+        ver = r ^. version
         verify ver' =
           case ver of
             Commit _ ->
@@ -139,22 +139,22 @@ instance Craftable Repo where
                 $craftError
                 $ formatToString ("craft Git.Repo `"%shown%"` failed! Wrong Commit: "%shown%" Got: "%shown)
                                  r ver ver'
-
             _ -> return ()
         checkoutCommit :: Craft Version
         checkoutCommit = do
-          setURL $ url r
+          setURL $ r ^. url
           git "fetch" [origin]
           git "checkout" ["--force", show ver]
           git "reset" ["--hard"]
           ver' <- getVersion
           verify ver'
           return ver'
+
     Directory.get dp >>= \case
       Nothing -> do
-        case depth r of
-          Nothing -> git "clone" [url r, dp]
-          Just d  -> git "clone" ["--depth", show d, url r, dp]
+        case r ^. depth of
+          Nothing -> git "clone" [r ^. url, dp]
+          Just d  -> git "clone" ["--depth", show d, r ^. url, dp]
         Directory.get dp >>= \case
           Nothing ->
             $craftError $ "craft Git.Repo `" ++ show r ++ "` failed! "
@@ -162,7 +162,7 @@ instance Craftable Repo where
           Just dir ->
             withCWD dir $ do
               ver' <- checkoutCommit
-              return (Created, r { version = ver' })
+              return (Created, r & version .~ ver' )
 
       Just dir ->
         withCWD dir $ do
@@ -171,6 +171,5 @@ instance Craftable Repo where
           case ver of
             Latest branchName -> git "pull" [origin, branchName]
             _                 -> return ()
-          return ( if beforeVersion == ver' then Unchanged
-                                            else Updated
-                , r { version = ver' })
+          return ( if beforeVersion == ver' then Unchanged else Updated
+                 , r & version .~ ver')
