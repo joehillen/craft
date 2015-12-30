@@ -1,8 +1,10 @@
 module Craft.SysV where
 
+import Control.Lens
+
 import Craft
-import Control.Monad (when)
 import qualified Craft.File as File
+
 
 data Status = Running
             | Stopped
@@ -42,17 +44,18 @@ defaults = [ RunLevel0
            ]
 
 
-data Service = Service { name   :: String
-                       , status :: Status
-                       , atBoot :: Maybe Bool
+data Service = Service { _name   :: String
+                       , _status :: Status
+                       , _atBoot :: Maybe Bool
                        }
   deriving (Eq, Show)
+makeLenses ''Service
 
 
 service :: String -> Service
-service sn = Service { name = sn
-                     , status = Running
-                     , atBoot = Just True
+service sn = Service { _name = sn
+                     , _status = Running
+                     , _atBoot = Just True
                      }
 
 
@@ -72,16 +75,16 @@ get sn = do
   exists <- File.exists (path sn)
   if exists then do
     status' <- getStatus sn
-    return . Just $ Service { name   = sn
-                            , status = status'
-                            , atBoot = Nothing
+    return . Just $ Service { _name   = sn
+                            , _status = status'
+                            , _atBoot = Nothing
                             }
   else
     return Nothing
 
 
 run :: String -> Service -> Craft ()
-run cmd svc = exec_ (path (name svc)) [cmd]
+run cmd svc = exec_ (path (svc ^. name)) [cmd]
 
 
 start :: Service -> Craft ()
@@ -102,17 +105,17 @@ reload = run "reload"
 
 updateRcD :: Service -> String -> Craft ()
 updateRcD svc cmd =
-  exec_ "/usr/sbin/update-rc.d" ["-f", name svc, cmd]
+  exec_ "/usr/sbin/update-rc.d" ["-f", svc ^. name, cmd]
 
 
 instance Craftable Service where
   watchCraft svc = do
-    let sn = name svc
-    whenJust (atBoot svc) $ \x ->
+    let sn = svc ^. name
+    whenJust (svc ^. atBoot) $ \x ->
       updateRcD svc (if x then "defaults" else "remove")
 
     status' <- getStatus sn
-    case (status svc, status') of
+    case (svc ^. status, status') of
       (Running, Running) -> return (Unchanged, svc)
       (Stopped, Stopped) -> return (Unchanged, svc)
       (Running, Stopped) -> do
