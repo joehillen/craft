@@ -193,8 +193,9 @@ instance Craftable Deb where
           return (Updated, d)
 
 
-data PPA = PPA { ppaURL :: String }
+data PPA = PPA { _ppaURL :: String }
   deriving (Eq, Show)
+makeLenses ''PPA
 
 
 findPPAFiles :: PPA -> Craft [File]
