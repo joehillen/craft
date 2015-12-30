@@ -4,68 +4,70 @@ import           Craft
 import           Craft.File (File, file)
 import qualified Craft.File as File
 import           Craft.File.Mode
-import           Craft.File.Link (Link(Link))
 import           Craft.Directory (directory)
 import qualified Craft.Directory as Directory
-import qualified Craft.User as User
-import qualified Craft.Group as Group
 import qualified Craft.Upstart as Upstart
 
 import Control.Lens
-import           Control.Monad (when)
-import           Data.Maybe
 import           Data.ByteString (ByteString)
-import qualified Data.ByteString.Char8 as B8
+
+
+data Service
+  = Service
+    { _name     :: String
+    , _home     :: Directory.Path
+    , _env      :: [(String, String)]
+    , _runFile  :: ByteString
+    , _restarts :: Bool
+    }
+  deriving (Eq, Show)
+makeLenses ''Service
+
+
+service :: String -> Service
+service name' =
+  Service { _name     = name'
+          , _home     = "/etc/svc"
+          , _env      = []
+          , _runFile  = ""
+          , _restarts = True
+          }
+
 
 setup :: Directory.Path -> Craft ()
-setup home = do
-  mapM_ (craft . package)
+setup home' = do
+  mapM_ (craft_ . package)
     [ "daemontools"
     , "daemontools-run"
     ]
+  craft_ $ directory home'
+  Upstart.get "svscan" >>= \case
+    Nothing     -> $craftError "Upstart service `svscan` not found!"
+    Just svscan -> Upstart.start svscan
 
-  craft_ $ directory home
-
-  svscan <- Upstart.get "svscan"
-  Upstart.start $ fromJust svscan
 
 path :: Service -> Directory.Path
-path Service{..} = home </> name
+path Service{..} = _home </> _name
+
 
 restart :: Service -> Craft ()
 restart s = execRestart $ path s
 
+
 execRestart :: Directory.Path -> Craft ()
 execRestart fp = exec_ "/usr/bin/svc" ["-t", fp]
 
-data Service
-  = Service
-    { name     :: String
-    , home     :: Directory.Path
-    , env      :: [(String, String)]
-    , runFile  :: ByteString
-    , restarts :: Bool
-    }
-  deriving (Eq, Show)
 
 logRunDefault :: FilePath -> String
 logRunDefault logdest =
   "#!/bin/sh\nexec setuidgid nobody multilog t " ++ logdest ++ " s10000000 n10\n"
 
-service :: String -> Service
-service name =
-  Service
-  { name     = name
-  , home     = "/etc/svc"
-  , env      = []
-  , runFile  = ""
-  , restarts = True
-  }
 
 envFile :: Directory.Path -> (String, String) -> File
 envFile envDir (varname, varval) =
   file (envDir </> varname) & File.mode       .~ Mode RW O O
                             & File.strContent .~ varval
+
 
 getEnv :: Service -> Craft [(String, String)]
 getEnv svc = do
@@ -73,6 +75,7 @@ getEnv svc = do
   return $ map go fs
  where
   go f = (f ^. File.name, f ^. File.strContent)
+
 
 {-
 instance Craftable Service where
