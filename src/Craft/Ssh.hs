@@ -8,14 +8,14 @@ import           Craft.File
 import           Craft.File.Mode
 import           Craft.User (User)
 import qualified Craft.User as User
-import qualified Craft.Group as Group
 
 
 data PublicKey
   = PublicKey
-    { publicKey     :: String
-    , publicKeyType :: String
+    { _publicKey     :: String
+    , _publicKeyType :: String
     }
+makeLenses ''PublicKey
 
 addAuthorizedKey :: User -> PublicKey -> Craft File
 addAuthorizedKey user pk = do
@@ -25,7 +25,8 @@ addAuthorizedKey user pk = do
          & mode       .~ Mode RW O O
          & ownerID    .~ user ^. User.uid
          & groupID    .~ user ^. User.gid
-         & strContent .~ publicKeyType pk ++ " " ++ publicKey pk
+         & strContent .~ pk ^. publicKeyType ++ " " ++ pk ^. publicKey
+
 
 userDir :: User -> Directory
 userDir user =
