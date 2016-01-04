@@ -6,6 +6,7 @@ import qualified System.Environment
 import qualified System.Directory
 import Data.Maybe (fromMaybe)
 
+
 runCraftVagrant :: PackageManager pm => CraftEnv pm -> Craft a -> IO a
 runCraftVagrant env configs = do
   sysEnv <- System.Environment.getEnvironment
@@ -16,14 +17,17 @@ runCraftVagrant env configs = do
     r <- exec "vagrant" ["ssh-config"]
     return $ parseExecResult r parser $ stdout $ errorOnFail r
 
-  runCraftSSH
-    (sshEnv (cfgLookupOrError "hostname" sections)
-            (cfgLookupOrError "identityfile" sections))
-      { sshUser = cfgLookupOrError "user" sections
-      , sshSudo    = True
-      }
-    env
-    configs
+  let addr = cfgLookupOrError "hostname" sections
+      key = cfgLookupOrError "identityfile" sections
+      user = cfgLookupOrError "user" sections
+      port = read $ cfgLookupOrError "port" sections
+  runCraftSSH (sshEnv addr key) { sshSudo = True
+                                , sshUser = user
+                                , sshPort = port
+                                }
+              env
+              configs
+
 
 cfgLookupOrError :: String -> Sections -> String
 cfgLookupOrError name sections =

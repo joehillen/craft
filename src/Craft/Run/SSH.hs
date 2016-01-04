@@ -19,6 +19,7 @@ data SSHEnv
   = SSHEnv
     { sshKey     :: FilePath
     , sshAddr    :: String
+    , sshPort    :: Int
     , sshUser    :: String
     , sshSudo    :: Bool
     , sshOptions :: [String]
@@ -29,6 +30,7 @@ sshEnv :: String -> FilePath -> SSHEnv
 sshEnv addr key =
   SSHEnv
   { sshAddr = addr
+  , sshPort = 22
   , sshKey  = key
   , sshUser = "root"
   , sshSudo = True
@@ -116,13 +118,14 @@ runCraftSSH' _ _ (Log ce loc logsource level logstr next) =
 
 sshArgs :: SSHEnv -> SSHSession -> Args
 sshArgs SSHEnv{..} SSHSession{..} =
+  [ "-p", show sshPort ] ++
   [ "-i", sshKey ] ++
   ["-o" | not (null sshOptions)] ++
   intersperse "-o" sshOptions ++
   [ "-o", "ControlMaster=auto"
   , "-o", "ControlPath=" ++ sshControlPath
   , "-o", "ControlPersist=10"
-  ,"-o", "BatchMode=yes" -- never prompt for a password
+  , "-o", "BatchMode=yes" -- never prompt for a password
   ]
 
 sshProc :: SSHEnv -> SSHSession -> CraftEnv pm -> Command -> Args -> CreateProcess
