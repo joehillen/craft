@@ -48,7 +48,7 @@ data SSHSession
 
 newSSHSession :: IO SSHSession
 newSSHSession = do
-  randInt <- randomIO :: IO Int
+  randInt <- abs <$> randomIO :: IO Int
   return . SSHSession $ ".craft-ssh-session-" ++ show randInt
 
 
