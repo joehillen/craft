@@ -147,10 +147,10 @@ parseTitle :: Parsec String (String, String)
 parseTitle = do
   space
   type' <- try (string' "host") <|> string' "match"
-  void $ spaceChar
+  void spaceChar
   notFollowedBy eol
   space
-  name <- someTill anyChar eol
+  name <- anyChar `someTill` eol
   return (type', name)
 
 
@@ -165,8 +165,9 @@ bodyLine = do
   name <- someTill anyChar spaceChar
   notFollowedBy eol
   space
-  val <- someTill anyChar (void eol <|> eof)
-  void $ optional $ (space <|> void (many eol))
+  val <- between (char '"') (char '"') (many $ noneOf "\"")
+         <|> someTill anyChar (void eol <|> eof)
+  void $ optional (space <|> void (many eol))
   return (name, trim val)
 
 
