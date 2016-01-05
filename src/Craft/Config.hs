@@ -20,6 +20,17 @@ data Config a
     , _configs :: ConfigFormat a => a
     }
 
+
+config :: ConfigFormat a => FilePath -> a -> Config a
+config fp cfg = Config
+    { _path    = fp
+    , _mode    = Mode RW R R
+    , _ownerID = 0
+    , _groupID = 0
+    , _configs = cfg
+    }
+
+
 class ConfigFormat a where
   showConfig :: a -> String
 
