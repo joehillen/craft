@@ -44,7 +44,7 @@ defaults = [ RunLevel0
            ]
 
 
-data Service = Service { _name   :: String
+data Service = Service { _name   :: Text
                        , _status :: Status
                        , _atBoot :: Maybe Bool
                        }
@@ -52,25 +52,25 @@ data Service = Service { _name   :: String
 makeLenses ''Service
 
 
-service :: String -> Service
+service :: Text -> Service
 service sn = Service { _name = sn
                      , _status = Running
                      , _atBoot = Just True
                      }
 
 
-getStatus :: String -> Craft Status
+getStatus :: Text -> Craft Status
 getStatus sn =
   exec (path sn) ["status"] >>= \case
     (ExecFail _) -> return Stopped
     (ExecSucc _) -> return Running
 
 
-path :: String -> FilePath
+path :: Text -> FilePath
 path sn = "/etc/init.d" </> sn
 
 
-get :: String -> Craft (Maybe Service)
+get :: Text -> Craft (Maybe Service)
 get sn = do
   exists <- File.exists (path sn)
   if exists then do
@@ -83,7 +83,7 @@ get sn = do
     return Nothing
 
 
-run :: String -> Service -> Craft ()
+run :: Text -> Service -> Craft ()
 run cmd svc = exec_ (path (svc ^. name)) [cmd]
 
 
@@ -103,7 +103,7 @@ reload :: Service -> Craft ()
 reload = run "reload"
 
 
-updateRcD :: Service -> String -> Craft ()
+updateRcD :: Service -> Text -> Craft ()
 updateRcD svc cmd =
   exec_ "/usr/sbin/update-rc.d" ["-f", svc ^. name, cmd]
 

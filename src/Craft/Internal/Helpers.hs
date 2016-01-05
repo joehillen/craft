@@ -2,30 +2,38 @@
 module Craft.Internal.Helpers where
 
 import Control.Monad (void)
+import Data.Monoid ((<>))
 import Data.Char (isSpace)
 import Text.Megaparsec hiding (parse)
-import Text.Megaparsec.String
+import Text.Megaparsec.Text
+import Data.Text as T
+import TextShow
+
+
+appendNL :: Text -> Text
+appendNL s =
+  s <> if not (T.null s) then "\n" else ""
 
 
 end :: Parser ()
 end = try (void eol) <|> eof
 
 
-indent :: Int -> String -> String
+indent :: Int -> Text -> Text
 indent len text =
-  unlines $ map (replicate len ' ' ++) $ lines text
+  T.unlines $ (T.replicate len " " <>) <$> T.lines text
 
-trim :: String -> String
-trim = f . f
-   where f = reverse . dropWhile isSpace
 
 class ToArg a where
-  toArg :: String -> a -> [String]
+  toArg :: Text -> a -> [Text]
 
 instance ToArg String where
-  toArg arg s
-    | s == "" = []
-    | otherwise = [arg, s]
+  toArg arg "" = []
+  toArg arg s  = [arg, T.pack s]
+
+instance ToArg Text where
+  toArg arg "" = []
+  toArg arg s  = [arg, s]
 
 instance ToArg Bool where
   toArg _   False = []
@@ -38,12 +46,12 @@ instance ToArg a => ToArg (Maybe a) where
 instance ToArg Int where
   toArg = showArg
 
-toArgBool :: String -> String -> Bool -> [String]
+toArgBool :: Text -> Text -> Bool -> [Text]
 toArgBool a _ True  = [a]
 toArgBool _ b False = [b]
 
-showArg :: Show a => String -> a -> [String]
-showArg arg v = [arg, show v]
+showArg :: TextShow a => Text -> a -> [Text]
+showArg arg v = [arg, showt v]
 
-toArgs :: ToArg a => String -> [a] -> [String]
+toArgs :: ToArg a => Text -> [a] -> [Text]
 toArgs arg = Prelude.concatMap (toArg arg)

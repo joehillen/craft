@@ -16,7 +16,8 @@ where
 
 import           Control.Lens hiding (un)
 import qualified Data.Set as S
-import           Data.List (intercalate)
+import qualified Data.Text as T
+
 
 import           Craft.Internal
 import           Craft.Internal.Helpers
@@ -40,7 +41,7 @@ gid = group . UG.gid
 data Options =
   Options
   { optUID        :: Maybe UserID
-  , optComment    :: String
+  , optComment    :: Text
 
   --, optAllowdupe  :: Bool
   -- Whether to allow duplicate UIDs. Default: False
@@ -58,9 +59,9 @@ data Options =
   , optCreateHome :: Bool
   -- Create the user's home directory when creating user. Default: True
 
-  , optPassword   :: Maybe String
+  , optPassword   :: Maybe Text
 
-  , optSalt       :: Maybe String
+  , optSalt       :: Maybe Text
   -- The salt to use when creating the user's password
 
 
@@ -96,7 +97,7 @@ opts =
   }
 
 
-userMod :: UserName -> [String] -> Craft ()
+userMod :: UserName -> [Text] -> Craft ()
 userMod un args =
   exec_ "/usr/sbin/usermod" $ args ++ [un]
 
@@ -105,37 +106,35 @@ getUID :: UserName -> Craft (Maybe UserID)
 getUID "root" = return . Just $ 0
 getUID un =
   exec "/usr/bin/id" ["--user", un] >>= \case
-    ExecSucc r -> return . Just . read $ r ^. stdout
+    ExecSucc r -> return . Just . read . T.unpack $ r ^. stdout
     ExecFail _ -> return Nothing
 
 
 setUID :: UserName -> UserID -> Craft ()
-setUID un uid' = userMod un ["--uid", show uid']
+setUID un uid' = userMod un ["--uid", T.pack $ show uid']
 
 
 setShell :: UserName -> FilePath -> Craft ()
-setShell un shell' = userMod un ["--shell", shell']
+setShell un shell' = userMod un ["--shell", T.pack shell']
 
 
-setComment :: UserName -> String -> Craft ()
+setComment :: UserName -> Text -> Craft ()
 setComment un comment' = userMod un ["--comment", comment']
 
 
 setGroup :: UserName -> GroupName -> Craft ()
 setGroup un gn =
   Group.fromName gn  >>= \case
-    Nothing ->
-      $craftError
-      $ formatToString ("setGroup `"%string%"` `"%string%"` failed. Group `"%string%"` not found!")
-                       un gn gn
-    Just g  -> userMod un ["--gid", show $ g ^. UG.gid]
+    Nothing -> $craftError $ sformat ("setGroup `"%stext%"` `"%stext%"` failed. Group `"%stext%"` not found!")
+                                     un gn gn
+    Just g  -> userMod un ["--gid", T.pack . show $ g ^. UG.gid]
 
 setGroups :: UserName -> [GroupName] -> Craft ()
 setGroups _  []  = return ()
-setGroups un gns = userMod un ["--groups", intercalate "," gns]
+setGroups un gns = userMod un ["--groups", T.intercalate "," gns]
 
 setHome :: UserName -> FilePath -> Craft ()
-setHome un path = userMod un ["--home", path]
+setHome un path = userMod un ["--home", T.pack path]
 
 createUser :: UserName -> Options -> Craft User
 createUser un uopts@Options{..} = do
@@ -175,7 +174,7 @@ createUser un uopts@Options{..} = do
     Nothing -> notfound
     Just r  -> return r
  where
-  notfound = $craftError $ "createUser `" ++ un ++ "` failed. Not Found!"
+  notfound = $craftError $ "createUser `"<>un<>"` failed. Not Found!"
 
   handleOpt :: Eq a => Maybe a -> a -> (a -> Craft ()) -> Craft ()
   handleOpt Nothing       _      _ = return ()
@@ -192,15 +191,13 @@ createUser' un Options{..} = do
   exec_ "/usr/sbin/useradd" $
        optsToArgs ++ groupArg ++ groupsArg ++ [un]
  where
-  getGroupArg :: Maybe GroupName -> Craft [String]
+  getGroupArg :: Maybe GroupName -> Craft [Text]
   getGroupArg Nothing = return []
   getGroupArg (Just gn) =
     Group.fromName gn >>= \case
-      Nothing -> $craftError $
-        "Failed to create User `" ++ un ++ "` "
-        ++ "with group `" ++ gn ++ "`. Group not found!"
+      Nothing -> $craftError $ "Failed to create User `"<>un<>"` with group `"<>gn<>"`. Group not found!"
       Just g -> return $ toArg "--gid" $ g ^. Group.gid
-  groupsArg = toArg "--groups" $ intercalate "," optGroups
+  groupsArg = toArg "--groups" $ T.intercalate "," optGroups
   optsToArgs =
     concat
       [ toArg "--uid"         optUID
@@ -229,5 +226,5 @@ fromID = userFromID
 --  |_| |_|_\___| \_/_/ \_\_| |___|
 
 
-encrypt :: Maybe String -> Maybe String -> Maybe String
+encrypt :: Maybe Text -> Maybe Text -> Maybe Text
 encrypt msalt mpassword = Nothing

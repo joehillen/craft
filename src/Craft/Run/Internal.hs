@@ -45,34 +45,33 @@ execProc ce p next = do
            ExitFailure code -> ExecFail $ FailResult code stdout' stderr' p
 
 
-execProc_ :: CraftEnv -> String -> CreateProcess -> IO a -> IO a
+execProc_ :: CraftEnv -> Text -> CreateProcess -> IO a -> IO a
 execProc_ ce src p next = do
   let p' = p { std_in  = CreatePipe
              , std_out = CreatePipe
              , std_err = CreatePipe
              }
-      src' = T.pack src
   logger defaultLoc "exec_|process" LevelDebug $ toLogStr $ showProc p
   ec <- sourceProcessWithConsumers p'
-          (pipeConsumer $ "exec_|" <> src' <> "|stdout")
-          (pipeConsumer $ "exec_|" <> src' <> "|stderr")
+          (pipeConsumer $ "exec_|" <> src <> "|stdout")
+          (pipeConsumer $ "exec_|" <> src <> "|stderr")
   case ec of
-    ExitFailure n -> error $ "exec_ `" ++ src ++ "` failed with code: " ++ show n
+    ExitFailure n -> error $ "exec_ `" ++ T.unpack src ++ "` failed with code: " ++ show n
     ExitSuccess   -> next
  where
    logger = ce ^. craftLogger
    pipeConsumer :: Text -> Consumer ByteString IO ()
-   pipeConsumer src' = decodeUtf8C =$= CT.lines =$ awaitForever (\txt ->
-     liftIO $ logger defaultLoc src' LevelDebug $ toLogStr txt)
+   pipeConsumer src' = decodeUtf8C =$= CT.lines =$ awaitForever (
+     liftIO . logger defaultLoc src' LevelDebug . toLogStr)
 
 
--- | Remove a single trailing newline character from the end of the String
-trimNL :: String -> String
-trimNL = reverse . rmNL . reverse
+-- | Remove a single trailing newline character from the end of the Text
+trimNL :: Text -> Text
+trimNL = T.reverse . rmNL . T.reverse
  where
-  rmNL [] = []
-  rmNL ('\n':xs) = xs
-  rmNL xs = xs
+  rmNL t | T.null t = t
+         | T.take 1 t == "\n" = T.drop 1 t
+         | otherwise = t
 
 
 findSourceFile :: CraftEnv -> FilePath -> IO FilePath

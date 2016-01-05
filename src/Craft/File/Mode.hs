@@ -5,8 +5,8 @@ module Craft.File.Mode
 , toFileMode
 , toMode
 , toHuman
-, fileModeFromString
-, fromString
+, fileModeFromText
+, fromText
 , testFileMode
 )
 where
@@ -18,16 +18,17 @@ import Data.Char (digitToInt)
 import Data.List
 import Data.Maybe
 import System.Posix
+import qualified Data.Text as T
 
 data Mode
   = Mode ModeSet ModeSet ModeSet
   deriving (Eq, Show)
 
-toHuman :: Mode -> String
+toHuman :: Mode -> Text
 toHuman (Mode u g o) =
-  modeSetToHuman u ++ modeSetToHuman g ++ s2t (modeSetToHuman o)
+  modeSetToHuman u <> modeSetToHuman g <> s2t (modeSetToHuman o)
  where
-  s2t = map tr
+  s2t = T.map tr
   tr 's' = 't'
   tr 'S' = 'T'
   tr   c = c
@@ -51,9 +52,9 @@ data ModeSet
  | RWXS
  deriving (Eq, Enum, Show)
 
-toOctalString :: Mode -> String
-toOctalString (Mode u g o) =
-  concatMap show $ stickies : map modeSetToOctal l
+toOctalText :: Mode -> Text
+toOctalText (Mode u g o) =
+  T.concat . map (T.pack . show) $ stickies : map modeSetToOctal l
  where
   stickies = sum $ zipWith (\n m -> n * modeSetToOctalSticky m) [4,2,1] l
   l = [u,g,o]
@@ -94,7 +95,7 @@ modeSetToOctalSticky RXS  = 1
 modeSetToOctalSticky WXS  = 1
 modeSetToOctalSticky RWXS = 1
 
-modeSetToHuman :: ModeSet -> String
+modeSetToHuman :: ModeSet -> Text
 modeSetToHuman O    = "---"
 modeSetToHuman R    = "r--"
 modeSetToHuman W    = "-w-"
@@ -112,21 +113,25 @@ modeSetToHuman RXS  = "r-s"
 modeSetToHuman WXS  = "-ws"
 modeSetToHuman RWXS = "rws"
 
-fromString :: String -> Mode
-fromString = toMode . fileModeFromString . filter (`elem` ['0'..'7'])
+fromText :: Text -> Mode
+fromText = toMode . fileModeFromText . T.filter (`elem` ['0'..'7'])
 
-fileModeFromString :: String -> FileMode
-fileModeFromString [] = error "Cannot get Mode from empty string."
-fileModeFromString s@[_] = error $ "Mode `" ++ s ++ "` not long enough."
-fileModeFromString s@[_,_] = error $ "Mode `" ++ s ++ "` not long enough."
-fileModeFromString [u,g,o] =
+fileModeFromText :: Text -> FileMode
+fileModeFromText = error "fileModeFromText is not implemented"
+
+{- TODO: rewrite this using parsec
+fileModeFromText [] = error "Cannot get Mode from empty string."
+fileModeFromText s@[_] = error $ "Mode `" ++ T.unpack s ++ "` not long enough."
+fileModeFromText s@[_,_] = error $ "Mode `" ++ s ++ "` not long enough."
+fileModeFromText [u,g,o] =
   fromIntegral $ digitToInt u * (8*8) .|. digitToInt g * 8 .|. digitToInt o
-fileModeFromString [s,u,g,o] =
+fileModeFromText [s,u,g,o] =
   fromIntegral $ digitToInt s * (8*8*8) .|. digitToInt u * (8*8) .|. digitToInt g * 8 .|. digitToInt o
-fileModeFromString s = error $ "Mode `" ++ s ++ "` is too long"
+fileModeFromText s = error $ "Mode `" ++ s ++ "` is too long"
+-}
 
 setMode :: Mode -> FilePath -> Craft ()
-setMode m fp = exec_ "/bin/chmod" [toOctalString m, fp]
+setMode m fp = exec_ "/bin/chmod" [toOctalText m, T.pack fp]
 
 toFileMode :: Mode -> FileMode
 toFileMode (Mode u g o)
@@ -135,10 +140,8 @@ toFileMode (Mode u g o)
 toMode :: FileMode -> Mode
 toMode fm = Mode ownerSet groupSet otherSet
   where
-    convertSet f m =
-      case find (\t -> m == f t) [O ..] of
-        Nothing -> error $ "toMode: Unsupported mode: " ++ show m
-        Just r -> r
+    convertSet f m = fromMaybe (error $ "toMode: Unsupported mode: " ++ show m)
+                               (find (\t -> m == f t) [O ..])
     ownerSet = convertSet uFM (fm .&. (ownerModes .|. uS))
     groupSet = convertSet gFM (fm .&. (groupModes .|. gS))
     otherSet = convertSet oFM (fm .&. (otherModes .|. oT))

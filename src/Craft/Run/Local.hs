@@ -3,6 +3,7 @@ module Craft.Run.Local where
 import Control.Lens
 import Control.Monad.Reader
 import Control.Monad.Free
+import qualified Data.Text as T
 import qualified Data.ByteString as BS
 import System.Process hiding ( readCreateProcessWithExitCode
                              , readProcessWithExitCode)
@@ -27,7 +28,7 @@ runCraftLocal' (FileRead _ fp next) = BS.readFile fp >>= next
 runCraftLocal' (FileWrite _ fp content next) = BS.writeFile fp content >> next
 runCraftLocal' (SourceFile ce src dest next) = do
   src' <- findSourceFile ce src
-  runCraftLocal' (Exec_ ce "/bin/cp" [src', dest] next)
+  runCraftLocal' (Exec_ ce "/bin/cp" [T.pack src', T.pack dest] next)
 runCraftLocal' (ReadSourceFile ce fp next) = readSourceFileIO ce fp >>= next
 runCraftLocal' (Log ce loc logsource level logstr next) =
   let logger = ce ^. craftLogger
@@ -36,8 +37,10 @@ runCraftLocal' (Log ce loc logsource level logstr next) =
 
 localProc :: CraftEnv -> Command -> Args -> CreateProcess
 localProc ce prog args =
-  (proc prog args)
-    { env           = Just (ce ^. craftExecEnv)
+  let env' = over (mapped.both) T.unpack $ ce ^. craftExecEnv
+  in
+  (proc prog $ map T.unpack args)
+    { env           = Just env'
     , cwd           = Just (ce ^. craftExecCWD)
     , close_fds     = True
     , create_group  = True

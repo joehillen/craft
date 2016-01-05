@@ -14,9 +14,9 @@ import           Data.ByteString (ByteString)
 
 data Service
   = Service
-    { _name     :: String
+    { _name     :: Text
     , _home     :: Directory.Path
-    , _env      :: [(String, String)]
+    , _env      :: [(Text, Text)]
     , _runFile  :: ByteString
     , _restarts :: Bool
     }
@@ -24,7 +24,7 @@ data Service
 makeLenses ''Service
 
 
-service :: String -> Service
+service :: Text -> Service
 service name' =
   Service { _name     = name'
           , _home     = "/etc/svc"
@@ -58,18 +58,18 @@ execRestart :: Directory.Path -> Craft ()
 execRestart fp = exec_ "/usr/bin/svc" ["-t", fp]
 
 
-logRunDefault :: FilePath -> String
+logRunDefault :: FilePath -> Text
 logRunDefault logdest =
   "#!/bin/sh\nexec setuidgid nobody multilog t " ++ logdest ++ " s10000000 n10\n"
 
 
-envFile :: Directory.Path -> (String, String) -> File
+envFile :: Directory.Path -> (Text, Text) -> File
 envFile envDir (varname, varval) =
   file (envDir </> varname) & File.mode       .~ Mode RW O O
                             & File.strContent .~ varval
 
 
-getEnv :: Service -> Craft [(String, String)]
+getEnv :: Service -> Craft [(Text, Text)]
 getEnv svc = do
   fs <- Directory.getFiles (path svc)
   return $ map go fs

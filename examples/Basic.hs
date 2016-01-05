@@ -58,7 +58,7 @@ addAdmins = sequence
 data UserOptions =
   UserOptions
   { optShell         :: FilePath
-  , optSshPubKeyType :: String
+  , optSshPubKeyType :: Text
   }
 
 
@@ -71,8 +71,8 @@ userOpts =
 
 
 normalUser :: User.Name
-           -> String -- Full Name
-           -> String -- SSH Public Key
+           -> Text -- Full Name
+           -> Text -- SSH Public Key
            -> UserOptions
            -> Craft User
 normalUser name fullname sshPubKey UserOptions{..} = do
@@ -114,8 +114,8 @@ normalUser name fullname sshPubKey UserOptions{..} = do
 
 
 admin :: User.Name
-      -> String -- Full Name
-      -> String -- SSH Public Key
+      -> Text -- Full Name
+      -> Text -- SSH Public Key
       -> UserOptions
       -> Craft User
 admin name fullname sshPubKey opts = do

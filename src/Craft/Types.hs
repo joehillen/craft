@@ -1,24 +1,31 @@
 {-# LANGUAGE DeriveFunctor #-}
-module Craft.Types where
+module Craft.Types
+( module Craft.Types
+, Text
+, (<>)
+)
+where
 
 import Control.Lens
 import Control.Monad.Free
 import Control.Monad.Logger (Loc, LogSource, LogLevel(..), LogStr)
 import Control.Monad.Reader
 import Data.ByteString (ByteString)
+import Data.Text (Text)
 import qualified Data.Text as T
+import Data.Monoid ((<>))
 import Data.Versions (parseV)
 import System.Process
 
-import Craft.Helpers
+import Craft.Internal.Helpers
 
 
 type Craft a = ReaderT CraftEnv (Free CraftDSL) a
 
 
-type StdOut = String
-type StdErr = String
-type Args = [String]
+type StdOut = Text
+type StdErr = Text
+type Args = [Text]
 type Command = FilePath
 
 
@@ -44,14 +51,14 @@ data FailResult = FailResult { _exitcode   :: Int
 
 data ExecResult = ExecFail FailResult | ExecSucc SuccResult
 
-type ExecEnv = [(String, String)]
+type ExecEnv = [(Text, Text)]
 type CWD = FilePath
 
-type PackageName = String
+type PackageName = Text
 
 
 data Version
-  = Version String
+  = Version Text
   | AnyVersion
   | Latest
   deriving (Show)
@@ -153,25 +160,25 @@ execResultProc (ExecFail failr) = failr ^. failProc
 execResultProc (ExecSucc succr) = succr ^. succProc
 
 
-instance Show FailResult where
-  show r = concatMap appendNL [ "exec failed!"
-                              , "<<<< process >>>>"
-                              , showProc (r ^. failProc)
-                              , "<<<< exit code >>>>"
-                              , show (r ^. exitcode)
-                              , "<<<< stdout >>>>"
-                              , r ^. failStdout
-                              , "<<<< stderr >>>>"
-                              , r ^. failStderr
-                              ]
+showFailResult :: FailResult -> Text
+showFailResult r = T.concat $ map appendNL [ "exec failed!"
+                                           , "<<<< process >>>>"
+                                           , showProc (r ^. failProc)
+                                           , "<<<< exit code >>>>"
+                                           , T.pack (show (r ^. exitcode))
+                                           , "<<<< stdout >>>>"
+                                           , r ^. failStdout
+                                           , "<<<< stderr >>>>"
+                                           , r ^. failStderr
+                                           ]
 
 
 
-showProc :: CreateProcess -> String
+showProc :: CreateProcess -> Text
 showProc p =
   case cmdspec p of
-    ShellCommand s -> s
-    RawCommand fp args -> unwords [fp, unwords args]
+    ShellCommand s -> T.pack s
+    RawCommand fp args -> T.unwords [T.pack fp, T.unwords $ map T.pack args]
 
 
 instance Ord Version where
@@ -185,11 +192,12 @@ instance Ord Version where
   compare (Version _) Latest      = LT
   compare (Version a) (Version b) = compareVersions a b
 
-compareVersions :: String -> String -> Ordering
+
+compareVersions :: Text -> Text -> Ordering
 compareVersions a b = compare (ver a) (ver b)
  where
-  ver x = case parseV (T.pack x) of
-            Left err -> error $ "Failed to parse version '" ++ x ++ "': "
+  ver x = case parseV x of
+            Left err -> error $ "Failed to parse version '" ++ T.unpack x ++ "': "
                                 ++ show err
             Right v -> v
 
@@ -209,7 +217,7 @@ instance Craftable Package where
         get  = (pm ^. pmGetter) name
         install = (pm ^. pmInstaller) pkg
         upgrade = (pm ^. pmUpgrader) pkg
-        error' str = error $ "craft Package `" ++ name ++ "` failed! " ++ str
+        error' str = error $ "craft Package `" ++ T.unpack name ++ "` failed! " ++ str
         notFound = error' "Not Found."
         wrongVersion got = error' $ "Wrong Version: " ++ show got
                                     ++ " Excepted: " ++ show ver
@@ -270,7 +278,7 @@ instance Destroyable Package where
         (pm ^. pmUninstaller) pkg
         get >>= \case
           Nothing -> return (Removed, Just pkg')
-          Just pkg'' -> error $ "destroy Package `" ++ name ++ "` failed! "
+          Just pkg'' -> error $ "destroy Package `" ++ T.unpack name ++ "` failed! "
                                 ++ "Found: " ++ show pkg''
 
 

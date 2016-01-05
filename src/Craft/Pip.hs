@@ -49,10 +49,10 @@ get pn = do
 
 
 -- TESTME
-pipShowParser :: Parsec String [(String, String)]
+pipShowParser :: Parsec Text [(Text, Text)]
 pipShowParser = many $ kv <* many eol
  where
-  kv :: Parsec String (String, String)
+  kv :: Parsec Text (Text, Text)
   kv = do
     key <- some $ noneOf ":"
     char ':' >> space
@@ -60,11 +60,11 @@ pipShowParser = many $ kv <* many eol
     return (key, value)
 
 
-pip :: [String] -> Craft ()
+pip :: [Text] -> Craft ()
 pip args = withPath ["/usr/local/bin", "/usr/bin"] $ exec_ "pip" args
 
 
-pkgArgs :: PipPackage -> [String]
+pkgArgs :: PipPackage -> [Text]
 pkgArgs (PipPackage (Package pn pv)) = go pv
  where
   go AnyVersion = [pn]
@@ -90,7 +90,7 @@ instance Craftable PipPackage where
                 Version _ ->
                   when (newver /= ver) $
                     $craftError
-                      $ formatToString
+                      $ formatToText
                         ("craft PipPackage `"%F.string%"` failed! Wrong Version: "%shown%" Expected: "%shown)
                         name newver ver
                 _ -> return ()

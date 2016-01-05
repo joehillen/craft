@@ -48,7 +48,7 @@ get =
                  Just bs -> parse $ B8.unpack bs
 
 
-parse :: String -> Craft Hosts
+parse :: Text -> Craft Hosts
 parse s = do
   r <- zipWithM parseLine [1..] $ lines s
   return . Hosts $ catMaybes r
@@ -61,7 +61,7 @@ instance Craftable Hosts where
     return (w, r)
 
 
-showConfigs :: Configs -> String
+showConfigs :: Configs -> Text
 showConfigs = unlines . map (\(ip, as) -> unwords (show ip:map show as))
 
 

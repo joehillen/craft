@@ -21,9 +21,9 @@ data Config a
     }
 
 class ConfigFormat a where
-  showConfig :: a -> String
+  showConfig :: a -> Text
 
-  parse :: FilePath -> String -> Craft a
+  parse :: FilePath -> Text -> Craft a
 
   configFromFile :: File -> Craft (Config a)
   configFromFile f = do

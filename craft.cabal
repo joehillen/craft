@@ -110,6 +110,7 @@ library
                      , streaming-commons
                      , template-haskell
                      , text
+                     , text-show
                      , transformers
                      , unix
                      , versions

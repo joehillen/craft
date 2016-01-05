@@ -42,7 +42,7 @@ owner :: Directory -> Craft User
 owner d =
   User.fromID (d ^. ownerID) >>= \case
     Nothing -> $craftError
-               $ formatToString ("No such owner with id `"%shown%"` for: "%shown)
+               $ formatToText ("No such owner with id `"%shown%"` for: "%shown)
                                 (d ^. ownerID) d
     Just g  -> return g
 
@@ -51,7 +51,7 @@ group :: Directory -> Craft Group
 group d =
   Group.fromID (d ^. groupID) >>= \case
     Nothing -> $craftError
-               $ formatToString ("No such group with id `"%shown%"` for: "%shown)
+               $ formatToText ("No such group with id `"%shown%"` for: "%shown)
                                 (d ^. groupID) d
     Just g -> return g
 
@@ -89,19 +89,19 @@ instance Craftable Directory where
         setOwner' = setOwnerID (d ^. ownerID) dp
         setGroup' = setGroupID (d ^. groupID) dp
         error' str = $craftError
-           $ formatToString ("craft Directory `"%string%"` failed! "%string)
+           $ formatToText ("craft Directory `"%string%"` failed! "%string)
                             dp str
         verifyMode m =
           when (m /= d ^. mode) $
-            error' $ formatToString ("Wrong Mode: "%shown%" Expected: "%shown)
+            error' $ formatToText ("Wrong Mode: "%shown%" Expected: "%shown)
                                     m (d ^. mode)
         verifyOwner o =
           when (o /= d ^. ownerID) $
-            error' $ formatToString ("Wrong Owner ID: "%shown%" Expected: "%shown)
+            error' $ formatToText ("Wrong Owner ID: "%shown%" Expected: "%shown)
                                     o (d ^. ownerID)
         verifyGroup g =
           when (g /= d ^. groupID) $
-            error' $ formatToString ("Wrong Group ID: "%shown%" Expected: "%shown)
+            error' $ formatToText ("Wrong Group ID: "%shown%" Expected: "%shown)
                                     g (d ^. groupID)
         verifyStats (m, o, g) =
           verifyMode m >> verifyOwner o >> verifyGroup g

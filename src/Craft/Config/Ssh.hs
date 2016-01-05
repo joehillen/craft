@@ -18,15 +18,15 @@ import qualified Craft.User as User
 import qualified Craft.Group as Group
 
 data Section
-  = Host  String Body
-  | Match String Body
+  = Host  Text Body
+  | Match Text Body
   deriving Eq
 
 
 type Sections = [Section]
 
 
-type Body = [(String, String)]
+type Body = [(Text, Text)]
 
 
 newtype SshConfig = SshConfig { _sshfmt :: Sections }
@@ -62,12 +62,12 @@ get fp =
     Just f  -> Just <$> configFromFile f
 
 
-bodyLookup :: String -> Body -> Maybe String
+bodyLookup :: Text -> Body -> Maybe Text
 bodyLookup key body =
   lookup (map toLower key) $ map ((,) <$> map toLower . fst <*> snd) body
 
 
-cfgLookup :: String -> String -> SshConfig -> Maybe String
+cfgLookup :: Text -> Text -> SshConfig -> Maybe Text
 cfgLookup sectionName key (SshConfig sections') =
   case body of
     Just b -> bodyLookup key b
@@ -92,7 +92,7 @@ instance Craftable UserConfig where
     return (w, cfg)
 
 
-sshConfigParse :: FilePath -> String -> Craft SshConfig
+sshConfigParse :: FilePath -> Text -> Craft SshConfig
 sshConfigParse fp s =
   case runParser parser fp s of
     Left err   -> $craftError $ show err
@@ -103,7 +103,7 @@ instance Show UserConfig where
   show uc = show $ uc ^. userConfigs
 
 
-showBody :: Body -> String
+showBody :: Body -> Text
 showBody body = indent 4 . unlines $ map (\(n, v) -> n ++ " " ++ v) body
 
 
@@ -112,7 +112,7 @@ instance Show Section where
   show (Match match body)    = "Match " ++ match ++ "\n" ++ showBody body
 
 
-parseTitle :: Parsec String (String, String)
+parseTitle :: Parsec Text (Text, Text)
 parseTitle = do
   space
   type' <- try (string' "host") <|> string' "match"
@@ -123,11 +123,11 @@ parseTitle = do
   return (type', name)
 
 
-parseBody :: Parsec String [(String, String)]
+parseBody :: Parsec Text [(Text, Text)]
 parseBody = many bodyLine
 
 
-bodyLine :: Parsec String (String, String)
+bodyLine :: Parsec Text (Text, Text)
 bodyLine = do
   notFollowedBy parseTitle
   space
@@ -139,7 +139,7 @@ bodyLine = do
   return (name, trim val)
 
 
-parseSection :: Parsec String Section
+parseSection :: Parsec Text Section
 parseSection = do
   title <- parseTitle
   body <- parseBody
@@ -149,6 +149,6 @@ parseSection = do
     _       -> error "Craft.Config.Ssh.parse failed. This should be impossible."
 
 
-parser :: Parsec String Sections
+parser :: Parsec Text Sections
 parser = some parseSection
 

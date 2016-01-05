@@ -5,18 +5,19 @@ module Craft.Hosts.Parser where
 import Control.Monad (void)
 import Data.List (intercalate)
 import Text.Megaparsec
-import Text.Megaparsec.String
+import Text.Megaparsec.Text
+import qualified Data.Text as T
 
 
 import Craft.Hosts.Types
 import Craft.Types
 import Craft.Log
 
-parseLine :: Int -> String -> Craft (Maybe (IP, [Name]))
+parseLine :: Int -> Text -> Craft (Maybe (IP, [Name]))
 parseLine ln s =
   case runParser lineParser hostsfp s of
     Right x  -> return x
-    Left err -> $craftError $ show err
+    Left err -> $craftError $ T.pack $ show err
  where
   lineParser :: Parser (Maybe (IP, [Name]))
   lineParser = do
@@ -63,7 +64,7 @@ nonzero = do
 
 
 hostname :: Parser Name
-hostname = Name <$> some (alphaNumChar <|> oneOf ".-")
+hostname = Name . T.pack <$> some (alphaNumChar <|> oneOf ".-")
 
 
 dot :: Parser ()
@@ -80,11 +81,11 @@ ipv4 = label "ipv4 address" $ do
   dot
   p4 <- num
   notFollowedBy digitChar
-  return . IP $ intercalate "." [p1, p2, p3, p4]
+  return . IP $ T.intercalate "." $ map T.pack [p1, p2, p3, p4]
 
 
 ipv6 :: Parser IP
-ipv6 = IP <$> some (hexDigitChar <|> char ':') <?> "ipv6 address"
+ipv6 = IP . T.pack <$> some (hexDigitChar <|> char ':') <?> "ipv6 address"
 
 
 white :: Parser ()

@@ -29,7 +29,7 @@ get :: FilePath -> Craft (Maybe (Config IniFormat))
 get = Craft.Config.get
 
 
-lookup :: String -> String -> IniFormat -> Maybe String
+lookup :: Text -> Text -> IniFormat -> Maybe Text
 lookup section key iniformat =
   case lookupValue (T.pack section) (T.pack key) (_inifmt iniformat) of
     Left  _ -> Nothing

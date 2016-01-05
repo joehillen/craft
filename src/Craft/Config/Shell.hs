@@ -12,7 +12,7 @@ import Craft.Config
 import Craft.Internal.Helpers
 
 
-newtype ShellFormat = ShellFormat { _shellfmt :: Map String String }
+newtype ShellFormat = ShellFormat { _shellfmt :: Map Text Text }
 
 
 
@@ -20,7 +20,7 @@ instance ConfigFormat ShellFormat where
   showConfig cfgs = intercalate "\n" (map showkv $ M.toList (_shellfmt cfgs))
                  ++ "\n"
    where
-     showkv :: (String, String) -> String
+     showkv :: (Text, Text) -> Text
      showkv (k, v) = k ++ "=" ++ v
   parse fp s =
     case runParser parser fp s of
@@ -33,27 +33,27 @@ get = Craft.Config.get
 
 
 -- TESTME
-parser :: Parsec String ShellFormat
+parser :: Parsec Text ShellFormat
 parser = do
   items <- many line
   return . ShellFormat . M.fromList $ catMaybes items
 
 
-line :: Parsec String (Maybe (String, String))
+line :: Parsec Text (Maybe (Text, Text))
 line = do
   space
   try (comment >> return Nothing) <|> (Just <$> item)
 
 
-var :: Parsec String String
+var :: Parsec Text Text
 var = some (alphaNumChar <|> char '_')
 
 
-comment :: Parsec String ()
+comment :: Parsec Text ()
 comment = char '#' >> manyTill anyChar eol >> return ()
 
 
-item :: Parsec String (String, String)
+item :: Parsec Text (Text, Text)
 item = do
   space
   name <- var

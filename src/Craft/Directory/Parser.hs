@@ -5,24 +5,26 @@ module Craft.Directory.Parser where
 import Control.Monad (void)
 import Data.List (intercalate)
 import Text.Megaparsec
+import Data.Text (Text)
+import qualified Data.Text as T
 
-getFilesParser :: Parsec String [String]
+getFilesParser :: Parsec Text [FilePath]
 getFilesParser = stuff `sepBy` newline <* optional newline
  where
-  stuff :: Parsec String String
+  stuff :: Parsec Text FilePath
   stuff = do
     void $ optional $ string "." >> newline
     void $ optional $ string ".." >> newline
     line
-  line :: Parsec String String
+  line :: Parsec Text String
   line = many $ noneOf "\n"
 
 
 testGetFilesParser :: IO Bool
 testGetFilesParser = do
-  let expected = ["ab", "lkjasd", "912 12391", " ", "~"] :: [String]
+  let expected = ["ab", "lkjasd", "912 12391", " ", "~"] :: [FilePath]
   let resultE = parse getFilesParser "testGetFilesParser"
-                $ intercalate "\n" (".":"..":expected)
+                $ T.pack $ intercalate "\n" (".":"..":expected)
   case resultE of
     Left err -> do
       putStrLn $ "FAILED: error " ++ show err

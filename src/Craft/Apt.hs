@@ -32,7 +32,7 @@ aptMultiInstaller pkgs = do
   aptInstallMult $ latests `union` rest
 
 
-aptGet :: [String] -> Craft ()
+aptGet :: [Text] -> Craft ()
 aptGet args = exec_ "/usr/bin/apt-get" $ ["-q", "-y"] ++ args
 
 
@@ -40,37 +40,37 @@ update :: Craft ()
 update = aptGet ["update"]
 
 
-dpkgQuery :: [String] -> Craft ExecResult
+dpkgQuery :: [Text] -> Craft ExecResult
 dpkgQuery = exec dpkgQueryBin
 
 
-dpkgQueryBin :: String
+dpkgQueryBin :: Text
 dpkgQueryBin = "/usr/bin/dpkg-query"
 
 
-dpkgQueryStatus :: String -> Craft ExecResult
+dpkgQueryStatus :: Text -> Craft ExecResult
 dpkgQueryStatus pn = dpkgQuery ["-s", pn]
 
 
-expectOutput :: String -> [String] -> Craft String
+expectOutput :: Text -> [Text] -> Craft Text
 expectOutput cmd args = do
   r <- view stdout <$> ($errorOnFail =<< exec cmd args)
   when (null r) $
-    $craftError $ formatToString ("'"%string%"' returned an empty result!")
+    $craftError $ formatToText ("'"%string%"' returned an empty result!")
                                  (unwords $ cmd:args)
   return r
 
 
-dpkgQueryShow :: String -> String -> Craft String
+dpkgQueryShow :: Text -> Text -> Craft Text
 dpkgQueryShow pattern n =
   expectOutput dpkgQueryBin [ "--show", "--showformat", pattern, n ]
 
 
-dpkgQueryVersion :: String -> Craft String
+dpkgQueryVersion :: Text -> Craft Text
 dpkgQueryVersion = dpkgQueryShow "${Version}"
 
 
-dpkgQueryPackage :: String -> Craft String
+dpkgQueryPackage :: Text -> Craft Text
 dpkgQueryPackage = dpkgQueryShow "${Package}"
 
 
@@ -83,7 +83,7 @@ getAptPackage pn =
       return $ Package pn (Version r)
 
 
-aptInstallArgs :: [String]
+aptInstallArgs :: [Text]
 aptInstallArgs = ["-o", "DPkg::Options::=--force-confold", "install"]
 
 
@@ -96,7 +96,7 @@ aptInstallMult [] = return ()
 aptInstallMult pkgs = aptGet $ aptInstallArgs ++ map pkgArg pkgs
 
 
-pkgArg :: Package -> String
+pkgArg :: Package -> Text
 pkgArg (Package pn AnyVersion)  = pn
 pkgArg (Package pn Latest)      = pn
 pkgArg (Package pn (Version v)) = pn ++ "=" ++ v
@@ -119,7 +119,7 @@ data Deb = Deb { _debFile :: File
 
 makeLenses ''Deb
 
-debName :: Lens' Deb String
+debName :: Lens' Deb Text
 debName = debPkg . pkgName
 
 
@@ -149,16 +149,16 @@ dpkgDebBin :: FilePath
 dpkgDebBin = "/usr/bin/dpkg-deb"
 
 
-dpkgDebShow :: String -> File -> Craft String
+dpkgDebShow :: Text -> File -> Craft Text
 dpkgDebShow pattern f =
   expectOutput dpkgDebBin [ "--show", "--showformat", pattern, f ^. File.path ]
 
 
-dpkgDebVersion :: File -> Craft String
+dpkgDebVersion :: File -> Craft Text
 dpkgDebVersion = dpkgDebShow "${Version}"
 
 
-dpkgDebPackage :: File -> Craft String
+dpkgDebPackage :: File -> Craft Text
 dpkgDebPackage = dpkgDebShow "${Package}"
 
 
@@ -168,7 +168,7 @@ instance Craftable Deb where
         ver = d ^. debVersion
         get = getAptPackage name
         error' str =
-          $craftError $ formatToString ("craft Deb `"%shown%"` failed! "%string)
+          $craftError $ formatToText ("craft Deb `"%shown%"` failed! "%string)
                                        d str
         installAndVerify = do
           dpkgInstall $ d ^. debFile
@@ -177,7 +177,7 @@ instance Craftable Deb where
             Just pkg' -> do
               let ver' = pkg' ^. pkgVersion
               when (ver' /= ver) $
-                error' $ formatToString ("Wrong Version: "%shown%" Expected: "%shown)
+                error' $ formatToText ("Wrong Version: "%shown%" Expected: "%shown)
                                         ver' ver
     get >>= \case
       Nothing  -> do
@@ -193,7 +193,7 @@ instance Craftable Deb where
           return (Updated, d)
 
 
-data PPA = PPA { _ppaURL :: String }
+data PPA = PPA { _ppaURL :: Text }
   deriving (Eq, Show)
 makeLenses ''PPA
 
@@ -227,7 +227,7 @@ instance Destroyable PPA where
       exec_ "add-apt-repository" ["-y", "-r", "ppa:" ++ url]
       fs <- findPPAFiles ppa
       unless (null fs) $
-        $craftError $ formatToString ("destroy PPA `"%shown%"` failed! Found: "%shown)
+        $craftError $ formatToText ("destroy PPA `"%shown%"` failed! Found: "%shown)
                                      ppa fs
       update
       return (Removed, Just ppa)

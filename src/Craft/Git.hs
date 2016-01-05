@@ -2,16 +2,16 @@ module Craft.Git where
 
 import           Control.Lens hiding (noneOf)
 import           Text.Megaparsec
-import           Text.Megaparsec.String
+import           Text.Megaparsec.Text
 import Formatting hiding (char)
 
 import           Craft hiding (Version(..))
 import qualified Craft.Directory as Directory
 
 
-type BranchName = String
-type TagName    = String
-type SHA        = String
+type BranchName = Text
+type TagName    = Text
+type SHA        = Text
 
 
 data Version
@@ -33,11 +33,11 @@ master :: Version
 master = Latest "master"
 
 
-origin :: String
+origin :: Text
 origin = "origin"
 
 
-type URL = String
+type URL = Text
 
 
 data Repo
@@ -65,11 +65,11 @@ gitBin :: FilePath
 gitBin = "/usr/bin/git"
 
 
-git :: String -> [String] -> Craft ()
+git :: Text -> [Text] -> Craft ()
 git cmd args = exec_ gitBin $ cmd : args
 
 
-remotes :: Craft [String]
+remotes :: Craft [Text]
 remotes = do
   r <- $errorOnFail =<< exec gitBin ["remote"]
   return $ r ^. stdout . to lines
@@ -95,14 +95,14 @@ getURL = do
 
 
 -- TESTME
-repoURLParser :: Parser [((String, String), String)]
+repoURLParser :: Parser [((Text, Text), Text)]
 repoURLParser = some $ do
   remote <- word
   url' <- word
   direction <- char '(' *> some alphaNumChar <* char ')' <* newline
   return ((remote, direction), url')
  where
-  word :: Parser String
+  word :: Parser Text
   word = some (noneOf " \t") <* some (spaceChar <|> tab)
 
 
@@ -137,7 +137,7 @@ instance Craftable Repo where
             Commit _ ->
               when (ver' /= ver) $
                 $craftError
-                $ formatToString ("craft Git.Repo `"%shown%"` failed! Wrong Commit: "%shown%" Got: "%shown)
+                $ formatToText ("craft Git.Repo `"%shown%"` failed! Wrong Commit: "%shown%" Got: "%shown)
                                  r ver ver'
             _ -> return ()
         checkoutCommit :: Craft Version

@@ -12,8 +12,8 @@ import qualified Craft.User as User
 
 data PublicKey
   = PublicKey
-    { _publicKey     :: String
-    , _publicKeyType :: String
+    { _publicKey     :: Text
+    , _publicKeyType :: Text
     }
 makeLenses ''PublicKey
 

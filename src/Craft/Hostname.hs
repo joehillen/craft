@@ -6,7 +6,7 @@ import qualified Craft.Hosts as Hosts
 import Craft.Internal
 
 
-data Hostname = Hostname String
+data Hostname = Hostname Text
   deriving (Eq, Show)
 
 

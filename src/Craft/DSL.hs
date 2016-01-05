@@ -5,26 +5,26 @@ import Control.Monad.Reader
 import Control.Monad.Free
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
+import qualified Data.Text as T
 import Data.List (intercalate)
-import Data.List.Split (splitOn)
 import Text.Megaparsec
 
 import Craft.Types
-import Craft.Helpers
+import Craft.Internal.Helpers
 import Craft.Log
 
 
 -- | Craft DSL
 exec :: Command -> Args -> Craft ExecResult
 exec cmd args = do
-  logDebugNS "exec" $ unwords (cmd:args)
+  logDebugNS "exec" $ T.unwords (T.pack cmd:args)
   ce <- ask
   lift $ execF ce cmd args
 
 
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
-  logDebugNS "exec_" $ unwords (cmd:args)
+  logDebugNS "exec_" $ T.unwords (T.pack cmd:args)
   ce <- ask
   lift $ execF_ ce cmd args
 
@@ -54,24 +54,24 @@ readSourceFile fp = do
 
 
 -- | better than grep
-parseExecResult :: ExecResult -> Parsec String a -> String -> Craft a
+parseExecResult :: ExecResult -> Parsec Text a -> Text -> Craft a
 parseExecResult execr parser str =
-  case parse parser (showProc $ execResultProc execr) str of
+  case parse parser (T.unpack . showProc $ execResultProc execr) str of
     Right x -> return x
     Left err ->
-      $craftError $ concatMap appendNL
+      $craftError . T.concat $ map appendNL
         [ "parseExecResult error:"
         , "<<<< process >>>>"
         , showProc $ execResultProc execr
         , "<<<< output >>>>"
         , str
         , "<<<< parse error >>>>"
-        , show err
+        , T.pack (show err)
         ]
 
 
 craftExecPath :: CraftEnv -> [FilePath]
-craftExecPath = maybe [] (splitOn ":") . lookup "PATH" . view craftExecEnv
+craftExecPath = map T.unpack . maybe [] (T.splitOn ":") . lookup "PATH" . view craftExecEnv
 
 
 -- TESTME
@@ -83,7 +83,7 @@ prependPath newpath go = do
 
 -- TESTME
 withPath :: [FilePath] -> Craft a -> Craft a
-withPath = withEnvVar "PATH" . intercalate ":"
+withPath = withEnvVar "PATH" . T.pack . intercalate ":"
 
 
 replaceKey :: Eq a => a -> b -> (a, b) -> (a, b)
@@ -97,7 +97,7 @@ withEnv env = local (\r -> r & craftExecEnv .~ env)
 
 
 -- TESTME
-withEnvVar :: String -> String -> Craft a -> Craft a
+withEnvVar :: Text -> Text -> Craft a -> Craft a
 withEnvVar name val go = do
   ce <- ask
   let env = map (replaceKey name val) $ ce ^. craftExecEnv

@@ -48,7 +48,7 @@ data SSL
 
 
 data Address
-  = Address String
+  = Address Text
   | AnyAddress
 
 
@@ -59,9 +59,9 @@ instance Show Address where
 
 type Port      = Int
 data Location  = Location Path [Directive] [Location]
-type Path      = String
+type Path      = Text
 type Directive  = (Name, Args)
-type Name       = String
+type Name       = Text
 
 
 makeLenses ''Config
@@ -120,7 +120,7 @@ redirectWWWtoNoWWW servers =
         [ ("return", ["301", "http://" ++ s ^. serverNames . _head ++ "$uri"]) ]
 
 
-logs :: FilePath -> String -> [Directive]
+logs :: FilePath -> Text -> [Directive]
 logs logdir name =
   [ ("access_log", [ logprefix ++ ".access.log", "combined"])
   , ("error_log", [ logprefix ++ ".error.log" ])
@@ -140,7 +140,7 @@ instance Show Config where
     servers = concatMap show $ cfg ^. configServers
 
 
-showDirective :: Directive -> String
+showDirective :: Directive -> Text
 showDirective (name, args) =
   name ++ " " ++ unwords args ++ ";"
 
@@ -162,7 +162,7 @@ instance Show Location where
     "}\n"
 
 
-showListen :: (Address, Port, Args) -> String
+showListen :: (Address, Port, Args) -> Text
 showListen (addr, port, args) =
   show addr ++ ":" ++ show port ++ " " ++ unwords args
 

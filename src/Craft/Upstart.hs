@@ -5,12 +5,12 @@ import           Craft
 import           Control.Lens hiding (noneOf)
 import           Text.Megaparsec
 
-type ServiceName = String
+type ServiceName = Text
 
 data Service
   = Service
-    { _name   :: String
-    , _status :: String
+    { _name   :: Text
+    , _status :: Text
     }
 
 makeLenses ''Service
@@ -24,7 +24,7 @@ get sn =
                   <$> parseExecResult (ExecSucc r) (statusParser sn) (r^.stdout)
 
 
-statusParser :: String -> Parsec String String
+statusParser :: Text -> Parsec Text Text
 statusParser sn = do
   void $ string sn >> space >> some (noneOf "/") >> char '/'
   some $ noneOf ","

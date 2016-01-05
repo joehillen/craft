@@ -10,15 +10,15 @@ import Control.Lens
 data S3File
   = S3File
     { _file    :: File
-    , _source  :: String
-    , _domain  :: String
+    , _source  :: Text
+    , _domain  :: Text
     , _version :: Version
     }
     deriving (Eq, Show)
 makeLenses ''S3File
 
 
-s3file :: FilePath -> String -> S3File
+s3file :: FilePath -> Text -> S3File
 s3file fp source' =
   S3File
   { _file    = File.file fp
@@ -28,10 +28,10 @@ s3file fp source' =
   }
 
 
-getS3Sum :: String -> Craft (Maybe String)
+getS3Sum :: Text -> Craft (Maybe Text)
 getS3Sum url = $notImplemented "getS3Sum"
 
--- getS3Sum :: String -> IO (Maybe String)
+-- getS3Sum :: Text -> IO (Maybe Text)
 -- getS3Sum url = do
 --   r <- head_ url
 --   return $ filter ('"' /=) . BS.unpack <$> (r ^? responseHeader "ETag")

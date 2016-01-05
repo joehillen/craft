@@ -42,7 +42,7 @@ vagrant up
 I plan to convert Craft to a Free Monad with a DSL of:
 
 ```haskell
-execute        :: Env -> Path -> Command -> Args -> Craft (ExitCode, String, String)
+execute        :: Env -> Path -> Command -> Args -> Craft (ExitCode, Text, Text)
 execute_       :: Env -> Path -> Command -> Args -> Craft ()
 readFile       :: FilePath -> Craft ByteString
 writeFile      :: FilePath -> ByteString -> Craft ()

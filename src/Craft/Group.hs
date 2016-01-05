@@ -9,6 +9,7 @@ where
 
 import Control.Lens
 import           Data.List (intercalate)
+import qualified Data.Text as T
 
 import           Craft.Internal
 import           Craft.Internal.Helpers
@@ -16,7 +17,7 @@ import           Craft.Internal.UserGroup
 
 type Name = GroupName
 
-name :: Lens' Group String
+name :: Lens' Group Text
 name = groupname
 
 data Options =
@@ -39,9 +40,9 @@ opts =
 createGroup :: Name -> Options -> Craft Group
 createGroup gn Options{..} = do
   exec_ "/usr/sbin/groupadd" args
-  exec_ "/usr/bin/gpasswd" ["--members", intercalate "," optUsers, gn]
+  exec_ "/usr/bin/gpasswd" ["--members", T.intercalate "," optUsers, gn]
   fromName gn >>= \case
-    Nothing -> $craftError $ "createGroup `" ++ show gn ++ "` failed. Not Found!"
+    Nothing -> $craftError $ "createGroup `" <> gn <> "` failed. Not Found!"
     Just g -> return g
  where
   args = concat

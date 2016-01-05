@@ -9,11 +9,12 @@ module Craft.Helpers
 )
 where
 
+import Data.Monoid ((<>))
 import Control.Monad (when, unless, void)
 import Control.Monad.Extra (whenM, unlessM)
-import qualified System.IO as IO
 import System.Console.ANSI
 import Data.Digest.Pure.MD5 (md5)
+import Data.Text as T
 
 
 color :: Color -> IO a -> IO a
@@ -24,13 +25,8 @@ color c action = do
   return r
 
 
-trimTrailing :: String -> String
-trimTrailing = reverse . dropWhile (`elem` ("\n\r\t " :: String)) . reverse
-
-
-appendNL :: String -> String
-appendNL s =
-  s ++ if not (null s) then "\n" else ""
+trimTrailing :: Text -> Text
+trimTrailing = dropWhileEnd (`elem` ("\n\r\t " :: String))
 
 
 whenJust :: Monad m => Maybe a -> (a -> m ()) -> m ()

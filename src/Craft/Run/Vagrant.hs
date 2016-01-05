@@ -28,7 +28,7 @@ runCraftVagrant env configs = do
     env
     configs
 
-cfgLookupOrError :: String -> SshConfig -> String
+cfgLookupOrError :: Text -> SshConfig -> Text
 cfgLookupOrError name sshcfg =
   fromMaybe
     (error $ "'" ++ name ++ "' not found in output of 'vagrant ssh-config'")

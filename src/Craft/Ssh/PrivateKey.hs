@@ -15,8 +15,8 @@ import Control.Lens
 data PrivateKey
   = PrivateKey
     { _user :: User
-    , _name :: String
-    , _content :: String
+    , _name :: Text
+    , _content :: Text
     }
   deriving (Eq, Show)
 makeLenses ''PrivateKey

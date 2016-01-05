@@ -8,11 +8,11 @@ setup :: Craft ()
 setup = craft_ $ package "facter"
 
 
-fact :: String -> Craft String
+fact :: Text -> Craft Text
 fact f = do
   r <- $errorOnFail =<< exec "/usr/bin/facter" [f]
   return $ r ^. stdout . to rmTrailingNL
 
 
-rmTrailingNL :: String -> String
+rmTrailingNL :: Text -> Text
 rmTrailingNL = reverse . dropWhile (=='\n') . reverse

@@ -8,7 +8,6 @@ module Craft.File
 )
 where
 
-import Control.Lens
 import           Craft.Helpers
 import           Craft.Internal
 import           Craft.File.Mode
@@ -23,8 +22,10 @@ import           Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Char8 as B8
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Data.ByteString.Lens
 import           Data.Maybe
+import qualified Data.Text as T
 import Formatting
 import           System.FilePath
 
@@ -54,16 +55,16 @@ instance Eq File where
 owner :: File -> Craft User
 owner f =
   User.fromID (f ^. ownerID) >>= \case
-    Nothing -> $craftError $ formatToString ("No such owner with id `"%int%"` for: "%shown)
-                                            (f ^. ownerID) f
+    Nothing -> $craftError $ sformat ("No such owner with id `"%int%"` for: "%shown)
+                                     (f ^. ownerID) f
     Just g  -> return g
 
 
 group :: File -> Craft Group
 group f =
   Group.fromID (f ^. groupID) >>= \case
-    Nothing -> $craftError $ formatToString ("No such group with id `"%int%"` for: "%shown)
-                                            (f ^. groupID) f
+    Nothing -> $craftError $ sformat ("No such group with id `"%int%"` for: "%shown)
+                                     (f ^. groupID) f
     Just g -> return g
 
 
@@ -79,13 +80,13 @@ instance Show File where
       showContent (Just c) = "Just " ++ show (BS.take 30 c) ++ "..."
 
 
-name :: Getter File String
-name = path . to takeFileName
+name :: Getter File Text
+name = path . to (T.pack . takeFileName)
 
 
-strContent :: Lens' File String
-strContent = lens (view $ content . _Just . unpackedChars)
-                  (\f s -> f & content .~ Just (B8.pack s))
+textContent :: Lens' File Text
+textContent = lens (view $ content . _Just . to decodeUtf8)
+                  (\f s -> f & content .~ Just (encodeUtf8 s))
 
 
 
@@ -120,7 +121,7 @@ instance Craftable File where
         setOwner' = setOwnerID (f ^. ownerID) fp
         setGroup' = setGroupID (f ^. groupID) fp
         md5c = show . md5 . BL.fromStrict . fromMaybe "" $ f ^. content
-        err str = $craftError $ "craft File `" ++ fp ++ "` failed! " ++ str
+        err str = $craftError $ "craft File `"<> T.pack fp<>"` failed! "<>str
         verifyMode m =
           when (m /= f ^. mode) $ err $ "Wrong Mode: " ++ show m
                                     ++ " Expected: " ++ show (f ^. mode)
@@ -214,7 +215,7 @@ get fp =
                               & content ?~ content'
 
 
-md5sum :: FilePath -> Craft String
+md5sum :: FilePath -> Craft Text
 md5sum fp = do
   r <- $errorOnFail =<< exec "md5sum" [fp]
   return $ r ^. stdout . to words . _head
