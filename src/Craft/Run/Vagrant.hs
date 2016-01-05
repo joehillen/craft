@@ -1,7 +1,7 @@
 module Craft.Run.Vagrant where
 
 import Craft
-import Craft.Config.Ssh
+import Craft.Config.Ssh (SshConfig(..), parser, cfgLookup)
 
 import Control.Lens
 import qualified System.Environment
@@ -20,13 +20,15 @@ runCraftVagrant env configs = do
     success <- $errorOnFail r
     SshConfig <$> parseExecResult r parser (success ^. stdout)
 
-  runCraftSSH
-    (sshEnv (cfgLookupOrError "hostname" sshcfg)
-            (cfgLookupOrError "identityfile" sshcfg)
-            & sshUser .~ cfgLookupOrError "user" sshcfg
-            & sshSudo .~ True)
-    env
-    configs
+  let addr = cfgLookupOrError "hostname" sshcfg
+      port = read $ cfgLookupOrError "port" sshcfg
+      user = cfgLookupOrError "user" sshcfg
+      key  = cfgLookupOrError "identityfile" sshcfg
+  runCraftSSH (sshEnv addr key & sshUser .~ user
+                               & sshPort .~ port
+                               & sshSudo .~ True)
+              env
+              configs
 
 cfgLookupOrError :: String -> SshConfig -> String
 cfgLookupOrError name sshcfg =

@@ -21,6 +21,7 @@ data SSHEnv
   = SSHEnv
     { _sshKey     :: FilePath
     , _sshAddr    :: String
+    , _sshPort    :: Int
     , _sshUser    :: String
     , _sshSudo    :: Bool
     , _sshOptions :: [String]
@@ -32,6 +33,7 @@ sshEnv :: String -> FilePath -> SSHEnv
 sshEnv addr key =
   SSHEnv
   { _sshAddr = addr
+  , _sshPort = 22
   , _sshKey  = key
   , _sshUser = "root"
   , _sshSudo = True
@@ -49,7 +51,7 @@ data SSHSession
 
 newSSHSession :: IO SSHSession
 newSSHSession = do
-  randInt <- randomIO :: IO Int
+  randInt <- abs <$> randomIO :: IO Int
   return . SSHSession $ ".craft-ssh-session-" ++ show randInt
 
 
@@ -118,13 +120,14 @@ runCraftSSH' _ _ (Log ce loc logsource level logstr next) =
 
 sshArgs :: SSHEnv -> SSHSession -> Args
 sshArgs SSHEnv{..} SSHSession{..} =
+  [ "-p", show _sshPort ] ++
   [ "-i", _sshKey ] ++
   ["-o" | not (null _sshOptions)] ++
   intersperse "-o" _sshOptions ++
   [ "-o", "ControlMaster=auto"
   , "-o", "ControlPath=" ++ sshControlPath
   , "-o", "ControlPersist=10"
-  ,"-o", "BatchMode=yes" -- never prompt for a password
+  , "-o", "BatchMode=yes" -- never prompt for a password
   ]
 
 sshProc :: SSHEnv -> SSHSession -> CraftEnv -> Command -> Args -> CreateProcess

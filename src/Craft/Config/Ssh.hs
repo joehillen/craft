@@ -1,6 +1,6 @@
 module Craft.Config.Ssh where
 
-import Control.Lens
+import Control.Lens hiding (noneOf)
 import           Data.Char (toLower)
 import           Data.Maybe (catMaybes)
 import           Text.Megaparsec
@@ -15,7 +15,7 @@ import           Craft.Internal.Helpers
 import           Craft.Ssh
 import           Craft.User (User)
 import qualified Craft.User as User
-import qualified Craft.Group as Group
+
 
 data Section
   = Host  String Body
@@ -119,7 +119,7 @@ parseTitle = do
   void spaceChar
   notFollowedBy eol
   space
-  name <- someTill anyChar eol
+  name <- anyChar `someTill` eol
   return (type', name)
 
 
@@ -134,7 +134,8 @@ bodyLine = do
   name <- someTill anyChar spaceChar
   notFollowedBy eol
   space
-  val <- someTill anyChar (void eol <|> eof)
+  val <- between (char '"') (char '"') (many $ noneOf "\"")
+         <|> someTill anyChar (void eol <|> eof)
   void $ optional (space <|> void (many eol))
   return (name, trim val)
 
