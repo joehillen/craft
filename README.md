@@ -24,7 +24,6 @@ vagrant up
 
 # TODO
 
- * Lenses!!!
  * Replace FilePath with [pathtype](https://hackage.haskell.org/package/pathtype)
  * Rename `get` so that it doesn't conflict with the State Monad, but what name to use?
  * Replace facter with something type-safe (lpuppet)
