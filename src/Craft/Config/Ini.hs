@@ -1,5 +1,3 @@
-{-# LANGUAGE PackageImports #-}
-
 module Craft.Config.Ini
 ( module Craft.Config.Ini
 , Ini(..)
@@ -9,7 +7,7 @@ where
 
 import Control.Lens
 import Data.Ini
-import qualified "unordered-containers" Data.HashMap.Strict as HM
+import qualified Data.HashMap.Strict as HM
 import qualified Data.Text as T
 
 import Craft.Config
