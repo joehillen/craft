@@ -146,7 +146,7 @@ createUser un uopts@Options{..} = do
     x       -> return x
 
   case user' of
-    Nothing   -> notfound
+    Nothing   -> $craftError notfound
     Just user -> do
       handleOpt optUID (user ^. uid) $
         setUID un
@@ -172,10 +172,10 @@ createUser un uopts@Options{..} = do
         lock un
 
   fromName un >>= \case
-    Nothing -> notfound
+    Nothing -> $craftError notfound
     Just r  -> return r
  where
-  notfound = $craftError $ "createUser `" ++ un ++ "` failed. Not Found!"
+  notfound = "createUser `" ++ un ++ "` failed. Not Found!"
 
   handleOpt :: Eq a => Maybe a -> a -> (a -> Craft ()) -> Craft ()
   handleOpt Nothing       _      _ = return ()
