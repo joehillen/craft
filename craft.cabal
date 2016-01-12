@@ -94,7 +94,7 @@ library
                      , filepath
                      , formatting
                      , free
-                     , hashmap
+                     , unordered-containers
                      , ini
                      , lens
                      , megaparsec

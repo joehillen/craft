@@ -1,12 +1,15 @@
+{-# LANGUAGE PackageImports #-}
+
 module Craft.Config.Ini
 ( module Craft.Config.Ini
-, fromList
+, Ini(..)
+, HM.fromList
 )
 where
 
 import Control.Lens
 import Data.Ini
-import Data.HashMap (fromList)
+import qualified "unordered-containers" Data.HashMap.Strict as HM
 import qualified Data.Text as T
 
 import Craft.Config
@@ -15,6 +18,10 @@ import Craft.Log
 
 
 newtype IniFormat = IniFormat { _inifmt :: Ini }
+
+
+config :: FilePath -> Ini -> Config IniFormat
+config fp ini = Craft.Config.config fp (IniFormat ini)
 
 
 instance ConfigFormat IniFormat where
@@ -30,8 +37,8 @@ get = Craft.Config.get
 
 
 lookup :: String -> String -> IniFormat -> Maybe String
-lookup section key iniformat =
-  case lookupValue (T.pack section) (T.pack key) (_inifmt iniformat) of
+lookup section key (IniFormat ini)=
+  case lookupValue (T.pack section) (T.pack key) ini of
     Left  _ -> Nothing
     Right r -> Just $ T.unpack r
 
