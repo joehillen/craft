@@ -19,6 +19,10 @@ data Link
 makeLenses ''Link
 
 
+link :: Target -> Path -> Link
+link = Link
+
+
 exists :: FilePath -> Craft Bool
 exists lp = isExecSucc <$> exec "/usr/bin/test" ["-L", lp]
 
