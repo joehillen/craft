@@ -3,6 +3,7 @@ module Craft.Run.Local where
 import Control.Lens
 import Control.Monad.Reader
 import Control.Monad.Free
+import Control.Monad.Except
 import qualified Data.ByteString as BS
 import System.Process hiding ( readCreateProcessWithExitCode
                              , readProcessWithExitCode)
@@ -12,8 +13,11 @@ import Craft.Run.Internal
 
 
 -- | runCraftLocal
-runCraftLocal :: CraftEnv -> ReaderT CraftEnv (Free CraftDSL) a -> IO a
-runCraftLocal ce = iterM runCraftLocal' . flip runReaderT ce
+runCraftLocal :: CraftEnv -> Craft a -> IO a
+runCraftLocal ce prog =
+  (iterM runCraftLocal' . flip runReaderT ce $ runExceptT prog) >>= \case
+    Left err -> error err
+    Right a  -> return a
 
 
 -- | runCraftLocal implementation
@@ -26,9 +30,9 @@ runCraftLocal' (Exec_ ce command args next) =
 runCraftLocal' (FileRead _ fp next) = BS.readFile fp >>= next
 runCraftLocal' (FileWrite _ fp content next) = BS.writeFile fp content >> next
 runCraftLocal' (SourceFile ce src dest next) = do
-  src' <- findSourceFile ce src
-  runCraftLocal' (Exec_ ce "/bin/cp" [src', dest] next)
-runCraftLocal' (ReadSourceFile ce fp next) = readSourceFileIO ce fp >>= next
+  runCraftLocal' (Exec_ ce "/bin/cp" [src, dest] next)
+runCraftLocal' (ReadSourceFile _ fp next) = readSourceFileIO fp >>= next
+runCraftLocal' (FindSourceFile ce name next) = findSourceFileIO ce name >>= next
 runCraftLocal' (Log ce loc logsource level logstr next) =
   let logger = ce ^. craftLogger
   in logger loc logsource level logstr >> next

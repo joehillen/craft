@@ -4,11 +4,14 @@ module Craft
 , module System.FilePath
 , asks
 , ExitCode(..)
+, catchError
+, throwError
 )
 where
 
 import Control.Lens
 import Control.Monad.Reader
+import Control.Monad.Except (throwError, catchError)
 import System.Exit (ExitCode(..))
 import System.FilePath
 import Craft.Internal

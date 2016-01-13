@@ -5,6 +5,7 @@ import Control.Lens
 import Control.Monad.Free
 import Control.Monad.Logger (Loc, LogSource, LogLevel(..), LogStr)
 import Control.Monad.Reader
+import Control.Monad.Except
 import Data.ByteString (ByteString)
 import qualified Data.Text as T
 import Data.Versions (parseV)
@@ -13,7 +14,7 @@ import System.Process
 import Craft.Helpers
 
 
-type Craft a = ReaderT CraftEnv (Free CraftDSL) a
+type Craft a = ExceptT String (ReaderT CraftEnv (Free CraftDSL)) a
 
 
 type StdOut = String
@@ -102,6 +103,7 @@ data CraftDSL next
   | FileRead CraftEnv FilePath (ByteString -> next)
   | FileWrite CraftEnv FilePath ByteString next
   | SourceFile CraftEnv FilePath FilePath next
+  | FindSourceFile CraftEnv FilePath ([FilePath] -> next)
   | ReadSourceFile CraftEnv FilePath (ByteString -> next)
   | Log CraftEnv Loc LogSource LogLevel LogStr next
  deriving Functor

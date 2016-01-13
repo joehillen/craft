@@ -4,6 +4,7 @@ import Control.Lens
 import Control.Exception (finally)
 import Control.Monad.Free
 import Control.Monad.Reader
+import Control.Monad.Except
 import qualified Data.ByteString.Char8 as B8
 import Data.List (intersperse)
 import Data.String.Utils (replace)
@@ -56,12 +57,15 @@ newSSHSession = do
 
 
 -- | runCraftSSH
-runCraftSSH :: SSHEnv -> CraftEnv -> ReaderT CraftEnv (Free CraftDSL) a -> IO a
+runCraftSSH :: SSHEnv -> CraftEnv -> Craft a -> IO a
 runCraftSSH sshenv ce prog = do
   sshSession <- newSSHSession
   let controlpath = sshControlPath sshSession
+      run = iterM (runCraftSSH' sshenv sshSession) . flip runReaderT ce
+                                                   . runExceptT
   finally
-    (iterM (runCraftSSH' sshenv sshSession) . flip runReaderT ce $ prog)
+    (run prog >>= \case Left err -> error err
+                        Right a -> return a)
     (whenM (doesFileExist controlpath) $
       removeFile controlpath)
 
@@ -97,7 +101,6 @@ runCraftSSH' sshenv sshsession (FileWrite ce fp content next) = do
   next
 
 runCraftSSH' sshenv sshsession (SourceFile ce src dest next) = do
-  src' <- findSourceFile ce src
   let p = proc "rsync"
             ([ "--quiet" -- suppress non-error messages
              , "--checksum" -- skip based on checksum, not mod-time & size
@@ -108,12 +111,13 @@ runCraftSSH' sshenv sshsession (SourceFile ce src dest next) = do
              (if sshenv ^. sshSudo then ["--super", "--rsync-path=sudo rsync"]
                                    else [])
              ++
-             [ src'
+             [ src
              , sshenv ^. sshUser ++ "@" ++ sshenv ^. sshAddr ++ ":" ++ dest
              ])
   execProc_ ce (showProc p) p next
 
-runCraftSSH' _ _ (ReadSourceFile ce fp next) = readSourceFileIO ce fp >>= next
+runCraftSSH' _ _ (FindSourceFile ce name next) = findSourceFileIO ce name >>= next
+runCraftSSH' _ _ (ReadSourceFile _ fp next) = readSourceFileIO fp >>= next
 runCraftSSH' _ _ (Log ce loc logsource level logstr next) =
   (ce ^. craftLogger) loc logsource level logstr >> next
 

@@ -8,6 +8,7 @@ import qualified Data.ByteString as BS
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
 import Text.Megaparsec
+import System.FilePath ((</>))
 
 import Craft.Types
 import Craft.Helpers
@@ -19,38 +20,52 @@ exec :: Command -> Args -> Craft ExecResult
 exec cmd args = do
   logDebugNS "exec" $ unwords (cmd:args)
   ce <- ask
-  lift $ execF ce cmd args
+  lift . lift $ execF ce cmd args
 
 
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
   logDebugNS "exec_" $ unwords (cmd:args)
   ce <- ask
-  lift $ execF_ ce cmd args
+  lift . lift $ execF_ ce cmd args
 
 
 fileRead :: FilePath -> Craft BS.ByteString
 fileRead fp = do
   ce <- ask
-  lift $ fileReadF ce fp
+  lift . lift $ fileReadF ce fp
 
 
 fileWrite :: FilePath -> BS.ByteString -> Craft ()
 fileWrite fp content = do
   ce <- ask
-  lift $ fileWriteF ce fp content
+  lift . lift $ fileWriteF ce fp content
 
 
 sourceFile :: FilePath -> FilePath -> Craft ()
-sourceFile src dest = do
+sourceFile name dest = do
   ce <- ask
-  lift $ sourceFileF ce src dest
+  fp <- findSourceFile name
+  lift . lift $ sourceFileF ce fp dest
+
+
+findSourceFile :: FilePath -> Craft FilePath
+findSourceFile name = do
+  ce <- ask
+  let fps = ce ^. craftSourcePaths
+  files <- lift . lift $ findSourceFileF ce name
+  if null files then
+    $craftError $ "Source file `" ++ name ++ "` not found in file sources: "
+                   ++ show fps
+  else
+    return $ head files </> name
 
 
 readSourceFile :: FilePath -> Craft ByteString
-readSourceFile fp = do
+readSourceFile name = do
   ce <- ask
-  lift $ readSourceFileF ce fp
+  fp <- findSourceFile name
+  lift . lift $ readSourceFileF ce fp
 
 
 -- | better than grep
@@ -128,6 +143,10 @@ fileWriteF ce fp content = liftF $ FileWrite ce fp content ()
 
 sourceFileF :: CraftEnv -> FilePath -> FilePath -> Free CraftDSL ()
 sourceFileF ce src dest = liftF $ SourceFile ce src dest ()
+
+
+findSourceFileF :: CraftEnv -> FilePath -> Free CraftDSL [FilePath]
+findSourceFileF ce name = liftF $ FindSourceFile ce name id
 
 
 readSourceFileF :: CraftEnv -> FilePath -> Free CraftDSL BS.ByteString

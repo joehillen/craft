@@ -37,6 +37,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import qualified Data.ByteString as BS
 import qualified Control.Monad.Reader as R
+import Control.Monad.Except (throwError)
 import Control.Monad.Free as Free
 import qualified Data.Text as Text
 import Language.Haskell.TH.Syntax (Lift (lift), Q, Exp, Loc (..), qLocation)
@@ -48,7 +49,7 @@ import Craft.Types
 
 -- |Log an error and throw a runtime exception
 craftError :: Q Exp
-craftError = [|\m -> $(logError) m >> error m|]
+craftError = [|\m -> $(logError) m >> throwError m|]
 
 
 notImplemented :: Q Exp
@@ -66,7 +67,7 @@ craftLoggerLog :: ToLogStr msg => Loc -> LogSource -> LogLevel -> msg -> Craft (
 craftLoggerLog loc logsource level msg = do
   let logstr = toLogStr msg
   ce <- R.ask
-  R.lift $ logF ce loc logsource level logstr
+  R.lift . R.lift $ logF ce loc logsource level logstr
 
 
 craftDefaultLogger :: Handle -> LogLevel -> LogFunc
