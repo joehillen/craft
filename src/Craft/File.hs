@@ -8,7 +8,6 @@ module Craft.File
 )
 where
 
-import Control.Lens
 import           Craft.Helpers
 import           Craft.Internal
 import           Craft.File.Mode
@@ -215,6 +214,7 @@ get fp =
 
 
 md5sum :: FilePath -> Craft String
+md5sum "" = $craftError "md5sum on empty file path"
 md5sum fp = do
   r <- $errorOnFail =<< exec "md5sum" [fp]
   return $ r ^. stdout . to words . _head
