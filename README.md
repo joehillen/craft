@@ -32,6 +32,8 @@ vagrant up
    (the specific requirements still need to be ironed out).
  * Replace use of "error" with proper exception types.
  * Static link
+ * Manage File and FileContent separately
+   (unexpected calls to readFile are slow over the network)
 
 
 # Notes
