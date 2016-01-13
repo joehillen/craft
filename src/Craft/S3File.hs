@@ -4,7 +4,9 @@ import           Craft
 import           Craft.File (File)
 import qualified Craft.File as File
 
-import Control.Lens
+import Control.Lens hiding (noneOf)
+import Text.Megaparsec
+import Text.Megaparsec.String
 
 
 data S3File
@@ -28,30 +30,61 @@ s3file fp source' =
   }
 
 
-getS3Sum :: String -> Craft (Maybe String)
-getS3Sum url = $notImplemented "getS3Sum"
-
--- getS3Sum :: String -> IO (Maybe String)
--- getS3Sum url = do
---   r <- head_ url
---   return $ filter ('"' /=) . BS.unpack <$> (r ^? responseHeader "ETag")
+url :: Getter S3File String
+url = to (\f -> "https://" ++ f ^. domain ++ "/" ++ f ^. source)
 
 
-{-
+
+getS3Sum :: S3File -> Craft (Maybe String)
+getS3Sum f = do
+  r <- $errorOnFail =<< exec "curl" ["-I", f ^. url]
+  headers <- parseExecResult (ExecSucc r) httpHeaders $ r ^. stdout
+  return $ filter ('"' /=) <$> lookup "ETag" headers
+
+
+httpHeaders :: Parser [(String, String)]
+httpHeaders = do
+  _ <- string "HTTP/" >> digitChar >> char '.' >> digitChar >> string " 200 OK" >> eol
+  some header
+
+
+header :: Parser (String, String)
+header = do
+  name <- (noneOf ":") `someTill` try (string ": ")
+  value <- anyChar `manyTill` try (skipSome eol <|> eof)
+  return (name, value)
+
+
 instance Craftable S3File where
   watchCraft s3f = do
-    let fp = File.path $ file s3f
-    let url = "https://" ++ domain s3f ++ "/" ++ source s3f
-    let downloadFile = exec_ "curl" ["-s", "-L", "-o", fp, url]
+    let s3f' = s3f & file . File.content .~ Nothing
+    let fp = s3f' ^. file . File.path
+    let downloadFile = exec_ "curl" ["-s", "-L", "-o", fp, s3f' ^. url]
 
-    curSum <- File.md5sum fp
-    s3Sum <- fromJust <$> getS3Sum url
+    getS3Sum s3f' >>= \case
+      Nothing -> $craftError $ "Failed to get chksum from S3 for: " ++ show s3f'
+      Just etag -> do
+        exists <- File.exists fp
+        w <- if exists then do
+                curSum <- File.md5sum fp
+                case s3f' ^. version of
+                  AnyVersion     -> return Unchanged
+                  Latest         -> if etag == curSum then
+                                      return Unchanged
+                                    else do
+                                      downloadFile
+                                      return Updated
+                  Version verStr -> if curSum == verStr then
+                                      return Unchanged
+                                    else do
+                                      downloadFile
+                                      return Updated
+              else do
+                downloadFile
+                return Created
 
-    unless (isJust s3f) $
-      case version of
-        AnyVersion     -> downloadFile
-        Latest         -> unless (s3Sum == curSum)  downloadFile
-        Version verStr -> unless (curSum == verStr) downloadFile
-
-    craft_ $ file { File.content = Nothing }
--}
+        fw <- watchCraft_ $ s3f' ^. file
+        if changed w then
+          return (w, s3f')
+        else
+          return (fw, s3f')
