@@ -34,11 +34,15 @@ sshEnv addr key =
   , sshKey  = key
   , sshUser = "root"
   , sshSudo = True
-  , sshOptions = [ "UserKnownHostsFile=/dev/null"
-                 , "StrictHostKeyChecking=no"
-                 , "LogLevel=ERROR"
-                 ]
+  , sshOptions = sshDefaultOptions
   }
+
+sshDefaultOptions :: [String]
+sshDefaultOptions =
+  [ "UserKnownHostsFile=/dev/null"
+  , "StrictHostKeyChecking=no"
+  , "LogLevel=ERROR"
+  ]
 
 data SSHSession
  = SSHSession
