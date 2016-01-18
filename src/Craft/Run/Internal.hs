@@ -122,6 +122,8 @@ sourceProcessWithConsumers :: CreateProcess
 sourceProcessWithConsumers cp consumerStdout consumerStderr = do
     ( ClosedStream, (sourceStdout, closeStdout)
                   , (sourceStderr, closeStderr), cph) <- streamingProcess cp
-    race_ (sourceStdout $$ consumerStdout >> closeStdout)
-          (sourceStderr $$ consumerStderr >> closeStderr)
+    race_ (sourceStdout $$ consumerStdout)
+          (sourceStderr $$ consumerStderr)
+    closeStdout
+    closeStderr
     waitForStreamingProcess cph
