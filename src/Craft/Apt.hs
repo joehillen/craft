@@ -40,6 +40,10 @@ update :: Craft ()
 update = aptGet ["update"]
 
 
+autoremove :: Craft ()
+autoremove = aptGet ["autoremove"]
+
+
 dpkgQuery :: [String] -> Craft ExecResult
 dpkgQuery = exec dpkgQueryBin
 
