@@ -1,17 +1,9 @@
 module Craft.File.Sourced where
 
-
-import           Craft.Internal
-import           Craft.File.Mode
-import           Craft.User (User, UserID)
-import qualified Craft.User as User
-import           Craft.Group (Group, GroupID)
-import qualified Craft.Group as Group
-import           Craft.Internal.FileDirectory
-import qualified Craft.File as File
-
 import Control.Lens
-import           System.FilePath
+
+import Craft.Internal
+import qualified Craft.File as File
 
 
 data SourcedFile
@@ -33,9 +25,26 @@ sourcedFile fp source' =
 
 
 instance Craftable SourcedFile where
-  craft_ sf = do
+  craft sf = do
     let sf' = sf & file . File.content .~ Nothing
     sourceFile (sf' ^. source) (sf' ^. file . File.path)
     craft_ $ sf' ^. file
+    return sf'
 
-  watchCraft sf = $notImplemented $ "watchCraft " ++ show sf
+  watchCraft sf = do
+    let fp = sf ^. file . File.path
+    let sf' = sf & file . File.content .~ Nothing
+    exists <- File.exists fp
+    if exists then do
+      oldsum <- File.md5sum fp
+      sourceFile (sf ^. source) fp
+      fw <- watchCraft_ $ sf' ^. file
+      newsum <- File.md5sum fp
+      if oldsum /= newsum then
+        return (Updated, sf')
+      else
+        return (fw, sf')
+    else do
+      sourceFile (sf ^. source) fp
+      craft_ $ sf' ^. file
+      return (Created, sf')
