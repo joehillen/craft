@@ -22,6 +22,7 @@ setup = do
   mapM_ (craft_ . package) ["pyopenssl", "ndg-httpsclient", "pyasn1"]
   craft_ $ latest "pip"
   destroy_ pippkg
+  craft_ $ latest "setuptools"
   destroy_ $ Craft.package "python-requests"
 
 
