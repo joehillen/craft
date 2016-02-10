@@ -65,6 +65,7 @@ writeOptionalList directive optionalParams =
     }
 -- =====================================================================
 
+
 -- | [Unit] |--
 -- =====================================================================
 data UnitSection = UnitSection { _description   :: String
@@ -105,6 +106,36 @@ instance WritableUnit UnitSection where
     ++ writeOptional "Condition" (_condition u)
     ++ writeOptional "Assert" (_assert u)
 -- =====================================================================
+
+
+-- | [Install] | --
+-- =====================================================================
+data InstallSection = InstallSection { _wantedBy :: Maybe String
+                                     , _requiredBy :: Maybe String
+                                     , _alias :: Maybe String
+                                     , _also :: Maybe String
+                                     , _defaultInstance :: Maybe String
+                                     } deriving (Eq, Show)
+
+installSection :: InstallSection
+installSection = InstallSection { _wantedBy = Nothing
+                                , _requiredBy = Nothing
+                                , _alias = Nothing
+                                , _also = Nothing
+                                , _defaultInstance = Nothing}
+
+makeLenses ''InstallSection
+
+instance WritableUnit InstallSection where
+  transformUnit u =
+    "[Install]\n"
+    ++ writeOptional "WantedBy" (_wantedBy u)
+    ++ writeOptional "RequiredBy" (_requiredBy u)
+    ++ writeOptional "Alias" (_alias u)
+    ++ writeOptional "Also" (_also u)
+    ++ writeOptional "DefaultInstance" (_defaultInstance u)
+-- =====================================================================
+
 
 -- | Service | --
 -- =====================================================================
@@ -153,12 +184,12 @@ instance WritableUnit ServiceNotifyAccess where
 
 -- A "Service" declaration
 data ServiceSection = ServiceSection {
-  _serviceType     :: ServiceType
-  , _execStart       :: String
+  _serviceType       :: ServiceType
+  , _execStart       :: Maybe String
   , _execStartPre    :: Maybe String
   , _execStartPost   :: Maybe String
   , _execReload      :: Maybe String
-  , _execStop        :: String
+  , _execStop        :: Maybe String
   , _execStopPost    :: Maybe String
                         -- TODO use actual 'Env' here
   , _environment     :: Maybe String
@@ -172,11 +203,11 @@ data ServiceSection = ServiceSection {
 
 serviceSection :: ServiceSection
 serviceSection = ServiceSection { _serviceType = Simple
-                                , _execStart = undefined -- must be filled in
+                                , _execStart = Nothing
                                 , _execStartPre = Nothing
                                 , _execStartPost = Nothing
                                 , _execReload = Nothing
-                                , _execStop = undefined -- must be filled in
+                                , _execStop = Nothing
                                 , _execStopPost = Nothing
                                 , _environment = Nothing
                                 , _restartSec = Nothing
@@ -192,11 +223,11 @@ instance WritableUnit ServiceSection where
   transformUnit u =
     "[Service]\n" ++
     "Type=" ++ (transformUnit (_serviceType u)) ++ "\n"
-    ++ "ExecStart=" ++ u^.execStart ++ "\n"
+    ++ writeOptional "ExecStart=" (_execStart u)
     ++ writeOptional "ExecStartPre" (_execStartPre u)
     ++ writeOptional "ExecStartPost" (_execStartPost u)
     ++ writeOptional "ExecReload" (_execReload u)
-    ++ "ExecStop=" ++ u^.execStop ++ "\n"
+    ++ writeOptional "ExecStop=" (_execStop u)
     ++ writeOptional "ExecStopPost" (_execStopPost u)
     ++ writeOptional "Environment" (_environment u)
     ++ writeOptional "RestartSec" (_restartSec u)
@@ -205,35 +236,6 @@ instance WritableUnit ServiceSection where
     ++ writeOptional "PIDFile" (_pidFile u)
     ++ writeOptional "BusName" (_busName u)
     ++ writeOptional "NotifyAccess" (_notifyAccess u)
--- =====================================================================
-
-
--- | [Install] | --
--- =====================================================================
-data InstallSection = InstallSection { _wantedBy :: Maybe String
-                                     , _requiredBy :: Maybe String
-                                     , _alias :: Maybe String
-                                     , _also :: Maybe String
-                                     , _defaultInstance :: Maybe String
-                                     } deriving (Eq, Show)
-
-installSection :: InstallSection
-installSection = InstallSection { _wantedBy = Nothing
-                                , _requiredBy = Nothing
-                                , _alias = Nothing
-                                , _also = Nothing
-                                , _defaultInstance = Nothing}
-
-makeLenses ''InstallSection
-
-instance WritableUnit InstallSection where
-  transformUnit u =
-    "[Install]\n"
-    ++ writeOptional "WantedBy" (_wantedBy u)
-    ++ writeOptional "RequiredBy" (_requiredBy u)
-    ++ writeOptional "Alias" (_alias u)
-    ++ writeOptional "Also" (_also u)
-    ++ writeOptional "DefaultInstance" (_defaultInstance u)
 -- =====================================================================
 
 
@@ -273,8 +275,7 @@ instance WritableUnit MountSection where
 
 -- =====================================================================
 
-
----- Systemd things not implemented yet (TODO):
+---- Systemd sections not implemented yet (TODO):
 data SocketSection = SocketSection {} deriving (Eq, Show)
 data DeviceSection = DeviceSection {} deriving (Eq, Show)
 data AutomountSection = AutomountSection {} deriving (Eq, Show)
@@ -285,40 +286,32 @@ data TimerSection = TimerSection {} deriving (Eq, Show)
 data SnapshotSection = SnapshotSection {} deriving (Eq, Show)
 data SliceSection = SliceSection {} deriving (Eq, Show)
 data ScopeSection = ScopeSection {} deriving (Eq, Show)
+----
 
 
--- | Composite Data Types | --
+-- | Top-level Systemd units | --
 -- =====================================================================
-type Name = String
+data SystemdUnit a = SystemdUnit
+                     { _name         :: String
+                     , _unit         :: Maybe UnitSection
+                     , _mainSection  :: a
+                     , _install      :: Maybe InstallSection }
+                   deriving (Eq, Show)
 
--- A "service" is made up of these sections:
--- - name
--- - optional unit
--- - service
--- - optional install
-data Service = Service { _serviceName :: String
-                       , _serviceUnit :: Maybe UnitSection
-                       , _service :: ServiceSection
-                       , _serviceInstall :: Maybe InstallSection }
-
+type Service = SystemdUnit ServiceSection
+type Mount   = SystemdUnit MountSection
 
 instance WritableUnit Service where
   transformUnit service =
-    writeOptionalSection (_serviceUnit service)
-    ++ transformUnit (_service service) ++ "\n"
-    ++ writeOptionalSection (_serviceInstall service)
-
--- A "mount" is made similarly to a service, but with a different section
-data Mount = Mount { _mountName :: String
-                   , _mountUnit :: Maybe UnitSection
-                   , _mount :: MountSection
-                   , _mountInstall :: Maybe InstallSection }
+    writeOptionalSection (_unit service)
+    ++ transformUnit (_mainSection service) ++ "\n"
+    ++ writeOptionalSection (_install service)
 
 instance WritableUnit Mount where
   transformUnit mount =
-    writeOptionalSection (_mountUnit mount)
-    ++ transformUnit (_mount mount) ++ "\n"
-    ++ writeOptionalSection (_mountInstall mount)
+    writeOptionalSection (_unit mount)
+    ++ transformUnit (_mainSection mount) ++ "\n"
+    ++ writeOptionalSection (_install mount)
 
 -- =====================================================================
 
@@ -367,17 +360,17 @@ status service = exec_ systemdBin ["status", service]
 -- WantedBy=default.target
 --
 redshift :: Service
-redshift = Service {
-  _serviceName = "redshift"
-  , _serviceUnit = Just unitSection { _description = "Redshift" }
-  , _service = serviceSection {
+redshift = SystemdUnit {
+  _name = "redshift"
+  , _unit = Just unitSection { _description = "Redshift" }
+  , _mainSection = serviceSection {
       _serviceType = Simple
-      , _execStart = "/usr/bin/redshift -l geoclue2 -t 6500:3700"
-      , _execStop = "/usr/bin/pkill redshift"
+      , _execStart = Just "/usr/bin/redshift -l geoclue2 -t 6500:3700"
+      , _execStop = Just "/usr/bin/pkill redshift"
       , _environment = Just "DISPLAY=:0"
       , _restartService = Just RestartAlways
       }
-  , _serviceInstall = Just installSection { _wantedBy = Just "default.target" }
+  , _install = Just installSection { _wantedBy = Just "default.target" }
   }
 
 -- You should then be able to run:
