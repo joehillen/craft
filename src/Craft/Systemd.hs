@@ -7,7 +7,10 @@ import Control.Lens
 import Data.List.Utils (join)
 
 import Craft
-import Craft.File
+import Craft.Directory
+import           Craft.File (File, file)
+import qualified Craft.File as File
+import           Craft.File.Mode
 
 -- Helpful: https://www.digitalocean.com/community/tutorials/understanding-systemd-units-and-unit-files
 
@@ -313,6 +316,33 @@ instance WritableUnit Mount where
     ++ transformUnit (_mainSection mount) ++ "\n"
     ++ writeOptionalSection (_install mount)
 
+-- Location *.service, etc files will be installed
+systemdUnitLocation :: FilePath
+systemdUnitLocation = "/etc/systemd/system/"
+
+systemdUnitDir :: Directory
+systemdUnitDir = Directory systemdUnitLocation (Mode RWX O O) 0 0
+
+instance Craftable Service where
+  watchCraft svc = do
+    craft_ $ systemdUnitDir
+    w <- watchCraft_ $ file (systemdUnitLocation </> ((_name svc) ++ ".service"))
+      & File.mode .~ Mode RW O O
+      & File.ownerID .~ 0
+      & File.groupID .~ 0
+      & File.strContent .~ transformUnit svc
+    return (w, svc)
+
+instance Craftable Mount where
+  watchCraft mount = do
+    craft_ $ systemdUnitDir
+    w <- watchCraft_ $ file (systemdUnitLocation </> ((_name mount) ++ ".mount"))
+      & File.mode .~ Mode RW O O
+      & File.ownerID .~ 0
+      & File.groupID .~ 0
+      & File.strContent .~ transformUnit mount
+    return (w, mount)
+
 -- =====================================================================
 
 
@@ -320,10 +350,6 @@ instance WritableUnit Mount where
 ---- TODO Functions to deal with systemd
 systemdBin :: FilePath
 systemdBin = "/usr/bin/systemd"
-
--- Location *.service, etc files will be installed
-systemdUnitLocation :: FilePath
-systemdUnitLocation = "/etc/systemd/system/"
 
 -- Return the absolute path a service should be written to
 fileForUnit :: CompositeUnit unit => unit -> File
