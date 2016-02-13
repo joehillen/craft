@@ -331,6 +331,7 @@ instance Craftable Service where
       & File.ownerID .~ 0
       & File.groupID .~ 0
       & File.strContent .~ transformUnit svc
+    when (changed w) daemonReload
     return (w, svc)
 
 instance Craftable Mount where
@@ -341,6 +342,7 @@ instance Craftable Mount where
       & File.ownerID .~ 0
       & File.groupID .~ 0
       & File.strContent .~ transformUnit mount
+    when (changed w) daemonReload
     return (w, mount)
 
 -- =====================================================================
@@ -351,9 +353,15 @@ instance Craftable Mount where
 systemdBin :: FilePath
 systemdBin = "/usr/bin/systemd"
 
+systemdCtlBin :: FilePath
+systemdCtlBin = "/usr/bin/systemctl"
+
 -- Return the absolute path a service should be written to
 fileForUnit :: CompositeUnit unit => unit -> File
 fileForUnit unit = (file $ systemdUnitLocation </> getFileName unit)
+
+daemonReload :: Craft()
+daemonReload = exec_ systemdCtlBin ["daemon-reload"]
 
 start :: ServiceName -> Craft ()
 start service = exec_ systemdBin ["start", service]
