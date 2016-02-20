@@ -226,11 +226,11 @@ instance WritableUnit ServiceSection where
   transformUnit u =
     "[Service]\n" ++
     "Type=" ++ (transformUnit (_serviceType u)) ++ "\n"
-    ++ writeOptional "ExecStart=" (_execStart u)
+    ++ writeOptional "ExecStart" (_execStart u)
     ++ writeOptional "ExecStartPre" (_execStartPre u)
     ++ writeOptional "ExecStartPost" (_execStartPost u)
     ++ writeOptional "ExecReload" (_execReload u)
-    ++ writeOptional "ExecStop=" (_execStop u)
+    ++ writeOptional "ExecStop" (_execStop u)
     ++ writeOptional "ExecStopPost" (_execStopPost u)
     ++ writeOptional "Environment" (_environment u)
     ++ writeOptional "RestartSec" (_restartSec u)
