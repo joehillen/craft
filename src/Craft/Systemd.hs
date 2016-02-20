@@ -3,14 +3,15 @@
 
 module Craft.Systemd where
 
-import Control.Lens
-import Data.List.Utils (join)
+import           Control.Lens
+import           Data.List.Utils (join)
 
-import Craft
-import Craft.Directory
+import           Craft
+import qualified Craft.Directory as Dir
 import           Craft.File (File, file)
 import qualified Craft.File as File
 import           Craft.File.Mode
+import           Craft.User
 
 -- Helpful: https://www.digitalocean.com/community/tutorials/understanding-systemd-units-and-unit-files
 
@@ -296,10 +297,16 @@ data ScopeSection = ScopeSection {} deriving (Eq, Show)
 -- =====================================================================
 data SystemdUnit a = SystemdUnit
                      { _name         :: String
+                                        -- If set, it's a user-specific systemd
+                                        -- service, otherwise it's a root
+                                        -- service
+                     , _unitOwner    :: Maybe User
                      , _unit         :: Maybe UnitSection
                      , _mainSection  :: a
                      , _install      :: Maybe InstallSection }
                    deriving (Eq, Show)
+
+makeLenses ''SystemdUnit
 
 type Service = SystemdUnit ServiceSection
 type Mount   = SystemdUnit MountSection
@@ -316,38 +323,53 @@ instance WritableUnit Mount where
     ++ transformUnit (_mainSection mount) ++ "\n"
     ++ writeOptionalSection (_install mount)
 
--- Location *.service, etc files will be installed
-systemdUnitLocation :: FilePath
-systemdUnitLocation = "/etc/systemd/system/"
+systemdUnitLocation :: Dir.Directory -> FilePath
+systemdUnitLocation = Dir._path
 
-systemdUnitDir :: Directory
-systemdUnitDir = Directory systemdUnitLocation (Mode RWX O O) 0 0
+-- | Given an optional user, return the Directory the systemd unit file should
+-- go into
+systemdUnitDir :: (Maybe User) -> Dir.Directory
+systemdUnitDir Nothing =
+  Dir.Directory "/etc/systemd/system/" (Mode RWX O O) 0 0
+systemdUnitDir (Just u) =
+  Dir.Directory
+  (u ^. home </> ".config/systemd/user")
+  (Mode RWX R R)
+  (u ^. uid)
+  (u ^. gid)
+
 
 instance Craftable Service where
-  watchCraft svc = do
-    craft_ $ systemdUnitDir
-    w <- watchCraft_ $ file (systemdUnitLocation </> ((_name svc) ++ ".service"))
-      & File.mode .~ Mode RW O O
-      & File.ownerID .~ 0
-      & File.groupID .~ 0
-      & File.strContent .~ transformUnit svc
-    when (changed w) daemonReload
-    return (w, svc)
+  watchCraft svc =
+    let d = systemdUnitDir $ svc ^. unitOwner
+        fullPath = systemdUnitLocation d </> (_name svc) ++ ".service"
+    in
+      do
+        craft_ d
+        w <- watchCraft_ $ file fullPath
+          & File.mode .~ Mode RW O O
+          & File.ownerID .~ 0
+          & File.groupID .~ 0
+          & File.strContent .~ transformUnit svc
+        when (changed w) daemonReload
+        return (w, svc)
 
 instance Craftable Mount where
-  watchCraft mount = do
-    craft_ $ systemdUnitDir
-    w <- watchCraft_ $ file (systemdUnitLocation </> ((_name mount) ++ ".mount"))
-      & File.mode .~ Mode RW O O
-      & File.ownerID .~ 0
-      & File.groupID .~ 0
-      & File.strContent .~ transformUnit mount
-    when (changed w) daemonReload
-    return (w, mount)
+  watchCraft mount =
+    let d = systemdUnitDir $ mount ^. unitOwner
+        fullPath = systemdUnitLocation d </> (_name mount) ++ ".mount"
+    in
+      do
+        craft_  d
+        w <- watchCraft_ $ file fullPath
+          & File.mode .~ Mode RW O O
+          & File.ownerID .~ 0
+          & File.groupID .~ 0
+          & File.strContent .~ transformUnit mount
+        when (changed w) daemonReload
+        return (w, mount)
 
 -- =====================================================================
-
-
 
 ---- TODO Functions to deal with systemd
 systemdBin :: FilePath
@@ -355,10 +377,6 @@ systemdBin = "/usr/bin/systemd"
 
 systemdCtlBin :: FilePath
 systemdCtlBin = "/usr/bin/systemctl"
-
--- Return the absolute path a service should be written to
-fileForUnit :: CompositeUnit unit => unit -> File
-fileForUnit unit = (file $ systemdUnitLocation </> getFileName unit)
 
 daemonReload :: Craft()
 daemonReload = exec_ systemdCtlBin ["daemon-reload"]
@@ -397,6 +415,7 @@ redshift :: Service
 redshift = SystemdUnit {
   _name = "redshift"
   , _unit = Just unitSection { _description = "Redshift" }
+  , _unitOwner = Nothing -- Root service
   , _mainSection = serviceSection {
       _serviceType = Simple
       , _execStart = Just "/usr/bin/redshift -l geoclue2 -t 6500:3700"
