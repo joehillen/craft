@@ -8,7 +8,7 @@ import           Data.List.Utils (join)
 
 import           Craft
 import qualified Craft.Directory as Dir
-import           Craft.File (File, file)
+import           Craft.File (file)
 import qualified Craft.File as File
 import           Craft.File.Mode
 import           Craft.User
@@ -24,7 +24,7 @@ class WritableUnit a where
 
 -- A generic implementation for the String type
 instance WritableUnit String where
-  transformUnit sn = show sn
+  transformUnit sn = sn
 
 -- A generic implementation for the Bool type
 instance WritableUnit Bool where
