@@ -351,7 +351,7 @@ instance Craftable Service where
           & File.ownerID .~ 0
           & File.groupID .~ 0
           & File.strContent .~ transformUnit svc
-        when (changed w) daemonReload
+        when (changed w) $ daemonReload $ svc ^. unitOwner
         return (w, svc)
 
 instance Craftable Mount where
@@ -366,7 +366,7 @@ instance Craftable Mount where
           & File.ownerID .~ 0
           & File.groupID .~ 0
           & File.strContent .~ transformUnit mount
-        when (changed w) daemonReload
+        when (changed w) $ daemonReload $ mount ^. unitOwner
         return (w, mount)
 
 -- =====================================================================
@@ -378,8 +378,13 @@ systemdBin = "/usr/bin/systemd"
 systemdCtlBin :: FilePath
 systemdCtlBin = "/usr/bin/systemctl"
 
-daemonReload :: Craft()
-daemonReload = exec_ systemdCtlBin ["daemon-reload"]
+-- | Reload either the Root or user-specific daemon to re-read the systemd unit
+-- files
+daemonReload :: (Maybe User) -> Craft()
+daemonReload Nothing  = exec_ systemdCtlBin ["daemon-reload"]
+daemonReload (Just user) =
+  let u = (_username user) in
+  exec_ "sudo" ["-u", u, "--", systemdCtlBin, "--user", "daemon-reload"]
 
 start :: ServiceName -> Craft ()
 start service = exec_ systemdBin ["start", service]
