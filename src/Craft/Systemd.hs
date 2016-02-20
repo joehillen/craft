@@ -371,10 +371,7 @@ instance Craftable Mount where
 
 -- =====================================================================
 
----- TODO Functions to deal with systemd
-systemdBin :: FilePath
-systemdBin = "/usr/bin/systemd"
-
+---- Functions to deal with systemd
 systemdCtlBin :: FilePath
 systemdCtlBin = "/usr/bin/systemctl"
 
@@ -387,17 +384,17 @@ daemonReload (Just user) =
   exec_ "sudo" ["-u", u, "--", systemdCtlBin, "--user", "daemon-reload"]
 
 start :: ServiceName -> Craft ()
-start service = exec_ systemdBin ["start", service]
+start service = exec_ systemdCtlBin ["start", service]
 
 stop :: ServiceName -> Craft ()
-stop service = exec_ systemdBin ["stop", service]
+stop service = exec_ systemdCtlBin ["stop", service]
 
 restart :: ServiceName -> Craft ()
-restart service = exec_ systemdBin ["restart", service]
+restart service = exec_ systemdCtlBin ["restart", service]
 
 -- TODO: need to return 'true' for running and 'false' for not running here
 status :: ServiceName -> Craft ()
-status service = exec_ systemdBin ["status", service]
+status service = exec_ systemdCtlBin ["status", service]
 
 
 ---- Examples
