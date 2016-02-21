@@ -380,8 +380,15 @@ systemdCtlBin = "/usr/bin/systemctl"
 daemonReload :: (Maybe User) -> Craft()
 daemonReload Nothing  = exec_ systemdCtlBin ["daemon-reload"]
 daemonReload (Just user) =
-  let u = (_username user) in
-  exec_ "sudo" ["-u", u, "--", systemdCtlBin, "--user", "daemon-reload"]
+  let u = (_username user)
+      uidStr = show (_uid user)
+      -- These variables must be set or `systemctl` does not work with sudo
+      env = [("XDG_RUNTIME_DIR","/run/user/" ++ uidStr)
+            ,("BUS_SESSION_BUS_ADDRESS",
+              "unix:path=/run/user/" ++ uidStr ++ "/bus")]
+  in
+    withEnv env $ exec_ "sudo"
+    ["-u", u, "--", "sh", "-c", systemdCtlBin, "--user", "daemon-reload"]
 
 start :: ServiceName -> Craft ()
 start service = exec_ systemdCtlBin ["start", service]
