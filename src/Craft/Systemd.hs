@@ -142,6 +142,158 @@ instance WritableUnit InstallSection where
 -- =====================================================================
 
 
+-- | Execution Environment | --
+-- =====================================================================
+data IOSchedulingClass = IONone | IORealtime | IOBestEffort | IOIdle
+                       deriving (Eq, Show)
+
+data CPUSchedulingPolicy = CPUOther | CPUBatch | CPUIdle | CPUFifo | CPURr
+                         deriving (Eq, Show)
+
+data StandardInput = SINull | SITty | SITtyForce | SITtyFail | SISocket
+                   deriving (Eq, Show)
+data StandardOutput = SOInherit
+                    | SONull
+                    | SOTty
+                    | SOJournal
+                    | SOSyslog
+                    | SOKmsg
+                    | SOJournalAndConsole
+                    | SOSyslogAndConsole
+                    | SOKmsgAndConsole
+                    | SOSocket
+                    deriving (Eq, Show)
+
+data SyslogFacility = Kern
+                    | User
+                    | Mail
+                    | Daemon
+                    | Auth
+                    | Syslog
+                    | Lpr
+                    | News
+                    | Uucp
+                    | Cron
+                    | Authpriv
+                    | Ftp
+                    | Local0
+                    | Local1
+                    | Local2
+                    | Local3
+                    | Local4
+                    | Local5
+                    | Local6
+                    | Local7
+                    deriving (Eq, Show)
+
+data SyslogLevel = EmergLevel
+                 | AlertLevel
+                 | CritLevel
+                 | ErrLevel
+                 | WarningLevel
+                 | NoticeLevel
+                 | InfoLevel
+                 | DebugLevel
+                 deriving (Eq, Show)
+
+data SecureBits = KeepCaps
+                | KeepCapsLocked
+                | NoSetuidFixup
+                | NoSetuidFixupLocked
+                | NoRoot
+                | NoRootLocked
+                deriving (Eq, Show)
+
+data ProtectFull = ProtectFull deriving (Eq, Show)
+data ProtectReadOnly = ProtectReadOnly deriving (Eq, Show)
+
+data MountFlags = Shared | Slave | Private deriving (Eq, Show)
+
+data UTMPMode = UInit | ULogin | UUser deriving (Eq, Show)
+
+data SystemArchitecture = X86 | X86_64 | X32 | ARM deriving (Eq, Show)
+
+data Personality = Px86 | Px86_64 | PPC | PPC_LE |
+                   PPC64 | PPC64_LE | S390 | S390X
+                 deriving (Eq, Show)
+
+data ExecutionEnv =
+  ExecutionEnv { _workingDirectory :: Maybe FilePath
+               , _rootDirectory :: Maybe FilePath
+               , _execUser :: Maybe User
+               -- , _supplementaryGroups :: [Group]
+               , _execNice :: Maybe Int -- -19 to 20
+               , _oomScoreAdjust :: Maybe Int -- -1000 to 1000
+                                    -- 0 to 3 if Int
+               , _ioSchedulingClass :: Maybe (Either Int IOSchedulingClass)
+               , _ioSchedulingPriority :: Maybe Int -- 0 to 7
+               , _cpuSchedulingPolicy :: Maybe CPUSchedulingPolicy
+               , _cpuSchedulingPriority :: Maybe Int -- 1 to 99
+               , _cpuSchedulingResetOnFork :: Maybe Bool
+               , _cpuAffinity :: Maybe String -- TODO: parse this
+               , _uMask :: Maybe String -- TODO: use Mode and coerce to octal string
+               , _execEnvironment :: Maybe [String]
+               , _environmentFile :: Maybe FilePath
+               , _passEnvironment :: Maybe [String]
+               , _standardInput :: Maybe StandardInput
+               , _standardOutput :: Maybe StandardOutput
+               , _standardError :: Maybe StandardOutput -- not a typo
+               , _ttyPath :: Maybe FilePath
+               , _ttyReset :: Maybe Bool
+               , _ttyVHangup :: Maybe Bool
+               , _ttyVTDisallocate :: Maybe Bool
+               , _syslogIdentifier :: Maybe String
+               , _syslogFacility :: Maybe SyslogFacility
+               , _syslogLevel :: Maybe SyslogLevel
+               , _syslogLevelPrefix :: Maybe Bool
+               , _timerSlackNanos :: Maybe Int
+               , _limitCPU :: Maybe Int
+               , _limitFSIZE :: Maybe Int
+               , _limitDATA :: Maybe Int
+               , _limitSTACK :: Maybe Int
+               , _limitCORE :: Maybe Int
+               , _limitRSS :: Maybe Int
+               , _limitNOFILE :: Maybe Int
+               , _limitAS :: Maybe Int
+               , _limitNPROC :: Maybe Int
+               , _limitMEMLOCK :: Maybe Int
+               , _limitLOCKS :: Maybe Int
+               , _limitSIGPENDING :: Maybe Int
+               , _limitMSGQUEUE :: Maybe Int
+               , _limitNICE :: Maybe Int
+               , _limitRTPRIO :: Maybe Int
+               , _limitRTTIME :: Maybe Int
+               , _pamName :: Maybe String
+               , _capabilityBoundingSet :: Maybe [String]
+               , _ambientCapabilities :: Maybe [String]
+               , _secureBits :: Maybe SecureBits
+               , _readWriteDirectories :: Maybe [FilePath]
+               , _readOnlyDirectories :: Maybe [FilePath]
+               , _inaccessibleDirectories :: Maybe [FilePath]
+               , _privateTmp :: Maybe Bool
+               , _privateDevices :: Maybe Bool
+               , _privateNetwork :: Maybe Bool
+               , _protectSystem :: Maybe (Either Bool ProtectFull)
+               , _protectHome :: Maybe (Either Bool ProtectReadOnly)
+               , _mountFlags :: Maybe MountFlags
+               , _utmpIdentifier :: Maybe String -- TODO: ensure 4 chars
+               , _utmpMode :: Maybe UTMPMode
+               , _seLinuxContext :: Maybe String
+               , _appArmorProfile :: Maybe String
+               , _smackProcessLabel :: Maybe String
+               , _ignoreSigpipe :: Maybe Bool
+               , _noNewPrivileges :: Maybe Bool
+               , _systemCallFilter :: Maybe [String]
+               , _systemCallErrorNumber :: Maybe Int
+               , _systemCallArchitectures :: Maybe [SystemArchitecture]
+               , _restrictAddressFamilies :: Maybe [String]
+               , _personality :: Maybe Personality
+               , _runtimeDirectory :: Maybe FilePath
+               , _runtimeDirectoryMode :: Maybe String
+               } deriving (Eq, Show)
+-- =====================================================================
+
+
 -- | Service | --
 -- =====================================================================
 data ServiceType = Simple
