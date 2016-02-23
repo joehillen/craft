@@ -328,10 +328,10 @@ service n = systemdUnit n serviceSection
 type Mount   = SystemdUnit MountSection
 
 instance WritableUnit Service where
-  transformUnit service =
-    writeOptionalSection (_unit service)
-    ++ transformUnit (_mainSection service) ++ "\n"
-    ++ writeOptionalSection (_install service)
+  transformUnit s =
+    writeOptionalSection (_unit s)
+    ++ transformUnit (_mainSection s) ++ "\n"
+    ++ writeOptionalSection (_install s)
 
 instance WritableUnit Mount where
   transformUnit mount =
@@ -404,20 +404,20 @@ daemonReload (Just user) =
               "unix:path=/run/user/" ++ uidStr ++ "/bus")]
   in
     withEnv env $ exec_ "sudo"
-    ["-u", u, "--", "sh", "-c", systemdCtlBin, "--user", "daemon-reload"]
+    ["-u", u, "--", "sh -c " ++ systemdCtlBin ++ " --user daemon-reload"]
 
 start :: ServiceName -> Craft ()
-start service = exec_ systemdCtlBin ["start", service]
+start s = exec_ systemdCtlBin ["start", s]
 
 stop :: ServiceName -> Craft ()
-stop service = exec_ systemdCtlBin ["stop", service]
+stop s = exec_ systemdCtlBin ["stop", s]
 
 restart :: ServiceName -> Craft ()
-restart service = exec_ systemdCtlBin ["restart", service]
+restart s = exec_ systemdCtlBin ["restart", s]
 
 -- TODO: need to return 'true' for running and 'false' for not running here
 status :: ServiceName -> Craft ()
-status service = exec_ systemdCtlBin ["status", service]
+status s = exec_ systemdCtlBin ["status", s]
 
 
 ---- Examples
@@ -436,11 +436,11 @@ status service = exec_ systemdCtlBin ["status", service]
 -- [Install]
 -- WantedBy=default.target
 --
-redshift :: Service
-redshift =
+redshift :: User -> Service
+redshift u =
   service "redshift"
   & unit ?~ unitSection "Redshift"
-  -- , _unitOwner = Nothing -- Root service
+  & unitOwner ?~ u
   & mainSection .~ (serviceSection
                     & execStart ?~ "/usr/bin/redshift -l geoclue2 -t 6500:3700"
                     & execStop ?~ "/usr/bin/pkill redshift"
@@ -450,4 +450,4 @@ redshift =
   & install ?~ (installSection & wantedBy ?~ "default.target")
 
 -- You should then be able to run:
--- putStrLn $ transformUnit redshift
+-- putStrLn $ transformUnit redshift <user>
