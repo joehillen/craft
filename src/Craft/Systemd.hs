@@ -83,17 +83,17 @@ data UnitSection = UnitSection { _description   :: String
                                , _condition     :: Maybe String
                                , _assert        :: Maybe String
                                } deriving (Eq, Show)
-unitSection :: UnitSection
-unitSection = UnitSection { _description = undefined
-                          , _documentation = Nothing
-                          , _requires = Nothing
-                          , _wants = Nothing
-                          , _bindsTo = Nothing
-                          , _before = Nothing
-                          , _after = Nothing
-                          , _conflicts = Nothing
-                          , _condition = Nothing
-                          , _assert = Nothing }
+unitSection :: String -> UnitSection
+unitSection s = UnitSection { _description = s
+                            , _documentation = Nothing
+                            , _requires = Nothing
+                            , _wants = Nothing
+                            , _bindsTo = Nothing
+                            , _before = Nothing
+                            , _after = Nothing
+                            , _conflicts = Nothing
+                            , _condition = Nothing
+                            , _assert = Nothing }
 makeLenses ''UnitSection
 
 instance WritableUnit UnitSection where
@@ -126,7 +126,8 @@ installSection = InstallSection { _wantedBy = Nothing
                                 , _requiredBy = Nothing
                                 , _alias = Nothing
                                 , _also = Nothing
-                                , _defaultInstance = Nothing}
+                                , _defaultInstance = Nothing
+                                }
 
 makeLenses ''InstallSection
 
@@ -303,12 +304,27 @@ data SystemdUnit a = SystemdUnit
                      , _unitOwner    :: Maybe User
                      , _unit         :: Maybe UnitSection
                      , _mainSection  :: a
-                     , _install      :: Maybe InstallSection }
+                     , _install      :: Maybe InstallSection
+                     }
                    deriving (Eq, Show)
 
 makeLenses ''SystemdUnit
 
+systemdUnit :: String -> a -> SystemdUnit a
+systemdUnit n ms =
+  SystemdUnit
+  { _name = n
+  , _unitOwner = Nothing
+  , _unit = Nothing
+  , _mainSection = ms
+  , _install = Nothing
+  }
+
 type Service = SystemdUnit ServiceSection
+
+service :: String -> Service
+service n = systemdUnit n serviceSection
+
 type Mount   = SystemdUnit MountSection
 
 instance WritableUnit Service where
@@ -421,19 +437,17 @@ status service = exec_ systemdCtlBin ["status", service]
 -- WantedBy=default.target
 --
 redshift :: Service
-redshift = SystemdUnit {
-  _name = "redshift"
-  , _unit = Just unitSection { _description = "Redshift" }
-  , _unitOwner = Nothing -- Root service
-  , _mainSection = serviceSection {
-      _serviceType = Simple
-      , _execStart = Just "/usr/bin/redshift -l geoclue2 -t 6500:3700"
-      , _execStop = Just "/usr/bin/pkill redshift"
-      , _environment = Just "DISPLAY=:0"
-      , _restartService = Just RestartAlways
-      }
-  , _install = Just installSection { _wantedBy = Just "default.target" }
-  }
+redshift =
+  service "redshift"
+  & unit ?~ unitSection "Redshift"
+  -- , _unitOwner = Nothing -- Root service
+  & mainSection .~ (serviceSection
+                    & execStart ?~ "/usr/bin/redshift -l geoclue2 -t 6500:3700"
+                    & execStop ?~ "/usr/bin/pkill redshift"
+                    & environment ?~ "DISPLAY=:0"
+                    & restartService ?~ RestartAlways
+                   )
+  & install ?~ (installSection & wantedBy ?~ "default.target")
 
 -- You should then be able to run:
 -- putStrLn $ transformUnit redshift
