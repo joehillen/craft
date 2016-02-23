@@ -62,6 +62,7 @@ library
                      , Craft.Run.Local
                      , Craft.Run.Internal
                      , Craft.Run.Vagrant
+                     , Craft.Systemd
                      , Craft.Log
 
   other-modules:       Craft.Internal
