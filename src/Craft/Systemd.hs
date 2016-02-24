@@ -5,6 +5,7 @@ module Craft.Systemd where
 
 import           Control.Lens
 import           Data.List.Utils (join)
+import           Data.Char as Char
 
 import           Craft
 import qualified Craft.Directory as Dir
@@ -65,7 +66,7 @@ writeOptionalList directive optionalParams =
     {
       Nothing -> "";
       Just params -> directive ++ "=" ++
-      (join " " (map transformUnit params)) ++ "\n"
+      (join " " (Prelude.map transformUnit params)) ++ "\n"
     }
 -- =====================================================================
 
@@ -147,11 +148,32 @@ instance WritableUnit InstallSection where
 data IOSchedulingClass = IONone | IORealtime | IOBestEffort | IOIdle
                        deriving (Eq, Show)
 
+instance WritableUnit IOSchedulingClass where
+  transformUnit IONone = "none"
+  transformUnit IORealtime = "realtime"
+  transformUnit IOBestEffort = "best-effort"
+  transformUnit IOIdle = "idle"
+
 data CPUSchedulingPolicy = CPUOther | CPUBatch | CPUIdle | CPUFifo | CPURr
                          deriving (Eq, Show)
 
+instance WritableUnit CPUSchedulingPolicy where
+  transformUnit CPUOther = "other"
+  transformUnit CPUBatch = "batch"
+  transformUnit CPUIdle = "idle"
+  transformUnit CPUFifo = "fifo"
+  transformUnit CPURr = "rr"
+
 data StandardInput = SINull | SITty | SITtyForce | SITtyFail | SISocket
                    deriving (Eq, Show)
+
+instance WritableUnit StandardInput where
+  transformUnit SINull = "null"
+  transformUnit SITty = "tty"
+  transformUnit SITtyForce = "tty-force"
+  transformUnit SITtyFail = "tty-fail"
+  transformUnit SISocket = "socket"
+
 data StandardOutput = SOInherit
                     | SONull
                     | SOTty
@@ -163,6 +185,18 @@ data StandardOutput = SOInherit
                     | SOKmsgAndConsole
                     | SOSocket
                     deriving (Eq, Show)
+
+instance WritableUnit StandardOutput where
+  transformUnit SOInherit = "inherit"
+  transformUnit SONull = "null"
+  transformUnit SOTty = "tty"
+  transformUnit SOJournal = "journal"
+  transformUnit SOSyslog = "syslog"
+  transformUnit SOKmsg = "kmsg"
+  transformUnit SOJournalAndConsole = "journal+console"
+  transformUnit SOSyslogAndConsole = "syslog+console"
+  transformUnit SOKmsgAndConsole = "kmsg+console"
+  transformUnit SOSocket = "socket"
 
 data SyslogFacility = Kern
                     | User
@@ -186,6 +220,18 @@ data SyslogFacility = Kern
                     | Local7
                     deriving (Eq, Show)
 
+-- Lowercase the first l
+lowerStr :: String -> String
+lowerStr "" = ""
+lowerStr (s:xs) = cons (Char.toLower s) (lowerStr xs)
+
+-- Lowercase a showable thing
+lowerThing :: Show a => a -> String
+lowerThing = lowerStr . show
+
+instance WritableUnit SyslogFacility where
+  transformUnit = lowerThing
+
 data SyslogLevel = EmergLevel
                  | AlertLevel
                  | CritLevel
@@ -196,6 +242,16 @@ data SyslogLevel = EmergLevel
                  | DebugLevel
                  deriving (Eq, Show)
 
+instance WritableUnit SyslogLevel where
+  transformUnit EmergLevel = "emerg"
+  transformUnit AlertLevel = "alert"
+  transformUnit CritLevel = "crit"
+  transformUnit ErrLevel = "err"
+  transformUnit WarningLevel = "warning"
+  transformUnit NoticeLevel = "notice"
+  transformUnit InfoLevel = "info"
+  transformUnit DebugLevel = "debug"
+
 data SecureBits = KeepCaps
                 | KeepCapsLocked
                 | NoSetuidFixup
@@ -204,18 +260,55 @@ data SecureBits = KeepCaps
                 | NoRootLocked
                 deriving (Eq, Show)
 
+instance WritableUnit SecureBits where
+  transformUnit KeepCaps = "keep-caps"
+  transformUnit KeepCapsLocked = "keep-caps-locked"
+  transformUnit NoSetuidFixup = "no-setuid-fixup"
+  transformUnit NoSetuidFixupLocked = "no-setuid-fixup-locked"
+  transformUnit NoRoot = "noroot"
+  transformUnit NoRootLocked = "noroot-locked"
+
 data ProtectFull = ProtectFull deriving (Eq, Show)
+
+instance WritableUnit ProtectFull where
+  transformUnit _ = "full"
+
 data ProtectReadOnly = ProtectReadOnly deriving (Eq, Show)
+
+instance WritableUnit ProtectReadOnly where
+  transformUnit _ = "read-only"
 
 data MountFlags = Shared | Slave | Private deriving (Eq, Show)
 
+instance WritableUnit MountFlags where
+  transformUnit = lowerThing
+
 data UTMPMode = UInit | ULogin | UUser deriving (Eq, Show)
 
+instance WritableUnit UTMPMode where
+  transformUnit UInit = "init"
+  transformUnit ULogin = "login"
+  transformUnit UUser = "user"
+
 data SystemArchitecture = X86 | X86_64 | X32 | ARM deriving (Eq, Show)
+
+instance WritableUnit SystemArchitecture where
+  transformUnit X86_64 = "x86-64"
+  transformUnit u = lowerThing u
 
 data Personality = Px86 | Px86_64 | PPC | PPC_LE |
                    PPC64 | PPC64_LE | S390 | S390X
                  deriving (Eq, Show)
+
+instance WritableUnit Personality where
+  transformUnit Px86 = "x86"
+  transformUnit Px86_64 = "x86-64"
+  transformUnit PPC = "ppc"
+  transformUnit PPC_LE = "ppc-le"
+  transformUnit PPC64 = "ppc64"
+  transformUnit PPC64_LE = "ppc64-le"
+  transformUnit S390 = "s390"
+  transformUnit S390X = "s390x"
 
 data ExecutionEnv =
   ExecutionEnv { _workingDirectory :: Maybe FilePath
