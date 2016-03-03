@@ -5,11 +5,12 @@ import Control.Exception (finally)
 import Control.Monad.Free
 import Control.Monad.Reader
 import Control.Monad.Except
+import Control.Exception (bracket)
 import qualified Data.ByteString.Char8 as B8
 import Data.List (intersperse)
 import Data.String.Utils (replace)
 import System.Directory
-import System.Process
+import qualified System.Process as Process
 import System.Random hiding (next)
 import qualified System.Process.ByteString as Proc.BS
 
@@ -60,96 +61,124 @@ newSSHSession = do
   return . SSHSession $ ".craft-ssh-session-" ++ show randInt
 
 
+sshMasterProc :: SSHEnv -> SSHSession -> Process.CreateProcess
+sshMasterProc sshenv session =
+  (Process.proc "ssh" (sshArgs sshenv session
+                      ++ [ "-o", "ControlMaster=yes"
+                         , "-o", "ControlPersist=yes"
+                         , connectionStr sshenv
+                         ]))
+    { Process.std_in  = Process.NoStream
+    , Process.std_out = Process.NoStream
+    , Process.std_err = Process.NoStream
+    }
+
+
 -- | runCraftSSH
 runCraftSSH :: SSHEnv -> CraftEnv -> Craft a -> IO a
 runCraftSSH sshenv ce prog = do
-  sshSession <- newSSHSession
-  let controlpath = sshControlPath sshSession
-      run = iterM (runCraftSSH' sshenv sshSession) . flip runReaderT ce
-                                                   . runExceptT
-  finally
-    (run prog >>= \case Left err -> error err
-                        Right a -> return a)
-    (whenM (doesFileExist controlpath) $
-      removeFile controlpath)
+  session <- newSSHSession
+  let controlpath = sshControlPath session
+      run = iterM (runCraftSSH' sshenv session)
+            . flip runReaderT ce
+            . runExceptT
+  bracket
+    (do (_, _, _, ph) <- Process.createProcess $ sshMasterProc sshenv session
+        return ph)
+    (\ph -> do
+        Process.terminateProcess ph
+        whenM (doesFileExist controlpath) $
+          removeFile controlpath)
+    (\_ -> run prog >>= \case Left err -> error err
+                              Right a -> return a)
 
 
 -- | runCraftSSH implementation
 runCraftSSH' :: SSHEnv -> SSHSession -> CraftDSL (IO a) -> IO a
-runCraftSSH' sshenv sshsession (Exec ce command args next) = do
-  let p = sshProc sshenv sshsession ce command args
+runCraftSSH' sshenv session (Exec ce command args next) = do
+  let p = sshProc sshenv session ce command args
   execProc ce p next
 
-runCraftSSH' sshenv sshsession (Exec_ ce command args next) = do
-  let p = sshProc sshenv sshsession ce command args
+runCraftSSH' sshenv session (Exec_ ce command args next) = do
+  let p = sshProc sshenv session ce command args
   execProc_ ce (unwords (command:args)) p next
 
-runCraftSSH' sshenv sshsession (FileRead ce fp next) = do
+runCraftSSH' sshenv session (FileRead ce fp next) = do
   let ce' = ce & craftExecEnv .~ []
                & craftExecCWD .~ "/"
-      p = sshProc sshenv sshsession ce' "cat" [fp]
+      p = sshProc sshenv session ce' "cat" [fp]
   (ec, content, stderr') <- liftIO $ Proc.BS.readCreateProcessWithExitCode p ""
   unless (isSuccess ec) $
     runCraftSSH sshenv ce $
       $craftError $ "Failed to read file '"++ fp ++"': " ++ B8.unpack stderr'
   next content
 
-runCraftSSH' sshenv sshsession (FileWrite ce fp content next) = do
+runCraftSSH' sshenv session (FileWrite ce fp content next) = do
   let ce' = ce & craftExecEnv .~ []
                & craftExecCWD .~ "/"
-      p = sshProc sshenv sshsession ce' "tee" [fp]
+      p = sshProc sshenv session ce' "tee" [fp]
   (ec, _, stderr') <- liftIO $ Proc.BS.readCreateProcessWithExitCode p content
   unless (isSuccess ec) $
     runCraftSSH sshenv ce $
       $craftError $ "Failed to write file '"++ fp ++"': " ++ B8.unpack stderr'
   next
 
-runCraftSSH' sshenv sshsession (SourceFile ce src dest next) = do
-  let p = proc "rsync"
+runCraftSSH' sshenv session (SourceFile ce src dest next) = do
+  let p = Process.proc "rsync"
             ([ "--quiet" -- suppress non-error messages
              , "--checksum" -- skip based on checksum, not mod-time & size
              , "--compress" -- compress file data during the transfer
                -- specify the remote shell to use
-             , "--rsh=ssh " ++ unwords (sshArgs sshenv sshsession)
-             ] ++
-             (if sshenv ^. sshSudo then ["--super", "--rsync-path=sudo rsync"]
-                                   else [])
-             ++
-             [ src
-             , sshenv ^. sshUser ++ "@" ++ sshenv ^. sshAddr ++ ":" ++ dest
-             ])
+             , "--rsh=ssh " ++ unwords (sshArgs sshenv session)
+             ]
+             ++ (if sshenv ^. sshSudo
+                  then ["--super", "--rsync-path=sudo rsync"]
+                  else [])
+             ++ [ src
+                , connectionStr sshenv ++ ":" ++ dest
+                ])
   execProc_ ce (showProc p) p next
 
-runCraftSSH' _ _ (FindSourceFile ce name next) = findSourceFileIO ce name >>= next
-runCraftSSH' _ _ (ReadSourceFile _ fp next) = readSourceFileIO fp >>= next
+runCraftSSH' _ _ (FindSourceFile ce name next) =
+  findSourceFileIO ce name >>= next
+
+runCraftSSH' _ _ (ReadSourceFile _ fp next) =
+  readSourceFileIO fp >>= next
+
 runCraftSSH' _ _ (Log ce loc logsource level logstr next) =
   (ce ^. craftLogger) loc logsource level logstr >> next
 
 
 sshArgs :: SSHEnv -> SSHSession -> Args
 sshArgs SSHEnv{..} SSHSession{..} =
-  [ "-p", show _sshPort ] ++
-  [ "-i", _sshKey ] ++
-  ["-o" | not (null _sshOptions)] ++
-  intersperse "-o" _sshOptions ++
-  [ "-o", "ControlMaster=auto"
-  , "-o", "ControlPath=" ++ sshControlPath
-  , "-o", "ControlPersist=10"
-  , "-o", "BatchMode=yes" -- never prompt for a password
-  ]
+  [ "-p", show _sshPort ]
+  ++ [ "-i", _sshKey ]
+  ++ ["-o" | not (null _sshOptions)] ++ intersperse "-o" _sshOptions
+  ++ [ "-o", "ControlPath=" ++ sshControlPath
+     , "-o", "BatchMode=yes" -- never prompt for a password
+     ]
 
-sshProc :: SSHEnv -> SSHSession -> CraftEnv -> Command -> Args -> CreateProcess
-sshProc sshenv sshsession ce command args =
-  proc "ssh" (sshArgs sshenv sshsession
-              ++ [ sshenv ^. sshUser ++ "@" ++ sshenv ^. sshAddr
-                 , unwords cmd])
+connectionStr :: SSHEnv -> String
+connectionStr SSHEnv{..} = concat [_sshUser, "@", _sshAddr]
+
+sshProc :: SSHEnv -> SSHSession -> CraftEnv -> Command -> Args
+        -> Process.CreateProcess
+sshProc sshenv session ce command args =
+  Process.proc "ssh" (sshArgs sshenv session
+                      ++ [ "-o", "ControlMaster=auto"
+                        , "-o", "ControlPersist=no"
+                        , connectionStr sshenv
+                        , cmd
+                        ])
  where
   cwd = ce ^. craftExecCWD
-  env = ce ^. craftExecEnv
-  cmd = sudo ++
-        ["sh", "-c", "'", "cd", escape cwd, ";"] ++
-        map escape (renderEnv env) ++ (command : map escape args) ++
-        ["'"]
+  execEnv = ce ^. craftExecEnv
+  cmd = unwords
+        (sudo
+         ++ ["sh", "-c", "'", "cd", escape cwd, ";"]
+         ++ map escape (renderEnv execEnv)
+         ++ (command : map escape args)
+         ++ ["'"])
   sudo = if sshenv ^. sshSudo then ["sudo", "-H"] else []
   escape :: String -> String
   escape = recur backslash [" ", "*", "$", "'"]
