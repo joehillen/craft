@@ -44,7 +44,6 @@ library
                      , Craft.Internal.UserGroup
                      , Craft.Nginx
                      , Craft.Pip
-                     , Craft.Options
                      , Craft.S3File
                      , Craft.Ssh
                      , Craft.Ssh.PrivateKey
@@ -103,7 +102,6 @@ library
                      , memory
                      , monad-logger
                      , mtl
-                     , optparse-applicative
                      , process
                      , process-extras
                      , pureMD5
