@@ -3,5 +3,11 @@
 # vi: set ft=ruby :
 
 Vagrant.configure(2) do |config|
-  config.vm.box = "fgrehm/trusty64-lxc"
+  if `uname`.strip == "Linux" and Vagrant.has_plugin?("vagrant-lxc") then
+    ENV['VAGRANT_DEFAULT_PROVIDER'] = 'lxc'
+    config.vm.box = "fgrehm/trusty64-lxc"
+  else
+    ENV['VAGRANT_DEFAULT_PROVIDER'] = 'virtualbox'
+    config.vm.box = "ubuntu/trusty64"
+  end
 end
