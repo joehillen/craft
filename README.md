@@ -24,16 +24,41 @@ vagrant up
 
 # TODO
 
- * Replace FilePath with [pathtype](https://hackage.haskell.org/package/pathtype)
- * Rename `get` so that it doesn't conflict with the State Monad, but what name to use?
- * Replace facter with something type-safe (lpuppet)
- * Quickcheck
- * Create Craft Monad with MonadState, MonadError, MonadIO, and Logging
+In order of priority:
+
+ * Create Craft Monad with MonadError, MonadIO, and Logging
    (the specific requirements still need to be ironed out).
+ * Replace FilePath with [path](https://hackage.haskell.org/package/path)
+ * Use Text
  * Replace use of "error" with proper exception types.
+ * Replace `createUser` with `Craftable User`
+ * Remove Exec_
+ * Exec as User
+ * Manage `File` and `FileContent` separately
+   (unexpected calls to readFile are slow over the network and usually unnecessary)
+ * Refactor file content sourcing (pluggable sourcers: `cp`, `rsync`, `S3`, `http`, etc)
+ * grep
+ * Escaping Exec args, i.e. spaces, quotes, pipes, etc
+ * Export the most common smart-constructors, e.g. `file`, `directory`, `user`, etc
+ * Define `Gettable` with functional dependencies
+ * Improve `/etc/hosts` parser (very slow)
+ * Tests
+    - Quickcheck
+    - Unit Tests
+    - Integration Tests
+ * Docs
+   - Haddock
+   - FAQ
+   - Getting Started Guide
+   - Tutorials
+   - Examples
+   - Haskell for DevOps
+   - Craft for Haskellers
  * Static link
- * Manage File and FileContent separately
-   (unexpected calls to readFile are slow over the network)
+ * Master/Agent runner
+ * Replace facter with something type-safe (lpuppet?)
+ * Task-oriented abstraction like fabric, capistrano, ansible-playbook, etc
+ * Implement ssh client library in pure Haskell
 
 
 # Notes
