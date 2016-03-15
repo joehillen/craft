@@ -2,8 +2,6 @@ flags: {}
 packages:
 - '.'
 extra-deps:
-- megaparsec-4.2.0
-- versions-1.0.1
-- ini-0.3.4
+- versions-1.0.2
 - process-1.4.2.0
-resolver: lts-3.9
+resolver: lts-5.8

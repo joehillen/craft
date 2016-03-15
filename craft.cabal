@@ -83,7 +83,6 @@ library
                      , ansi-terminal
                      , async
                      , bytestring
-                     , cond
                      , conduit-combinators
                      , conduit-extra
                      , containers
