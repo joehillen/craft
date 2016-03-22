@@ -4,6 +4,8 @@ import Control.Lens
 import Control.Monad.Reader
 import Control.Monad.Free
 import Data.ByteString (ByteString)
+import Control.Monad.Logger (logDebugNS)
+import qualified Data.Text as T
 import qualified Data.ByteString as BS
 import Data.List (intercalate)
 import Data.List.Split (splitOn)
@@ -12,48 +14,47 @@ import System.FilePath ((</>))
 
 import Craft.Types
 import Craft.Helpers
-import Craft.Log
 
 
 -- | Craft DSL
 exec :: Command -> Args -> Craft ExecResult
 exec cmd args = do
-  logDebugNS "exec" $ unwords (cmd:args)
+  logDebugNS "exec" $ T.unwords $ map T.pack (cmd:args)
   ce <- ask
-  lift . lift $ execF ce cmd args
+  liftF $ Exec ce cmd args id
 
 
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
-  logDebugNS "exec_" $ unwords (cmd:args)
+  logDebugNS "exec_" $ T.unwords $ map T.pack (cmd:args)
   ce <- ask
-  lift . lift $ execF_ ce cmd args
+  liftF $ Exec_ ce cmd args ()
 
 
 fileRead :: FilePath -> Craft BS.ByteString
 fileRead fp = do
   ce <- ask
-  lift . lift $ fileReadF ce fp
+  liftF $ FileRead ce fp id
 
 
 fileWrite :: FilePath -> BS.ByteString -> Craft ()
 fileWrite fp content = do
   ce <- ask
-  lift . lift $ fileWriteF ce fp content
+  liftF $ FileWrite ce fp content ()
 
 
 sourceFile :: FilePath -> FilePath -> Craft ()
 sourceFile name dest = do
   ce <- ask
   fp <- findSourceFile name
-  lift . lift $ sourceFileF ce fp dest
+  liftF $ SourceFile ce fp dest ()
 
 
 findSourceFile :: FilePath -> Craft FilePath
 findSourceFile name = do
   ce <- ask
   let fps = ce ^. craftSourcePaths
-  files <- lift . lift $ findSourceFileF ce name
+  files <- liftF $ FindSourceFile ce name id
   if null files then
     $craftError $ "Source file `" ++ name ++ "` not found in file sources: "
                    ++ show fps
@@ -65,7 +66,7 @@ readSourceFile :: FilePath -> Craft ByteString
 readSourceFile name = do
   ce <- ask
   fp <- findSourceFile name
-  lift . lift $ readSourceFileF ce fp
+  liftF $ ReadSourceFile ce fp id
 
 
 -- | better than grep

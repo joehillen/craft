@@ -229,5 +229,6 @@ fromID = userFromID
 --  |_| |_|_\___| \_/_/ \_\_| |___|
 
 
+-- TODO
 encrypt :: Maybe String -> Maybe String -> Maybe String
-encrypt msalt mpassword = Nothing
+encrypt _ _ = Nothing

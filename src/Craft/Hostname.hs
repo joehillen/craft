@@ -1,9 +1,11 @@
 module Craft.Hostname where
 
 import Control.Lens
+import qualified Data.Text as T
 import qualified Craft.File as File
 import qualified Craft.Hosts as Hosts
 import Craft.Internal
+import Control.Monad.Logger (logInfo)
 
 
 data Hostname = Hostname String
@@ -21,7 +23,7 @@ instance Craftable Hostname where
     (Hostname oldhn) <- get
     hosts <- Hosts.get
     if oldhn /= hn then do
-      $logInfo $ "Hostname " ++ oldhn ++ " /= " ++ hn
+      $logInfo . T.pack $ "Hostname " ++ oldhn ++ " /= " ++ hn
       hosts' <- craft $ Hosts.set (Hosts.Name hn) (Hosts.IP "127.0.1.1") hosts
       craft_ $ File.file "/etc/hostname" & File.strContent .~ hn
       exec_ "hostname" [hn]

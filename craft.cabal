@@ -22,6 +22,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
+  -- ghc-options:         -Wall -Werror
   hs-source-dirs:      src
                      , src/Craft
   exposed-modules:     Craft
@@ -62,7 +63,6 @@ library
                      , Craft.Run.Local
                      , Craft.Run.Internal
                      , Craft.Run.Vagrant
-                     , Craft.Log
 
   other-modules:       Craft.Internal
                      , Craft.Hosts.Parser
@@ -83,18 +83,22 @@ library
                      , ansi-terminal
                      , async
                      , bytestring
+                     , conduit
                      , conduit-combinators
                      , conduit-extra
                      , containers
                      , cryptonite
                      , directory
                      , extra
+                     , exceptions
                      , fast-logger
+                     , monad-logger
                      , filepath
                      , formatting
                      , free
                      , unordered-containers
                      , ini
+                     , lifted-base
                      , lens
                      , megaparsec
                      , MissingH

@@ -69,13 +69,13 @@ directory dp =
 multiple :: [Path] -> Mode -> User -> Group -> [Directory]
 multiple paths mode' owner' group' = map go paths
  where
-  go path = Directory path mode' (owner' ^. User.uid) (group' ^. Group.gid)
+  go p = Directory p mode' (owner' ^. User.uid) (group' ^. Group.gid)
 
 
 multipleRootOwned :: [Path] -> Mode -> [Directory]
 multipleRootOwned paths m = map go paths
  where
-  go path = directory path & mode .~ m
+  go p = directory p & mode .~ m
 
 
 exists :: Path -> Craft Bool

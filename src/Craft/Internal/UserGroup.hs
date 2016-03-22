@@ -161,7 +161,8 @@ instance Craftable User where
               return (Updated, user'')
 
    where
-    verify user' user = $notImplemented "verify User"
+    verify :: User -> User -> Craft ()
+    verify _ _ = $notImplemented "verify User"
 
 
 -- TESTME
@@ -187,7 +188,7 @@ groupFromID = groupFromName . show
 
 instance Craftable Group where
   watchCraft grp = do
-    $notImplemented "craft Group"
+    _ <- $notImplemented "craft Group"
     -- groupFromName . groupname
     exec_ "/usr/sbin/groupadd" $ toArg "--gid" (grp ^. gid) ++ [grp ^. groupname]
     exec_ "/usr/bin/gpasswd" ["--members", intercalate "," (grp ^. members), grp ^. groupname]

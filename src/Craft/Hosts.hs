@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Hosts
 ( IP(..)
 , Name(..)
@@ -9,6 +10,7 @@ module Craft.Hosts
 , parse
 , showConfigs
 , toFile
+, fromFile
 , insert
 , deleteIP
 , deleteName

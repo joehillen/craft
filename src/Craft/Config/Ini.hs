@@ -13,7 +13,6 @@ import qualified Data.Text as T
 
 import Craft.Config
 import Craft.Types
-import Craft.Log
 
 
 data IniFormat = IniFormat { _inifmt :: Ini

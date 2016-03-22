@@ -1,11 +1,10 @@
 module Craft.Run.SSH where
 
 import Control.Lens
-import Control.Exception (finally)
-import Control.Monad.Free
 import Control.Monad.Reader
-import Control.Monad.Except
-import Control.Exception (bracket)
+import Control.Monad.Logger (LoggingT)
+import qualified Control.Monad.Trans as Trans
+import Control.Exception.Lifted (bracket)
 import qualified Data.ByteString.Char8 as B8
 import Data.List (intersperse)
 import Data.String.Utils (replace)
@@ -17,7 +16,6 @@ import qualified System.Process.ByteString as Proc.BS
 import Craft.Types
 import Craft.Helpers
 import Craft.Run.Internal
-import Craft.Log
 
 data SSHEnv
   = SSHEnv
@@ -75,78 +73,63 @@ sshMasterProc sshenv session =
 
 
 -- | runCraftSSH
-runCraftSSH :: SSHEnv -> CraftEnv -> Craft a -> IO a
-runCraftSSH sshenv ce prog = do
-  session <- newSSHSession
+runCraftSSH :: SSHEnv -> CraftEnv -> Craft a -> LoggingT IO a
+runCraftSSH sshenv ce' prog = do
+  session <- Trans.lift newSSHSession
   let controlpath = sshControlPath session
-      run = iterM (runCraftSSH' sshenv session)
-            . flip runReaderT ce
-            . runExceptT
   bracket
-    (do (_, _, _, ph) <- Process.createProcess $ sshMasterProc sshenv session
+    (do (_, _, _, ph) <- Trans.lift . Process.createProcess
+                                    $ sshMasterProc sshenv session
         return ph)
-    (\ph -> do
+    (\ph -> Trans.lift $ do
         Process.terminateProcess ph
         whenM (doesFileExist controlpath) $
           removeFile controlpath)
-    (\_ -> run prog >>= \case Left err -> error err
-                              Right a -> return a)
-
-
--- | runCraftSSH implementation
-runCraftSSH' :: SSHEnv -> SSHSession -> CraftDSL (IO a) -> IO a
-runCraftSSH' sshenv session (Exec ce command args next) = do
-  let p = sshProc sshenv session ce command args
-  execProc ce p next
-
-runCraftSSH' sshenv session (Exec_ ce command args next) = do
-  let p = sshProc sshenv session ce command args
-  execProc_ ce (unwords (command:args)) p next
-
-runCraftSSH' sshenv session (FileRead ce fp next) = do
-  let ce' = ce & craftExecEnv .~ []
-               & craftExecCWD .~ "/"
-      p = sshProc sshenv session ce' "cat" [fp]
-  (ec, content, stderr') <- liftIO $ Proc.BS.readCreateProcessWithExitCode p ""
-  unless (isSuccess ec) $
-    runCraftSSH sshenv ce $
+    (\_ -> interpretCraft ce' (run session) prog)
+ where
+  run session (Exec ce command args next) = do
+    let p = sshProc sshenv session ce command args
+    execProc p next
+  run session (Exec_ ce command args next) = do
+    let p = sshProc sshenv session ce command args
+    execProc_ (unwords (command:args)) p next
+  run session (FileRead ce fp next) = do
+    let ceOverride = ce & craftExecEnv .~ []
+                        & craftExecCWD .~ "/"
+        p = sshProc sshenv session ceOverride "cat" [fp]
+    (ec, content, stderr') <-
+      Trans.lift $ Proc.BS.readCreateProcessWithExitCode p ""
+    unless (isSuccess ec) $
       $craftError $ "Failed to read file '"++ fp ++"': " ++ B8.unpack stderr'
-  next content
-
-runCraftSSH' sshenv session (FileWrite ce fp content next) = do
-  let ce' = ce & craftExecEnv .~ []
-               & craftExecCWD .~ "/"
-      p = sshProc sshenv session ce' "tee" [fp]
-  (ec, _, stderr') <- liftIO $ Proc.BS.readCreateProcessWithExitCode p content
-  unless (isSuccess ec) $
-    runCraftSSH sshenv ce $
-      $craftError $ "Failed to write file '"++ fp ++"': " ++ B8.unpack stderr'
-  next
-
-runCraftSSH' sshenv session (SourceFile ce src dest next) = do
-  let p = Process.proc "rsync"
-            ([ "--quiet" -- suppress non-error messages
-             , "--checksum" -- skip based on checksum, not mod-time & size
-             , "--compress" -- compress file data during the transfer
-               -- specify the remote shell to use
-             , "--rsh=ssh " ++ unwords (sshArgs sshenv session)
-             ]
-             ++ (if sshenv ^. sshSudo
-                  then ["--super", "--rsync-path=sudo rsync"]
-                  else [])
-             ++ [ src
-                , connectionStr sshenv ++ ":" ++ dest
-                ])
-  execProc_ ce (showProc p) p next
-
-runCraftSSH' _ _ (FindSourceFile ce name next) =
-  findSourceFileIO ce name >>= next
-
-runCraftSSH' _ _ (ReadSourceFile _ fp next) =
-  readSourceFileIO fp >>= next
-
-runCraftSSH' _ _ (Log ce loc logsource level logstr next) =
-  (ce ^. craftLogger) loc logsource level logstr >> next
+    next content
+  run session (FileWrite ce fp content next) = do
+    let ceOverride = ce & craftExecEnv .~ []
+                        & craftExecCWD .~ "/"
+        p = sshProc sshenv session ceOverride "tee" [fp]
+    (ec, _, stderr') <-
+      Trans.lift $ Proc.BS.readCreateProcessWithExitCode p content
+    unless (isSuccess ec) $
+      $craftError $ "Failed to write file '" ++ fp ++ "': " ++ B8.unpack stderr'
+    next
+  run session (SourceFile _ src dest next) = do
+    let p = Process.proc "rsync"
+              ([ "--quiet" -- suppress non-error messages
+               , "--checksum" -- skip based on checksum, not mod-time & size
+               , "--compress" -- compress file data during the transfer
+                 -- specify the remote shell to use
+               , "--rsh=ssh " ++ unwords (sshArgs sshenv session)
+               ]
+               ++ (if sshenv ^. sshSudo
+                    then ["--super", "--rsync-path=sudo rsync"]
+                    else [])
+               ++ [ src
+                  , connectionStr sshenv ++ ":" ++ dest
+                  ])
+    execProc_ (showProc p) p next
+  run _ (FindSourceFile ce name next) =
+    Trans.lift (findSourceFileIO ce name) >>= next
+  run _ (ReadSourceFile _ fp next) =
+    Trans.lift (readSourceFileIO fp) >>= next
 
 
 sshArgs :: SSHEnv -> SSHSession -> Args

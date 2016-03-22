@@ -7,10 +7,9 @@ import Data.List (intercalate)
 import Text.Megaparsec
 import Text.Megaparsec.String
 
-
 import Craft.Hosts.Types
 import Craft.Types
-import Craft.Log
+
 
 parseLine :: Int -> String -> Craft (Maybe (IP, [Name]))
 parseLine ln s =

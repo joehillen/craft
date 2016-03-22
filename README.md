@@ -26,14 +26,13 @@ vagrant up
 
 In order of priority:
 
- * Create Craft Monad with MonadError, MonadIO, and Logging
-   (the specific requirements still need to be ironed out).
  * Replace FilePath with [path](https://hackage.haskell.org/package/path)
  * Use Text
  * Replace use of "error" with proper exception types.
  * Replace `createUser` with `Craftable User`
  * Remove Exec_
  * Exec as User
+ * Send stdin to Exec
  * Manage `File` and `FileContent` separately
    (unexpected calls to readFile are slow over the network and usually unnecessary)
  * Refactor file content sourcing (pluggable sourcers: `cp`, `rsync`, `S3`, `http`, etc)

@@ -2,13 +2,17 @@ module Craft.S3File where
 
 -- bytestring
 import qualified Data.ByteString.Char8 as B8
+-- monad-logger
+import Control.Monad.Logger (logDebug)
 -- lens
 import Control.Lens hiding (noneOf)
 -- cryptonite
 import Crypto.Hash (SHA1)
-import Crypto.MAC.HMAC (HMAC, hmac, hmacGetDigest)
+import Crypto.MAC.HMAC (HMAC, hmac)
 -- memory
 import Data.ByteArray.Encoding
+-- text
+import qualified Data.Text as T
 -- megaparsec
 import Text.Megaparsec
 import Text.Megaparsec.String
@@ -54,10 +58,10 @@ authHeaders method s3f =
     Nothing -> return []
     Just (awsKeyID, awsSecretKey) -> do
       date <- view stdout <$> ($errorOnFail =<< exec "date" ["-u", "--rfc-2822"])
-      url <- case s3f ^. source of
-               []    -> $craftError $ "S3File.source is empty! " ++ show s3f
-               '/':_ -> return $ s3f ^. source
-               xs    -> return $ '/':(s3f ^. source)
+      sourceUrl <- case s3f ^. source of
+                     []       -> $craftError $ "S3File.source is empty! " ++ show s3f
+                     '/':_    -> return $ s3f ^. source
+                     s3source -> return $ '/':s3source
       let contentMD5 = ""
           contentType = ""
           canonicalizedAmzHeaders = ""
@@ -66,14 +70,14 @@ authHeaders method s3f =
                 ++ contentType ++ "\n"
                 ++ date ++ "\n"
                 ++ canonicalizedAmzHeaders
-                ++ url
+                ++ sourceUrl
           sigHMAC :: HMAC SHA1
           sigHMAC = hmac (B8.pack awsSecretKey)
                          (B8.pack toSign)
           sig = B8.unpack $ convertToBase Base64 sigHMAC
-      $logDebug $ "awsSecretKey == " ++ awsSecretKey
-      $logDebug $ "awsKeyID == " ++ awsKeyID
-      $logDebug $ "toSign == " ++ show toSign
+      $logDebug . T.pack $ "awsSecretKey == " ++ awsSecretKey
+      $logDebug . T.pack $ "awsKeyID == " ++ awsKeyID
+      $logDebug . T.pack $ "toSign == " ++ show toSign
 
       return [ "--header", "Date:" ++ date
              , "--header", "Authorization:AWS " ++ awsKeyID ++ ":" ++ sig
@@ -111,10 +115,10 @@ instance Craftable S3File where
           hdrs <- authHeaders "GET" s3f
           exec_ "curl" $ hdrs ++ ["-XGET", "-s", "-L", "-o", fp, s3f' ^. url]
         verify expected = do
-          sum <- File.md5sum fp
-          when (sum /= expected) (
+          md5chksum <- File.md5sum fp
+          when (md5chksum /= expected) (
             $craftError $ "verify S3File failed! Excepted `" ++ expected ++ "` "
-                       ++ "Got `" ++ sum ++ "` for " ++ show s3f')
+                       ++ "Got `" ++ md5chksum ++ "` for " ++ show s3f')
 
     getS3Sum s3f' >>= \case
       Nothing -> $craftError $ "Failed to get chksum from S3 for: " ++ show s3f'

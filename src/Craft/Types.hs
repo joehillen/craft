@@ -1,25 +1,70 @@
 {-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+--{-# LANGUAGE FlexibleInstances #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Types where
 
-import Control.Lens
-import Control.Monad.Free
-import Control.Monad.Logger (Loc, LogSource, LogLevel(..), LogStr)
-import Control.Monad.Reader
-import Control.Monad.Except
-import Data.ByteString (ByteString)
+import           Control.Lens
+import Data.Monoid ((<>))
+import           Control.Monad.Catch
+import           Control.Monad.Except
+import           Control.Monad.Logger ( LoggingT, MonadLogger, monadLoggerLog, logError)
+import           Control.Monad.Reader (ReaderT, MonadReader, runReaderT, ask)
+import qualified Control.Monad.Trans.Class as Trans
+import           Control.Monad.Trans.Free (FreeT, MonadFree, iterT)
+import           Data.ByteString (ByteString)
 import qualified Data.Text as T
-import Data.Versions (parseV)
-import System.Process
+import           Data.Versions (parseV)
+import           System.Process
+import Language.Haskell.TH.Syntax (Q, Exp)
 
-import Craft.Helpers
-
-
-type Craft a = ExceptT String (ReaderT CraftEnv (Free CraftDSL)) a
+import           Craft.Helpers
 
 
-type StdOut = String
-type StdErr = String
-type Args = [String]
+newtype Craft a = Craft { unCraft :: ReaderT CraftEnv (FreeT CraftDSL (LoggingT IO)) a }
+  deriving ( Functor, Monad, MonadIO, Applicative
+           , MonadReader CraftEnv, MonadFree CraftDSL, MonadThrow, MonadLogger)
+
+
+instance (MonadLogger m, Functor f) => MonadLogger (FreeT f m) where
+  monadLoggerLog a b c d = Trans.lift $ monadLoggerLog a b c d
+
+
+interpretCraft :: CraftEnv -> (CraftDSL (LoggingT IO a) -> LoggingT IO a) -> Craft a -> LoggingT IO a
+interpretCraft ce interpreter = iterT interpreter . flip runReaderT ce . unCraft
+
+data CraftError = CraftError String
+  deriving Show
+
+data CraftNotImplemented = CraftNotImplemented
+  deriving Show
+
+instance Exception CraftError
+
+instance Exception CraftNotImplemented
+
+-- |Log an error and throw a runtime exception
+craftError :: Q Exp
+craftError = [|\s -> $(logError) (T.pack s) >> throwM (CraftError s) |]
+
+
+errorOnFail :: Q Exp
+errorOnFail = [|
+  \case
+    ExecSucc r -> return r
+    ExecFail r -> $craftError $ show r|]
+
+
+notImplemented :: Q Exp
+notImplemented = [| \s -> do
+  $(logError) $ "Not Implemented: " <> T.pack s
+  throwM CraftNotImplemented
+  |]
+
+
+type StdOut  = String
+type StdErr  = String
+type Args    = [String]
 type Command = FilePath
 
 
@@ -93,7 +138,6 @@ data CraftEnv
     , _craftSourcePaths    :: [FilePath]
     , _craftExecEnv        :: ExecEnv
     , _craftExecCWD        :: FilePath
-    , _craftLogger         :: LogFunc
     }
 
 
@@ -105,11 +149,7 @@ data CraftDSL next
   | SourceFile CraftEnv FilePath FilePath next
   | FindSourceFile CraftEnv FilePath ([FilePath] -> next)
   | ReadSourceFile CraftEnv FilePath (ByteString -> next)
-  | Log CraftEnv Loc LogSource LogLevel LogStr next
  deriving Functor
-
-
-type LogFunc = Loc -> LogSource -> LogLevel -> LogStr -> IO ()
 
 
 makeLenses ''PackageManager

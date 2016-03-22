@@ -223,15 +223,15 @@ instance Craftable PPA where
 
 instance Destroyable PPA where
   watchDestroy ppa@(PPA url) = do
-    fs <- findPPAFiles ppa
-    if null fs then
+    fsBefore <- findPPAFiles ppa
+    if null fsBefore then
       return (Unchanged, Nothing)
     else do
       craft_ $ package "software-properties-common"
       exec_ "add-apt-repository" ["-y", "-r", "ppa:" ++ url]
-      fs <- findPPAFiles ppa
-      unless (null fs) $
+      fsAfter <- findPPAFiles ppa
+      unless (null fsAfter) $
         $craftError $ formatToString ("destroy PPA `"%shown%"` failed! Found: "%shown)
-                                     ppa fs
+                                     ppa fsAfter
       update
       return (Removed, Just ppa)

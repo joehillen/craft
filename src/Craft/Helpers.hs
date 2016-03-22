@@ -11,7 +11,6 @@ where
 
 import Control.Monad (when, unless, void)
 import Control.Monad.Extra (whenM, unlessM)
-import qualified System.IO as IO
 import System.Console.ANSI
 import Data.Digest.Pure.MD5 (md5)
 

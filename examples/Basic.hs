@@ -5,6 +5,7 @@ module Main where
 
 import           Control.Lens
 import           Control.Monad
+import Control.Monad.Logger (runStdoutLoggingT)
 import qualified Data.ByteString.Char8 as B8
 import           Data.Maybe
 
@@ -27,12 +28,13 @@ import           Craft.Run.Vagrant
 
 main :: IO ()
 main =
-  runCraftVagrant (craftEnv apt) $ do
-    craft_ $ Hostname "craft-example-basic"
-    Apt.update
-    Pip.setup
-    void addAdmins
-    packages
+  runStdoutLoggingT $
+    runCraftVagrant (craftEnv apt) $ do
+      craft_ $ Hostname "craft-example-basic"
+      Apt.update
+      Pip.setup
+      void addAdmins
+      packages
 
 
 bash,zsh :: FilePath

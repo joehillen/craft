@@ -8,7 +8,6 @@ import qualified Craft.File as File
 import           Craft.File.Mode
 import           Craft.User (User)
 import qualified Craft.User as User
-import qualified Craft.Group as Group
 
 import Control.Lens
 
