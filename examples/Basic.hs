@@ -23,6 +23,7 @@ import qualified Craft.User as User
 import qualified Craft.Group as Group
 import qualified Craft.Pip as Pip
 import           Craft.Run.Vagrant
+import           Craft.Systemd
 
 
 main :: IO ()
@@ -31,8 +32,10 @@ main =
     craft_ $ Hostname "craft-example-basic"
     Apt.update
     Pip.setup
-    void addAdmins
+    users <- addAdmins
     packages
+    -- Install redshift for the first user
+    craft_ . redshift $ head users
 
 
 bash,zsh :: FilePath
