@@ -1,12 +1,8 @@
 flags: {}
 packages:
 - '.'
-- location:
-    git: https://github.com/snoyberg/conduit
-    commit: 3763d95804b73809ef8cfee94433e6e70d173418
-  subdirs:
-  - conduit-extra
 extra-deps:
 - versions-1.0.2
 - process-1.4.2.0
+- conduit-extra-1.1.12.1
 resolver: lts-5.8
