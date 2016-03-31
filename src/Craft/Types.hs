@@ -23,7 +23,7 @@ import           Craft.Helpers
 
 newtype Craft a = Craft { unCraft :: ReaderT CraftEnv (FreeT CraftDSL (LoggingT IO)) a }
   deriving ( Functor, Monad, MonadIO, Applicative
-           , MonadReader CraftEnv, MonadFree CraftDSL, MonadThrow, MonadLogger)
+           , MonadReader CraftEnv, MonadFree CraftDSL, MonadThrow, MonadCatch, MonadLogger)
 
 
 instance (MonadLogger m, Functor f) => MonadLogger (FreeT f m) where
