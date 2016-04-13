@@ -33,6 +33,9 @@ In order of priority:
  * Remove Exec_
  * Exec as User
  * Send stdin to Exec
+ * distinguish CraftEnv from EnvVars
+   - maybe rename it to CraftSettings
+ * Figure out how to use a ReaderT on top of Craft
  * Manage `File` and `FileContent` separately
    (unexpected calls to readFile are slow over the network and usually unnecessary)
  * Add `ToFileContent` and `FromFileContent` typeclasses
@@ -59,6 +62,7 @@ In order of priority:
  * Master/Agent runner
  * Replace facter with something type-safe (lpuppet?)
  * Task-oriented abstraction like fabric, capistrano, ansible-playbook, etc
+ * Exec Pipes
  * Implement ssh client library in pure Haskell
 
 
