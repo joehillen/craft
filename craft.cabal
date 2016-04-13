@@ -64,6 +64,7 @@ library
                      , Craft.Run.Local
                      , Craft.Run.Internal
                      , Craft.Run.Vagrant
+                     , Craft.Wget
 
   other-modules:       Craft.Internal
                      , Craft.Hosts.Parser
