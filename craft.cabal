@@ -27,6 +27,7 @@ library
                      , src/Craft
   exposed-modules:     Craft
                      , Craft.Apt
+                     , Craft.Checksum
                      , Craft.Daemontools
                      , Craft.Directory
                      , Craft.DSL
