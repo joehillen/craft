@@ -1,21 +1,14 @@
 module Craft.S3File where
 
--- bytestring
+import           Control.Lens hiding (noneOf)
+import           Control.Monad.Logger (logDebug)
+import           Crypto.Hash (SHA1)
+import           Crypto.MAC.HMAC (HMAC, hmac)
+import           Data.ByteArray.Encoding
 import qualified Data.ByteString.Char8 as B8
--- monad-logger
-import Control.Monad.Logger (logDebug)
--- lens
-import Control.Lens hiding (noneOf)
--- cryptonite
-import Crypto.Hash (SHA1)
-import Crypto.MAC.HMAC (HMAC, hmac)
--- memory
-import Data.ByteArray.Encoding
--- text
 import qualified Data.Text as T
--- megaparsec
-import Text.Megaparsec
-import Text.Megaparsec.String
+import           Text.Megaparsec
+import           Text.Megaparsec.String
 
 import           Craft
 import           Craft.File (File)
@@ -102,7 +95,7 @@ httpHeaders = do
 
 header :: Parser (String, String)
 header = do
-  name <- (noneOf ":") `someTill` try (string ": ")
+  name <- noneOf ":" `someTill` try (string ": ")
   value <- anyChar `manyTill` try (skipSome eol <|> eof)
   return (name, value)
 
@@ -117,7 +110,7 @@ instance Craftable S3File where
         verify expected = do
           md5chksum <- File.md5sum fp
           when (md5chksum /= expected) (
-            $craftError $ "verify S3File failed! Excepted `" ++ expected ++ "` "
+            $craftError $ "verify S3File failed! Expected `" ++ expected ++ "` "
                        ++ "Got `" ++ md5chksum ++ "` for " ++ show s3f')
 
     getS3Sum s3f' >>= \case
