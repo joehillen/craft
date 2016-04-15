@@ -5,18 +5,18 @@
 module Craft.Types where
 
 import           Control.Lens
-import Data.Monoid ((<>))
 import           Control.Monad.Catch
-import           Control.Monad.Except
+import           Control.Monad.IO.Class (MonadIO)
 import           Control.Monad.Logger ( LoggingT, MonadLogger, monadLoggerLog, logError)
 import           Control.Monad.Reader (ReaderT, MonadReader, runReaderT, ask)
 import qualified Control.Monad.Trans.Class as Trans
 import           Control.Monad.Trans.Free (FreeT, MonadFree, iterT)
 import           Data.ByteString (ByteString)
+import           Data.Monoid ((<>))
 import qualified Data.Text as T
 import           Data.Versions (parseV)
+import           Language.Haskell.TH.Syntax (Q, Exp)
 import           System.Process
-import Language.Haskell.TH.Syntax (Q, Exp)
 
 import           Craft.Helpers
 

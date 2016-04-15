@@ -3,19 +3,19 @@ module Craft
 , module Craft.Internal
 , module System.FilePath
 , asks
+, catch
+, throwM
 , ExitCode(..)
-, catchError
-, throwError
 )
 where
 
-import Control.Lens
-import Control.Monad.Reader
-import Control.Monad.Except (throwError, catchError)
-import System.Exit (ExitCode(..))
-import System.FilePath
-import Craft.Internal
-import Craft.Directory as Dir
+import           Control.Lens
+import           Control.Monad.Catch  (catch, throwM)
+import           Control.Monad.Reader
+import           Craft.Directory      as Dir
+import           Craft.Internal
+import           System.Exit          (ExitCode (..))
+import           System.FilePath
 
 
 withCWD :: Dir.Directory -> Craft a -> Craft a
