@@ -94,20 +94,18 @@ httpHeaders = do
 
 
 header :: Parser (String, String)
-header = do
-  name <- noneOf ":" `someTill` try (string ": ")
-  value <- anyChar `manyTill` try (skipSome eol <|> eof)
-  return (name, value)
+header = (,) <$> noneOf ":" `someTill` try (string ": ")
+             <*> anyChar `manyTill` try (skipSome eol <|> eof)
 
 
 instance Craftable S3File where
   watchCraft s3f = do
     let s3f' = s3f & file . File.content .~ Nothing
-        fp = s3f' ^. file . File.path
-        downloadFile = do
+    let fp = s3f' ^. file . File.path
+    let downloadFile = do
           hdrs <- authHeaders "GET" s3f
           exec_ "curl" $ hdrs ++ ["-XGET", "-s", "-L", "-o", fp, s3f' ^. url]
-        verify expected = do
+    let verify expected = do
           md5chksum <- File.md5sum fp
           when (md5chksum /= expected) (
             $craftError $ "verify S3File failed! Expected `" ++ expected ++ "` "
