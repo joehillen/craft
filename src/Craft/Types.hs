@@ -255,15 +255,15 @@ instance Craftable Package where
         notFound = error' "Not Found."
         wrongVersion got = error' $ "Wrong Version: " ++ show got
                                     ++ " Excepted: " ++ show ver
-    get >>= \case -- Figure out what to do.
-      Nothing -> do
-        install -- It's not installed. Install it.
-        get >>= \case -- Verify the installation.
+    get >>= \case             -- Figure out what to do.
+      Nothing -> do           -- It's not installed.
+        install
+        get >>= \case         -- Verify the installation.
           Nothing -> notFound -- Not Found. The install failed.
-          Just pkg' -> do -- It worked!
+          Just pkg' -> do     -- It worked!
             let ver' = pkg' ^. pkgVersion
                 ok   = return (Created, pkg')
-            case ver of -- Ensure the correct version was installed.
+            case ver of       -- Ensure the correct version was installed.
               AnyVersion -> ok
               Latest     -> ok
               Version  _ ->
@@ -271,12 +271,12 @@ instance Craftable Package where
                   ok
                 else
                   wrongVersion ver'
-      Just pkg' -> do -- It was already installed.
+      Just pkg' -> do             -- It was already installed.
         let ver' = pkg' ^. pkgVersion
         case ver of
           AnyVersion -> return (Unchanged, pkg')
-          Latest -> do
-            upgrade -- Ensure it's the latest version.
+          Latest -> do            -- Ensure it's the latest version.
+            upgrade
             get >>= \case
               Nothing -> notFound -- Where did it go?
               Just pkg'' -> do
