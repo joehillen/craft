@@ -6,6 +6,10 @@ Vagrant.configure(2) do |config|
   if `uname`.strip == "Linux" and Vagrant.has_plugin?("vagrant-lxc") then
     ENV['VAGRANT_DEFAULT_PROVIDER'] = 'lxc'
     config.vm.box = "fgrehm/trusty64-lxc"
+    config.vm.provider :lxc do |lxc,ovrd|
+      # Fix for lxc2.0
+      lxc.backingstore = 'dir'
+    end
   else
     ENV['VAGRANT_DEFAULT_PROVIDER'] = 'virtualbox'
     config.vm.box = "ubuntu/trusty64"
