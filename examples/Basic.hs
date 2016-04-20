@@ -29,7 +29,7 @@ import           Craft.Run.Vagrant
 main :: IO ()
 main =
   runStdoutLoggingT $
-    runCraftVagrant (craftEnv apt) $ do
+    runCraftVagrant vagrantSettings (craftEnv apt) $ do
       craft_ $ Hostname "craft-example-basic"
       Apt.update
       Pip.setup

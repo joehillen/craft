@@ -1,32 +1,49 @@
 module Craft.Run.Vagrant where
 
-import Craft
-import Craft.Config.Ssh (SshConfig(..), parser, cfgLookup)
-
-import Control.Lens
-import Control.Monad.Logger (LoggingT)
+import           Control.Lens
+import           Control.Monad.Logger (LoggingT)
 import qualified Control.Monad.Trans as Trans
-import qualified System.Environment
+import           Data.Maybe (fromMaybe, maybeToList)
 import qualified System.Directory
-import Data.Maybe (fromMaybe)
+import qualified System.Environment
+
+import           Craft
+import           Craft.Config.Ssh (SshConfig(..), parser, cfgLookup)
 
 
-runCraftVagrant :: CraftEnv -> Craft a -> LoggingT IO a
-runCraftVagrant env configs = do
+data VagrantSettings
+  = VagrantSettings
+    { vagrantUp  :: Bool
+    , vagrantBox :: String
+    }
+
+
+vagrantSettings :: VagrantSettings
+vagrantSettings =
+  VagrantSettings
+  { vagrantUp = False
+  , vagrantBox = "default"
+  }
+
+
+runCraftVagrant :: VagrantSettings -> CraftEnv -> Craft a -> LoggingT IO a
+runCraftVagrant settings env configs = do
   sysEnv <- Trans.lift System.Environment.getEnvironment
   cwd <- Trans.lift System.Directory.getCurrentDirectory
+  let box = vagrantBox settings
   sshcfg <- runCraftLocal (craftEnv (env ^. craftPackageManager)
                                     & craftExecEnv .~ sysEnv
                                     & craftExecCWD .~ cwd
                                     ) $ do
-    r <- exec "vagrant" ["ssh-config"]
+    when (vagrantUp settings) $ exec_ "vagrant" ["up", box]
+    r <- exec "vagrant" ["ssh-config", box]
     success <- $errorOnFail r
     SshConfig <$> parseExecResult r parser (success ^. stdout)
 
-  let addr = cfgLookupOrError "hostname" sshcfg
-      port = read $ cfgLookupOrError "port" sshcfg
-      user = cfgLookupOrError "user" sshcfg
-      key  = cfgLookupOrError "identityfile" sshcfg
+  let addr = cfgLookupOrError box "hostname" sshcfg
+      port = read $ cfgLookupOrError box "port" sshcfg
+      user = cfgLookupOrError box "user" sshcfg
+      key  = cfgLookupOrError box "identityfile" sshcfg
   runCraftSSH (sshEnv addr key & sshUser .~ user
                                & sshPort .~ port
                                & sshSudo .~ True)
@@ -34,8 +51,8 @@ runCraftVagrant env configs = do
               configs
 
 
-cfgLookupOrError :: String -> SshConfig -> String
-cfgLookupOrError name sshcfg =
+cfgLookupOrError :: String -> String -> SshConfig -> String
+cfgLookupOrError box name sshcfg =
   fromMaybe
-    (error $ "'" ++ name ++ "' not found in output of 'vagrant ssh-config'")
-    (cfgLookup "default" name sshcfg)
+    (error $ "'"++name++"' not found in output of 'vagrant ssh-config "++box++"'")
+    (cfgLookup box name sshcfg)
