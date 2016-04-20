@@ -33,6 +33,7 @@ In order of priority:
  * Remove Exec_
  * Exec as User
  * Send stdin to Exec
+ * use `data-default`
  * distinguish CraftEnv from EnvVars
    - maybe rename it to CraftSettings
  * Figure out how to use a ReaderT on top of Craft
