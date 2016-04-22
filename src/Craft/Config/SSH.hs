@@ -1,18 +1,18 @@
-module Craft.Config.Ssh where
+module Craft.Config.SSH where
 
-import Control.Lens hiding (noneOf)
+import           Control.Lens hiding (noneOf)
 import           Data.Char (toLower)
 import           Data.Maybe (catMaybes)
 import           Text.Megaparsec
 
-import Craft
-import Craft.Config
+import           Craft
+import           Craft.Config
 import qualified Craft.Directory as Directory
 import           Craft.File (file)
 import qualified Craft.File as File
 import           Craft.File.Mode
 import           Craft.Internal.Helpers
-import           Craft.Ssh
+import           Craft.SSH
 import           Craft.User (User)
 import qualified Craft.User as User
 
@@ -29,24 +29,24 @@ type Sections = [Section]
 type Body = [(String, String)]
 
 
-newtype SshConfig = SshConfig { _sshfmt :: Sections }
+newtype SSHConfig = SSHConfig { _sshfmt :: Sections }
   deriving Eq
 
 
-instance Show SshConfig where
+instance Show SSHConfig where
   show sshcfg = unlines . map show $ _sshfmt sshcfg
 
 
 data UserConfig
   = UserConfig
     { _user        :: User
-    , _userConfigs :: SshConfig
+    , _userConfigs :: SSHConfig
     }
   deriving Eq
-makeLenses ''SshConfig
+makeLenses ''SSHConfig
 makeLenses ''UserConfig
 
-instance ConfigFormat SshConfig where
+instance ConfigFormat SSHConfig where
   showConfig = show
   parse = sshConfigParse
 
@@ -55,7 +55,7 @@ userPath :: UserConfig -> FilePath
 userPath uc = userDir (uc ^. user) ^. Directory.path </> "config"
 
 
-get :: FilePath -> Craft (Maybe (Config SshConfig))
+get :: FilePath -> Craft (Maybe (Config SSHConfig))
 get fp =
   File.get fp >>= \case
     Nothing -> return Nothing
@@ -67,8 +67,8 @@ bodyLookup key body =
   lookup (map toLower key) $ map ((,) <$> map toLower . fst <*> snd) body
 
 
-cfgLookup :: String -> String -> SshConfig -> Maybe String
-cfgLookup sectionName key (SshConfig sections') =
+cfgLookup :: String -> String -> SSHConfig -> Maybe String
+cfgLookup sectionName key (SSHConfig sections') =
   case body of
     Just b -> bodyLookup key b
     Nothing -> Nothing
@@ -92,11 +92,11 @@ instance Craftable UserConfig where
     return (w, cfg)
 
 
-sshConfigParse :: FilePath -> String -> Craft SshConfig
+sshConfigParse :: FilePath -> String -> Craft SSHConfig
 sshConfigParse fp s =
   case runParser parser fp s of
     Left err   -> $craftError $ show err
-    Right secs -> return $ SshConfig secs
+    Right secs -> return $ SSHConfig secs
 
 
 instance Show UserConfig where
@@ -147,7 +147,7 @@ parseSection = do
   return $ case map toLower (fst title) of
     "host"  -> Host (snd title) body
     "match" -> Match (snd title) body
-    _       -> error "Craft.Config.Ssh.parse failed. This should be impossible."
+    _       -> error "Craft.Config.SSH.parse failed. This should be impossible."
 
 
 parser :: Parsec String Sections

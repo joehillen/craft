@@ -47,8 +47,8 @@ library
                      , Craft.Nginx
                      , Craft.Pip
                      , Craft.S3File
-                     , Craft.Ssh
-                     , Craft.Ssh.PrivateKey
+                     , Craft.SSH
+                     , Craft.SSH.PrivateKey
                      , Craft.SysV
                      , Craft.Types
                      , Craft.Upstart
@@ -56,7 +56,7 @@ library
                      , Craft.Config
                      , Craft.Config.Ini
                      , Craft.Config.Shell
-                     , Craft.Config.Ssh
+                     , Craft.Config.SSH
                      , Craft.Config.Yaml
                      , Craft.Config.Json
                      , Craft.Run

@@ -1,4 +1,4 @@
-module Craft.Ssh where
+module Craft.SSH where
 
 import Control.Lens
 

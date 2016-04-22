@@ -8,7 +8,7 @@ import qualified System.Directory
 import qualified System.Environment
 
 import           Craft
-import           Craft.Config.Ssh (SshConfig(..), parser, cfgLookup)
+import           Craft.Config.SSH (SSHConfig(..), parser, cfgLookup)
 
 
 data VagrantSettings
@@ -38,7 +38,7 @@ runCraftVagrant settings env configs = do
     when (vagrantUp settings) $ exec_ "vagrant" ["up", box]
     r <- exec "vagrant" ["ssh-config", box]
     success <- $errorOnFail r
-    SshConfig <$> parseExecResult r parser (success ^. stdout)
+    SSHConfig <$> parseExecResult r parser (success ^. stdout)
 
   let addr = cfgLookupOrError box "hostname" sshcfg
       port = read $ cfgLookupOrError box "port" sshcfg
@@ -51,7 +51,7 @@ runCraftVagrant settings env configs = do
               configs
 
 
-cfgLookupOrError :: String -> String -> SshConfig -> String
+cfgLookupOrError :: String -> String -> SSHConfig -> String
 cfgLookupOrError box name sshcfg =
   fromMaybe
     (error $ "'"++name++"' not found in output of 'vagrant ssh-config "++box++"'")

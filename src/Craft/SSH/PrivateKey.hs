@@ -1,7 +1,7 @@
-module Craft.Ssh.PrivateKey where
+module Craft.SSH.PrivateKey where
 
 import           Craft
-import           Craft.Ssh
+import           Craft.SSH
 import qualified Craft.Directory as Directory
 import           Craft.File (file)
 import qualified Craft.File as File

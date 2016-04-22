@@ -18,7 +18,7 @@ import qualified Craft.Directory as Dir
 import           Craft.File (File(..), file)
 import qualified Craft.File as File
 import           Craft.File.Mode
-import qualified Craft.Ssh as Ssh
+import qualified Craft.SSH as SSH
 import           Craft.User (User(..), createUser)
 import qualified Craft.User as User
 import qualified Craft.Group as Group
@@ -60,7 +60,7 @@ addAdmins = sequence
 data UserOptions =
   UserOptions
   { optShell         :: FilePath
-  , optSshPubKeyType :: String
+  , optSSHPubKeyType :: String
   }
 
 
@@ -68,7 +68,7 @@ userOpts :: UserOptions
 userOpts =
   UserOptions
   { optShell = bash
-  , optSshPubKeyType = "ssh-rsa"
+  , optSSHPubKeyType = "ssh-rsa"
   }
 
 
@@ -99,7 +99,7 @@ normalUser name fullname sshPubKey UserOptions{..} = do
                               & Dir.groupID .~ user ^. User.gid
 
   -- add the user's public key
-  void $ Ssh.addAuthorizedKey user $ Ssh.PublicKey sshPubKey optSshPubKeyType
+  void $ SSH.addAuthorizedKey user $ SSH.PublicKey sshPubKey optSSHPubKeyType
 
   -- if the user's shell is bash
   -- then instal the standard bashrc
