@@ -179,14 +179,14 @@ sshProc session ce command args =
                       ++ [ (session ^. sessionEnv . connStr), cmd ])
  where
   cwd = ce ^. craftExecCWD
-  execEnv = ce ^. craftExecEnv
+  execEnv = map escape (renderEnv $ ce ^. craftExecEnv)
+  sudo = session ^. sessionEnv . sshSudo
   cmd = unwords
-        (sudo
+        ((if sudo then ["sudo", "-n", "-H"] else [])
          ++ ["sh", "-c", "'", "cd", escape cwd, ";"]
-         ++ map escape (renderEnv execEnv)
+         ++ execEnv
          ++ (command : map escape args)
          ++ ["'"])
-  sudo = if session ^. sessionEnv . sshSudo then ["sudo", "-H"] else []
   escape :: String -> String
   escape = recur backslash [" ", "*", "$", "'"]
   recur _ []     s = s
