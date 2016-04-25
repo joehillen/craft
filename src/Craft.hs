@@ -12,11 +12,11 @@ where
 import           Control.Lens
 import           Control.Monad.Catch  (catch, throwM)
 import           Control.Monad.Reader
-import           Craft.Directory      as Dir
-import           Craft.Internal
 import           System.Exit          (ExitCode (..))
 import           System.FilePath
 
+import           Craft.Directory      as Dir
+import           Craft.Internal
 
 withCWD :: Dir.Directory -> Craft a -> Craft a
 withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. Dir.path)

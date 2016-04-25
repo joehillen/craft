@@ -91,7 +91,6 @@ library
                      , containers
                      , cryptonite
                      , directory
-                     , extra
                      , exceptions
                      , fast-logger
                      , monad-logger
