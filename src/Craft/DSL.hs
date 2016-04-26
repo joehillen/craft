@@ -1,19 +1,19 @@
 module Craft.DSL where
 
-import Control.Lens
-import Control.Monad.Reader
-import Control.Monad.Free
-import Data.ByteString (ByteString)
-import Control.Monad.Logger (logDebugNS)
+import           Control.Lens
+import           Control.Monad.Reader
+import           Control.Monad.Free
+import           Data.ByteString (ByteString)
+import           Control.Monad.Logger (logDebugNS)
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
-import Data.List (intercalate)
-import Data.List.Split (splitOn)
-import Text.Megaparsec
-import System.FilePath ((</>))
+import           Data.List (intercalate)
+import           Data.List.Split (splitOn)
+import           Text.Megaparsec
+import           System.FilePath ((</>))
 
-import Craft.Types
-import Craft.Helpers
+import           Craft.Types
+import           Craft.Helpers
 
 
 -- | Craft DSL
