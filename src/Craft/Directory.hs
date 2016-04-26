@@ -8,21 +8,22 @@ module Craft.Directory
 )
 where
 
-import Control.Lens
-import           Craft.Internal
+import           Control.Lens
+import           Data.Maybe (catMaybes)
+import           Formatting
+import           System.FilePath
+
+import           Craft.Directory.Parser
 import           Craft.File (File)
 import qualified Craft.File as File
 import           Craft.File.Mode
-import           Craft.Group (Group, GroupID)
+import           Craft.Group (Group, GroupID(..))
 import qualified Craft.Group as Group
+import           Craft.Internal
 import           Craft.Internal.FileDirectory
-import           Craft.User (User, UserID)
+import           Craft.User (User, UserID(..))
 import qualified Craft.User as User
-import Craft.Directory.Parser
 
-import           Data.Maybe (catMaybes)
-import           System.FilePath
-import           Formatting
 
 type Path = FilePath
 
@@ -61,8 +62,8 @@ directory dp =
   Directory
   { _path    = dp
   , _mode    = Mode RWX RX RX
-  , _ownerID = 0
-  , _groupID = 0
+  , _ownerID = UserID 0
+  , _groupID = GroupID 0
   }
 
 

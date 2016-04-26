@@ -1,14 +1,14 @@
 module Craft.Config where
 
-import Control.Lens
+import           Control.Lens
 import qualified Data.ByteString.Char8 as B8
 
 import           Craft
 import           Craft.File (File, file)
 import qualified Craft.File as File
 import           Craft.File.Mode
-import           Craft.User (UserID)
-import           Craft.Group (GroupID)
+import           Craft.Group (GroupID(..))
+import           Craft.User (UserID(..))
 
 
 data Config a
@@ -25,8 +25,8 @@ config :: ConfigFormat a => FilePath -> a -> Config a
 config fp cfg = Config
     { _path    = fp
     , _mode    = Mode RW R R
-    , _ownerID = 0
-    , _groupID = 0
+    , _ownerID = UserID 0
+    , _groupID = GroupID 0
     , _configs = cfg
     }
 

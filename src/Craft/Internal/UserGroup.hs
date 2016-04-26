@@ -10,9 +10,26 @@ import Craft.Internal
 import Craft.Internal.Helpers
 
 
-type UserName = String
-type UserID = Int
-type GroupID = Int
+newtype UserName = UserName String
+                   deriving (Eq, Ord)
+newtype UserID = UserID Int
+                 deriving (Eq, Show, Ord)
+newtype GroupName = GroupName String
+                    deriving (Eq, Ord)
+newtype GroupID = GroupID Int
+                  deriving (Eq, Show, Ord)
+
+instance Show GroupName where
+  show (GroupName n) = n
+
+instance Show UserName where
+  show (UserName n) = n
+
+instance ToArg UserID where
+  toArg arg (UserID n) = [arg, show n]
+
+instance ToArg GroupID where
+  toArg arg (GroupID n) = [arg, show n]
 
 data User
   = User
@@ -29,9 +46,6 @@ data User
     --, system       :: Bool
     }
  deriving (Eq, Show)
-
-
-type GroupName = String
 
 
 data Group
@@ -54,10 +68,10 @@ colon = char ':'
 -- TESTME
 passwdParser :: Parser (UserName, UserID, GroupID, String, FilePath, FilePath)
 passwdParser = do
-  name <- someTill anyChar colon
+  name <- UserName <$> someTill anyChar colon
   _ <- manyTill anyChar colon
-  uid' <- read <$> someTill digitChar colon
-  gid' <- read <$> someTill digitChar colon
+  uid' <- UserID . read <$> someTill digitChar colon
+  gid' <- GroupID . read <$> someTill digitChar colon
   comment' <- manyTill anyChar colon
   home' <- manyTill anyChar colon
   shell' <- manyTill anyChar (void eol <|> eof)
@@ -71,32 +85,31 @@ shadowParser = do
   manyTill anyChar colon
 
 
-userFromName :: UserName -> Craft (Maybe User)
-userFromName name =
-  getent "passwd" name >>= \case
+userFromStr :: String -> Craft (Maybe User)
+userFromStr nameOrIdStr =
+  getent "passwd" nameOrIdStr >>= \case
     ExecFail _ -> return Nothing
     ExecSucc r -> do
       (nameS, uid', gid', comment', home', shell') <-
-            parseGetent passwdParser "passwd" name (r ^. stdout)
+            parseGetent passwdParser "passwd" nameOrIdStr (r ^. stdout)
       grp <- fromJust <$> groupFromID gid'
       grps <- getGroups nameS
-      shadowResult <- $errorOnFail =<< getent "shadow" nameS
-      passwordHash' <- parseGetent shadowParser "shadow" nameS $ shadowResult ^. stdout
-      return . Just
-            $ User { _username     = nameS
-                   , _uid          = uid'
-                   , _group        = grp
-                   , _groups       = grps
-                   , _passwordHash = passwordHash'
-                   , _home         = home'
-                   , _shell        = shell'
-                   , _comment      = comment'
-                   }
+      shadowResult <- $errorOnFail =<< getent "shadow" (show nameS)
+      passwordHash' <- parseGetent shadowParser "shadow" (show nameS) $ shadowResult ^. stdout
+      return . Just $ User { _username     = nameS
+                           , _uid          = uid'
+                           , _group        = grp
+                           , _groups       = grps
+                           , _passwordHash = passwordHash'
+                           , _home         = home'
+                           , _shell        = shell'
+                           , _comment      = comment'
+                           }
 
 getGroups :: UserName -> Craft [GroupName]
-getGroups name = do
+getGroups (UserName name) = do
   r <- $errorOnFail =<< exec "id" ["-nG", name]
-  return $ r ^. stdout . to words
+  return . map GroupName $ r ^. stdout . to words
 
 
 getent :: String -> String -> Craft ExecResult
@@ -111,7 +124,7 @@ parseGetent parser dbase key input =
 
 
 userFromID :: UserID -> Craft (Maybe User)
-userFromID = userFromName . show
+userFromID (UserID n) = userFromStr $ show n
 
 
 useradd :: User -> Craft ()
@@ -121,7 +134,7 @@ useradd User{..} =
   args = Prelude.concat
     [ toArg "--uid"      _uid
     , toArg "--comment"  _comment
-    , toArg "--groups"   $ intercalate "," _groups
+    , toArg "--groups"   $ intercalate "," $ map show _groups
     , toArg "--home"     _home
     , toArg "--password" _passwordHash
     , toArg "--shell"    _shell
@@ -130,12 +143,12 @@ useradd User{..} =
 
 instance Craftable User where
   watchCraft user = do
-    let name = user ^. username
+    let name = show $ user ^. username
         notFound = $craftError $ "User `" ++ name ++ "` not found!"
-    userFromName name >>= \case
+    userFromStr name >>= \case
       Nothing -> do
         useradd user
-        userFromName name >>= \case
+        userFromStr name >>= \case
           Nothing -> notFound
           Just user' -> do
             verify user' user
@@ -154,7 +167,7 @@ instance Craftable User where
         if and res then
           return (Unchanged, user')
         else
-          userFromName name >>= \case
+          userFromStr (show name) >>= \case
             Nothing -> notFound
             Just user'' -> do
               verify user'' user
@@ -168,28 +181,29 @@ instance Craftable User where
 -- TESTME
 groupParser :: Parser Group
 groupParser = do
-  name <- someTill anyChar colon
+  name <- GroupName <$> someTill anyChar colon
   _ <- manyTill anyChar colon
-  gid' <- read <$> someTill digitChar colon
-  members' <- some alphaNumChar `sepBy` char ','
+  gid' <- GroupID . read <$> someTill digitChar colon
+  members' <- map UserName <$> some alphaNumChar `sepBy` char ','
   return $ Group name gid' members'
 
 
-groupFromName :: GroupName -> Craft (Maybe Group)
-groupFromName gname =
-  getent "group" gname >>= \case
+groupFromStr :: String -> Craft (Maybe Group)
+groupFromStr nameOrIdStr =
+  getent "group" nameOrIdStr >>= \case
     ExecFail _ -> return Nothing
-    ExecSucc r -> Just <$> parseGetent groupParser "group" gname (r ^. stdout)
+    ExecSucc r -> Just <$> parseGetent groupParser "group" nameOrIdStr (r ^. stdout)
 
 
 groupFromID :: GroupID -> Craft (Maybe Group)
-groupFromID = groupFromName . show
+groupFromID (GroupID n )= groupFromStr $ show n
 
 
 instance Craftable Group where
   watchCraft grp = do
     _ <- $notImplemented "craft Group"
     -- groupFromName . groupname
-    exec_ "/usr/sbin/groupadd" $ toArg "--gid" (grp ^. gid) ++ [grp ^. groupname]
-    exec_ "/usr/bin/gpasswd" ["--members", intercalate "," (grp ^. members), grp ^. groupname]
+    exec_ "/usr/sbin/groupadd" $ toArg "--gid" (grp ^. gid) ++ [show $ grp ^. groupname]
+    exec_ "/usr/bin/gpasswd" ["--members", intercalate "," (map show (grp ^. members))
+                             , show $ grp ^. groupname]
     return (Unchanged, grp)

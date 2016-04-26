@@ -11,9 +11,9 @@ where
 import           Craft.Helpers
 import           Craft.Internal
 import           Craft.File.Mode
-import           Craft.User (User, UserID)
+import           Craft.User (User, UserID(..))
 import qualified Craft.User as User
-import           Craft.Group (Group, GroupID)
+import           Craft.Group (Group, GroupID(..))
 import qualified Craft.Group as Group
 import           Craft.Internal.FileDirectory
 
@@ -53,7 +53,7 @@ instance Eq File where
 owner :: File -> Craft User
 owner f =
   User.fromID (f ^. ownerID) >>= \case
-    Nothing -> $craftError $ formatToString ("No such owner with id `"%int%"` for: "%shown)
+    Nothing -> $craftError $ formatToString ("No such owner with `"%shown%"` for: "%shown)
                                             (f ^. ownerID) f
     Just g  -> return g
 
@@ -61,7 +61,7 @@ owner f =
 group :: File -> Craft Group
 group f =
   Group.fromID (f ^. groupID) >>= \case
-    Nothing -> $craftError $ formatToString ("No such group with id `"%int%"` for: "%shown)
+    Nothing -> $craftError $ formatToString ("No such group with `"%shown%"` for: "%shown)
                                             (f ^. groupID) f
     Just g -> return g
 
@@ -93,8 +93,8 @@ file fp =
   File
   { _path    = fp
   , _mode    = Mode RW R R
-  , _ownerID = 0
-  , _groupID = 0
+  , _ownerID = UserID 0
+  , _groupID = GroupID 0
   , _content = Nothing
   }
 

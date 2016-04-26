@@ -25,7 +25,7 @@ addAuthorizedKey user pk = do
          & mode       .~ Mode RW O O
          & ownerID    .~ user ^. User.uid
          & groupID    .~ user ^. User.gid
-         & strContent .~ pk ^. publicKeyType ++ " " ++ pk ^. publicKey
+         & strContent .~ pk ^. publicKeyType ++ " " ++ pk ^. publicKey ++ "\n"
 
 
 userDir :: User -> Directory

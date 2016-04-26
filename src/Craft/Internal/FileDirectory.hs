@@ -3,14 +3,14 @@ module Craft.Internal.FileDirectory
 , FilePath
 ) where
 
-import           Craft.Internal
-import           Craft.File.Mode (Mode(..), fromString)
-import           Craft.Group (GroupID)
-import           Craft.User (UserID)
+import Craft.File.Mode (Mode(..), fromString)
+import Craft.Group (GroupID(..))
+import Craft.Internal
+import Craft.User (UserID(..))
 
 import Control.Lens
-import           Text.Megaparsec
-import           Text.Megaparsec.String
+import Text.Megaparsec
+import Text.Megaparsec.String
 
 
 setOwnerID :: UserID -> FilePath -> Craft ()
@@ -35,14 +35,14 @@ getOwnerID :: FilePath -> Craft UserID
 getOwnerID fp = do
   r <- stat ["-c", "%u", fp]
   success <- $errorOnFail r
-  parseExecResult r digitParser (success ^. stdout)
+  UserID <$> parseExecResult r digitParser (success ^. stdout)
 
 
 getGroupID :: FilePath -> Craft GroupID
 getGroupID fp = do
   r <- stat ["-c", "%g", fp]
   success <- $errorOnFail r
-  parseExecResult r digitParser (success ^. stdout)
+  GroupID <$> parseExecResult r digitParser (success ^. stdout)
 
 
 getStats :: FilePath -> Craft (Maybe (Mode, UserID, GroupID))
@@ -56,9 +56,9 @@ statsParser :: Parser (Mode, UserID, GroupID)
 statsParser = do
   mode <- modeParser
   void $ char ':'
-  owner <- digitParser
+  owner <- UserID <$> digitParser
   void $ char ':'
-  group <- digitParser
+  group <- GroupID <$> digitParser
   return (mode, owner, group)
 
 

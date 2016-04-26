@@ -3,7 +3,8 @@ module Craft.Group
 , Group(..)
 , gid
 , members
-, GroupID
+, GroupID(..)
+, GroupName(..)
 )
 where
 
@@ -16,7 +17,7 @@ import           Craft.Internal.UserGroup
 
 type Name = GroupName
 
-name :: Lens' Group String
+name :: Lens' Group GroupName
 name = groupname
 
 data Options =
@@ -39,7 +40,8 @@ opts =
 createGroup :: Name -> Options -> Craft Group
 createGroup gn Options{..} = do
   exec_ "/usr/sbin/groupadd" args
-  exec_ "/usr/bin/gpasswd" ["--members", intercalate "," optUsers, gn]
+  exec_ "/usr/bin/gpasswd" [ "--members", intercalate "," (map show optUsers)
+                           , show gn]
   fromName gn >>= \case
     Nothing -> $craftError $ "createGroup `" ++ show gn ++ "` failed. Not Found!"
     Just g -> return g
@@ -50,8 +52,8 @@ createGroup gn Options{..} = do
    , toArg "--system"     optSystem
    ]
 
-fromName :: Name -> Craft (Maybe Group)
-fromName = groupFromName
+fromName :: GroupName -> Craft (Maybe Group)
+fromName (GroupName s) = groupFromStr s
 
 fromID :: GroupID -> Craft (Maybe Group)
 fromID = groupFromID

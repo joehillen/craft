@@ -2,7 +2,8 @@
 module Craft.User
 ( module Craft.User
 , User(..)
-, UserID
+, UserID(..)
+, UserName(..)
 , username
 , uid
 , comment
@@ -15,15 +16,15 @@ module Craft.User
 where
 
 import           Control.Lens hiding (un)
-import qualified Data.Set as S
 import           Data.List (intercalate)
+import qualified Data.Set as S
+import           Formatting
 
+import qualified Craft.Group as Group
 import           Craft.Internal
 import           Craft.Internal.Helpers
-import qualified Craft.Group as Group
-import           Craft.Internal.UserGroup hiding (gid)
 import qualified Craft.Internal.UserGroup as UG
-import Formatting
+import           Craft.Internal.UserGroup hiding (gid)
 
 
 type Name = UserName
@@ -97,15 +98,15 @@ opts =
 
 
 userMod :: UserName -> [String] -> Craft ()
-userMod un args =
+userMod (UserName un) args =
   exec_ "/usr/sbin/usermod" $ args ++ [un]
 
 
 getUID :: UserName -> Craft (Maybe UserID)
-getUID "root" = return . Just $ 0
-getUID un =
+getUID (UserName "root") = return . Just $ UserID 0
+getUID (UserName un) =
   exec "/usr/bin/id" ["--user", un] >>= \case
-    ExecSucc r -> return . Just . read $ r ^. stdout
+    ExecSucc r -> return . Just . UserID . read $ r ^. stdout
     ExecFail _ -> return Nothing
 
 
@@ -126,13 +127,13 @@ setGroup un gn =
   Group.fromName gn  >>= \case
     Nothing ->
       $craftError
-      $ formatToString ("setGroup `"%string%"` `"%string%"` failed. Group `"%string%"` not found!")
+      $ formatToString ("setGroup `"%shown%"` `"%shown%"` failed. Group `"%shown%"` not found!")
                        un gn gn
-    Just g  -> userMod un ["--gid", show $ g ^. UG.gid]
+    Just g  -> userMod un $ toArg "--gid" (g ^. UG.gid)
 
 setGroups :: UserName -> [GroupName] -> Craft ()
 setGroups _  []  = return ()
-setGroups un gns = userMod un ["--groups", intercalate "," gns]
+setGroups un gns = userMod un ["--groups", intercalate "," $ map show gns]
 
 setHome :: UserName -> FilePath -> Craft ()
 setHome un path = userMod un ["--home", path]
@@ -175,7 +176,7 @@ createUser un uopts@Options{..} = do
     Nothing -> $craftError notfound
     Just r  -> return r
  where
-  notfound = "createUser `" ++ un ++ "` failed. Not Found!"
+  notfound = "createUser `" ++ show un ++ "` failed. Not Found!"
 
   handleOpt :: Eq a => Maybe a -> a -> (a -> Craft ()) -> Craft ()
   handleOpt Nothing       _      _ = return ()
@@ -190,17 +191,17 @@ createUser' :: UserName -> Options -> Craft ()
 createUser' un Options{..} = do
   groupArg <- getGroupArg optGroup
   exec_ "/usr/sbin/useradd" $
-       optsToArgs ++ groupArg ++ groupsArg ++ [un]
+       optsToArgs ++ groupArg ++ groupsArg ++ [show un]
  where
   getGroupArg :: Maybe GroupName -> Craft [String]
   getGroupArg Nothing = return []
   getGroupArg (Just gn) =
     Group.fromName gn >>= \case
       Nothing -> $craftError $
-        "Failed to create User `" ++ un ++ "` "
-        ++ "with group `" ++ gn ++ "`. Group not found!"
+        "Failed to create User `" ++ show un ++ "` "
+        ++ "with group `" ++ show gn ++ "`. Group not found!"
       Just g -> return $ toArg "--gid" $ g ^. Group.gid
-  groupsArg = toArg "--groups" $ intercalate "," optGroups
+  groupsArg = toArg "--groups" $ intercalate "," (map show optGroups)
   optsToArgs =
     concat
       [ toArg "--uid"         optUID
@@ -217,7 +218,7 @@ lock :: UserName -> Craft ()
 lock un = userMod un ["--lock"]
 
 fromName :: Name -> Craft (Maybe User)
-fromName = userFromName
+fromName (UserName n) = userFromStr n
 
 fromID :: UserID -> Craft (Maybe User)
 fromID = userFromID
