@@ -51,17 +51,17 @@ instance Eq File where
 
 
 owner :: Setter File File () User
-owner = sets (\f file -> doit file (f ()))
+owner = sets (\functor f -> doit f (functor ()))
  where doit f o = f & ownerID .~ (o ^. User.uid)
 
 
 group :: Setter File File () Group
-group = sets (\f file -> doit file (f ()))
+group = sets (\functor f -> doit f (functor ()))
  where doit f g = f & groupID .~ (g ^. Group.gid)
 
 
 ownerAndGroup :: Setter File File () User
-ownerAndGroup = sets (\f file -> doit file (f ()))
+ownerAndGroup = sets (\functor f -> doit f (functor ()))
  where doit f u = f & owner .~ u
                     & group .~ (u ^. User.group)
 
