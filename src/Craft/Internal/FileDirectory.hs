@@ -14,11 +14,11 @@ import Text.Megaparsec.String
 
 
 setOwnerID :: UserID -> FilePath -> Craft ()
-setOwnerID uid path = exec_ "/bin/chown" [show uid, path]
+setOwnerID (UserID uid) path = exec_ "/bin/chown" [show uid, path]
 
 
 setGroupID :: GroupID -> FilePath -> Craft ()
-setGroupID gid path = exec_ "/bin/chgrp" [show gid, path]
+setGroupID (GroupID gid) path = exec_ "/bin/chgrp" [show gid, path]
 
 
 stat :: Args -> Craft ExecResult
