@@ -50,16 +50,32 @@ instance Eq File where
              || (a ^. content == b ^. content))
 
 
-owner :: File -> Craft User
-owner f =
+owner :: Setter File File () User
+owner = sets (\f file -> doit file (f ()))
+ where doit f o = f & ownerID .~ (o ^. User.uid)
+
+
+group :: Setter File File () Group
+group = sets (\f file -> doit file (f ()))
+ where doit f g = f & groupID .~ (g ^. Group.gid)
+
+
+ownerAndGroup :: Setter File File () User
+ownerAndGroup = sets (\f file -> doit file (f ()))
+ where doit f u = f & owner .~ u
+                    & group .~ (u ^. User.group)
+
+
+getOwner :: File -> Craft User
+getOwner f =
   User.fromID (f ^. ownerID) >>= \case
     Nothing -> $craftError $ formatToString ("No such owner with `"%shown%"` for: "%shown)
                                             (f ^. ownerID) f
     Just g  -> return g
 
 
-group :: File -> Craft Group
-group f =
+getGroup :: File -> Craft Group
+getGroup f =
   Group.fromID (f ^. groupID) >>= \case
     Nothing -> $craftError $ formatToString ("No such group with `"%shown%"` for: "%shown)
                                             (f ^. groupID) f
