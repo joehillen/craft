@@ -59,6 +59,7 @@ library
                      , Craft.Config.SSH
                      , Craft.Config.Yaml
                      , Craft.Config.Json
+                     , Craft.Package
                      , Craft.Run
                      , Craft.Run.SSH
                      , Craft.Run.Local
