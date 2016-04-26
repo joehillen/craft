@@ -39,21 +39,35 @@ data Directory =
 makeLenses ''Directory
 
 
-owner :: Directory -> Craft User
-owner d =
+owner :: Setter Directory Directory () User
+owner = sets (\functor d -> doit d (functor ()))
+ where doit d o = d & ownerID .~ (o ^. User.uid)
+
+
+group :: Setter Directory Directory () Group
+group = sets (\functor d -> doit d (functor ()))
+ where doit d g = d & groupID .~ (g ^. Group.gid)
+
+
+ownerAndGroup :: Setter Directory Directory () User
+ownerAndGroup = sets (\functor d -> doit d (functor ()))
+ where doit d u = d & owner .~ u
+                    & group .~ (u ^. User.group)
+
+
+getOwner :: Directory -> Craft User
+getOwner d =
   User.fromID (d ^. ownerID) >>= \case
-    Nothing -> $craftError
-               $ formatToString ("No such owner with id `"%shown%"` for: "%shown)
-                                (d ^. ownerID) d
+    Nothing -> $craftError $ formatToString ("No such owner with `"%shown%"` for: "%shown)
+                                            (d ^. ownerID) d
     Just g  -> return g
 
 
-group :: Directory -> Craft Group
-group d =
+getGroup :: Directory -> Craft Group
+getGroup d =
   Group.fromID (d ^. groupID) >>= \case
-    Nothing -> $craftError
-               $ formatToString ("No such group with id `"%shown%"` for: "%shown)
-                                (d ^. groupID) d
+    Nothing -> $craftError $ formatToString ("No such group with `"%shown%"` for: "%shown)
+                                            (d ^. groupID) d
     Just g -> return g
 
 
