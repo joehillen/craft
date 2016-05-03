@@ -20,8 +20,7 @@ get :: ServiceName -> Craft (Maybe Service)
 get sn =
   exec "/sbin/status" [sn] >>= \case
     ExecFail _ -> return Nothing
-    ExecSucc r -> Just . Service sn
-                  <$> parseExecResult (ExecSucc r) (statusParser sn) (r^.stdout)
+    ExecSucc r -> Just . Service sn <$> parseExecResult (ExecSucc r) (statusParser sn) (r ^. stdout)
 
 
 statusParser :: String -> Parsec String String
@@ -31,10 +30,8 @@ statusParser sn = do
 
 
 start :: Service -> Craft ()
-start Service{..} =
-  when (_status /= "running") $ exec_ "/sbin/start" [_name]
+start Service{..} = when (_status /= "running") $ exec_ "/sbin/start" [_name]
 
 
 restart :: Service -> Craft ()
-restart Service{..} =
-  exec_ "/sbin/restart" [_name]
+restart Service{..} = exec_ "/sbin/restart" [_name]

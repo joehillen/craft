@@ -231,14 +231,11 @@ get fp =
 
 md5sum :: FilePath -> Craft String
 md5sum "" = $craftError "md5sum on empty file path"
-md5sum fp = do
-  r <- $errorOnFail =<< exec "md5sum" [fp]
-  return $ r ^. stdout . to words . _head
+md5sum fp = head . words <$> ($stdoutOrError =<< exec "md5sum" [fp])
 
 
 -- | A thin wrapper over the Unix find program.
 find :: FilePath -> Args -> Craft [File]
 find dir args = do
-  r <- $errorOnFail =<< exec "find" ([dir, "-type", "f"] ++ args)
-  let filenames = filter (`notElem` [".", "..", ""]) $ r ^. stdout . to lines
-  catMaybes <$> mapM get filenames
+  s <- $stdoutOrError =<< exec "find" ([dir, "-type", "f"] ++ args)
+  catMaybes <$> (mapM get . filter (`notElem` [".", "..", ""]) $ lines s)

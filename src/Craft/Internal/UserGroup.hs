@@ -94,8 +94,8 @@ userFromStr nameOrIdStr =
             parseGetent passwdParser "passwd" nameOrIdStr (r ^. stdout)
       grp <- fromJust <$> groupFromID gid'
       grps <- getGroups nameS
-      shadowResult <- $errorOnFail =<< getent "shadow" (show nameS)
-      passwordHash' <- parseGetent shadowParser "shadow" (show nameS) $ shadowResult ^. stdout
+      s <- $stdoutOrError =<< getent "shadow" (show nameS)
+      passwordHash' <- parseGetent shadowParser "shadow" (show nameS) s
       return . Just $ User { _username     = nameS
                            , _uid          = uid'
                            , _group        = grp
@@ -108,8 +108,8 @@ userFromStr nameOrIdStr =
 
 getGroups :: UserName -> Craft [GroupName]
 getGroups (UserName name) = do
-  r <- $errorOnFail =<< exec "id" ["-nG", name]
-  return . map GroupName $ r ^. stdout . to words
+  s <- $stdoutOrError =<< exec "id" ["-nG", name]
+  return . map GroupName $ words s
 
 
 getent :: String -> String -> Craft ExecResult

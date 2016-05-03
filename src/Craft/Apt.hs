@@ -58,7 +58,7 @@ dpkgQueryStatus pn = dpkgQuery ["-s", pn]
 
 expectOutput :: String -> [String] -> Craft String
 expectOutput cmd args = do
-  r <- view stdout <$> ($errorOnFail =<< exec cmd args)
+  r <- $stdoutOrError =<< exec cmd args
   when (null r) $
     $craftError $ formatToString ("'"%string%"' returned an empty result!")
                                  (unwords $ cmd:args)
@@ -204,7 +204,7 @@ makeLenses ''PPA
 
 findPPAFiles :: PPA -> Craft [File]
 findPPAFiles (PPA url) =
-  filter ((> 0) . length . (view $ File.content . _Just . unpackedChars))
+  filter ((> 0) . length . view (File.content . _Just . unpackedChars))
           <$> File.find "/etc/apt/sources.list.d"
               ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
 

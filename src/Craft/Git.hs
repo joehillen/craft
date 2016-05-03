@@ -70,9 +70,7 @@ git cmd args = exec_ gitBin $ cmd : args
 
 
 remotes :: Craft [String]
-remotes = do
-  r <- $errorOnFail =<< exec gitBin ["remote"]
-  return $ r ^. stdout . to lines
+remotes = lines <$> ($stdoutOrError =<< exec gitBin ["remote"])
 
 
 setURL :: URL -> Craft ()
@@ -86,9 +84,7 @@ setURL url' = do
 
 getURL :: Craft URL
 getURL = do
-  r <- exec gitBin ["remote", "-v"]
-  success <- $errorOnFail r
-  results <- parseExecResult r repoURLParser $ success ^. stdout
+  results <- parseExecStdout repoURLParser gitBin ["remote", "-v"]
   case lookup (origin, "fetch") results of
     Nothing -> $craftError $ "git remote `" ++ origin ++ "` not found."
     Just x  -> return x
@@ -107,10 +103,7 @@ repoURLParser = some $ do
 
 
 getVersion :: Craft Version
-getVersion = do
-  r <- exec gitBin ["rev-parse", "HEAD"]
-  success <- $errorOnFail r
-  Commit <$> parseExecResult r (some alphaNumChar) (success ^. stdout)
+getVersion = Commit <$> parseExecStdout (some alphaNumChar) gitBin ["rev-parse", "HEAD"]
 
 
 get :: Directory.Path -> Craft (Maybe Repo)

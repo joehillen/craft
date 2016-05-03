@@ -13,9 +13,7 @@ data Hostname = Hostname String
 
 
 get :: Craft Hostname
-get = do
-  r <- $errorOnFail =<< exec "hostname" []
-  return . Hostname $ r ^. stdout
+get = Hostname <$> ($stdoutOrError =<< exec "hostname" [])
 
 
 instance Craftable Hostname where

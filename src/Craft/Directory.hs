@@ -150,7 +150,5 @@ get dp =
 
 getFiles :: Path -> Craft [File]
 getFiles dp = do
-  r <- exec "/bin/ls" ["-a", "-1", dp]
-  success <- $errorOnFail r
-  fns <- parseExecResult r getFilesParser $ success ^. stdout
+  fns <- parseExecStdout getFilesParser "/bin/ls" ["-a", "-1", dp]
   catMaybes <$> mapM (File.get . (</> dp)) fns

@@ -36,9 +36,7 @@ runCraftVagrant settings env configs = do
                                     & craftExecCWD .~ cwd
                                     ) $ do
     when (vagrantUp settings) $ exec_ "vagrant" ["up", box]
-    r <- exec "vagrant" ["ssh-config", box]
-    success <- $errorOnFail r
-    SSHConfig <$> parseExecResult r parser (success ^. stdout)
+    SSHConfig <$> parseExecStdout parser "vagrant" ["ssh-config", box]
 
   let addr = cfgLookupOrError box "hostname" sshcfg
       port = read $ cfgLookupOrError box "port" sshcfg

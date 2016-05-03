@@ -9,9 +9,7 @@ setup = craft_ $ package "facter"
 
 
 fact :: String -> Craft String
-fact f = do
-  r <- $errorOnFail =<< exec "/usr/bin/facter" [f]
-  return $ r ^. stdout . to rmTrailingNL
+fact f = rmTrailingNL <$> ($stdoutOrError =<< exec "/usr/bin/facter" [f])
 
 
 rmTrailingNL :: String -> String

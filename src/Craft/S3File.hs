@@ -50,7 +50,7 @@ authHeaders method s3f =
   case s3f ^. auth of
     Nothing -> return []
     Just (awsKeyID, awsSecretKey) -> do
-      date <- view stdout <$> ($errorOnFail =<< exec "date" ["-u", "--rfc-2822"])
+      date <- $stdoutOrError =<< exec "date" ["-u", "--rfc-2822"]
       sourceUrl <- case s3f ^. source of
                      []       -> $craftError $ "S3File.source is empty! " ++ show s3f
                      '/':_    -> return $ s3f ^. source
@@ -82,8 +82,7 @@ authHeaders method s3f =
 getS3Sum :: S3File -> Craft (Maybe String)
 getS3Sum f = do
   hdrs <- authHeaders "HEAD" f
-  r <- $errorOnFail =<< exec "curl" (hdrs ++ ["-XHEAD", "-I", f ^. url])
-  headers <- parseExecResult (ExecSucc r) httpHeaders $ r ^. stdout
+  headers <- parseExecStdout httpHeaders "curl" (hdrs ++ ["-XHEAD", "-I", f ^. url])
   return $ filter ('"' /=) <$> lookup "ETag" headers
 
 
