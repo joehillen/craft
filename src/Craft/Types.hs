@@ -55,6 +55,15 @@ errorOnFail = [|
     ExecFail r -> $craftError $ show r|]
 
 
+-- | Try to get STDOUT from a process.
+-- If the command exits with an error code, throw a CraftError.
+stdoutOrError :: Q Exp
+stdoutOrError = [|
+  \case
+    ExecSucc r -> return $ _stdout r
+    ExecFail r -> $craftError $ show r|]
+
+
 notImplemented :: Q Exp
 notImplemented = [| \s -> do
   $(logError) $ "Not Implemented: " <> T.pack s
