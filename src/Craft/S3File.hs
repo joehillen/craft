@@ -10,7 +10,7 @@ import qualified Data.Text as T
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 
-import           Craft
+import           Craft hiding (try)
 import           Craft.File (File)
 import qualified Craft.File as File
 

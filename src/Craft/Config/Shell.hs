@@ -1,15 +1,15 @@
 module Craft.Config.Shell where
 
-import Control.Lens
-import Data.Map (Map)
+import           Control.Lens
+import           Data.List (intercalate)
+import           Data.Map (Map)
 import qualified Data.Map as M
-import Data.Maybe (catMaybes)
-import Text.Megaparsec hiding (parse)
-import Data.List (intercalate)
+import           Data.Maybe (catMaybes)
+import           Text.Megaparsec hiding (parse)
 
-import Craft
-import Craft.Config
-import Craft.Internal.Helpers
+import           Craft hiding (try)
+import           Craft.Config
+import           Craft.Internal.Helpers
 
 
 newtype ShellFormat = ShellFormat { _shellfmt :: Map String String }
@@ -17,8 +17,7 @@ newtype ShellFormat = ShellFormat { _shellfmt :: Map String String }
 
 
 instance ConfigFormat ShellFormat where
-  showConfig cfgs = intercalate "\n" (map showkv $ M.toList (_shellfmt cfgs))
-                 ++ "\n"
+  showConfig cfgs = intercalate "\n" (map showkv $ M.toList (_shellfmt cfgs)) ++ "\n"
    where
      showkv :: (String, String) -> String
      showkv (k, v) = k ++ "=" ++ v

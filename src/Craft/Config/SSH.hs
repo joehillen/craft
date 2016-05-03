@@ -5,7 +5,7 @@ import           Data.Char (toLower)
 import           Data.Maybe (catMaybes)
 import           Text.Megaparsec
 
-import           Craft
+import           Craft hiding (try)
 import           Craft.Config
 import qualified Craft.Directory as Directory
 import           Craft.File (file)

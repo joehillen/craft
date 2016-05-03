@@ -2,15 +2,14 @@ module Craft
 ( module Craft
 , module Craft.Internal
 , module System.FilePath
+, module Control.Monad.Catch
 , asks
-, catch
-, throwM
 , ExitCode(..)
 )
 where
 
 import           Control.Lens
-import           Control.Monad.Catch  (catch, throwM)
+import           Control.Monad.Catch
 import           Control.Monad.Reader
 import           System.Exit          (ExitCode (..))
 import           System.FilePath
