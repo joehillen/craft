@@ -71,6 +71,7 @@ library
                      , Craft.Hosts.Parser
                      , Craft.Hosts.Types
                      , Craft.Directory.Parser
+                     , Craft.Error
 
   default-language:    Haskell2010
   default-extensions:  RankNTypes

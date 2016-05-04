@@ -2,7 +2,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 --{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
-module Craft.Types where
+module Craft.Types
+( module Craft.Types
+, module Craft.Error
+)
+where
 
 import           Control.Lens
 import           Control.Monad.Catch
@@ -18,6 +22,7 @@ import           Data.Versions (parseV)
 import           Language.Haskell.TH.Syntax (Q, Exp)
 import           System.Process
 
+import           Craft.Error
 import           Craft.Helpers
 
 
@@ -32,44 +37,6 @@ instance (MonadLogger m, Functor f) => MonadLogger (FreeT f m) where
 
 interpretCraft :: CraftEnv -> (CraftDSL (LoggingT IO a) -> LoggingT IO a) -> Craft a -> LoggingT IO a
 interpretCraft ce interpreter = iterT interpreter . flip runReaderT ce . unCraft
-
-data CraftError = CraftError String
-  deriving Show
-
-data CraftNotImplemented = CraftNotImplemented
-  deriving Show
-
-instance Exception CraftError
-
-instance Exception CraftNotImplemented
-
--- |Log an error and throw a runtime exception
-craftError :: Q Exp
-craftError = [|\s -> $(logError) (T.pack s) >> throwM (CraftError s) |]
-
-
-errorOnFail :: Q Exp
-errorOnFail = [|
-  \case
-    ExecSucc r -> return r
-    ExecFail r -> $craftError $ show r|]
-
-
--- | Try to get STDOUT from a process.
--- If the command exits with an error code, throw a CraftError.
-stdoutOrError :: Q Exp
-stdoutOrError = [|
-  \case
-    ExecSucc r -> return $ _stdout r
-    ExecFail r -> $craftError $ show r|]
-
-
-notImplemented :: Q Exp
-notImplemented = [| \s -> do
-  $(logError) $ "Not Implemented: " <> T.pack s
-  throwM CraftNotImplemented
-  |]
-
 
 type StdOut  = String
 type StdErr  = String
@@ -98,6 +65,23 @@ data FailResult = FailResult { _exitcode   :: Int
                              }
 
 data ExecResult = ExecFail FailResult | ExecSucc SuccResult
+
+errorOnFail :: Q Exp
+errorOnFail = [|
+  \case
+    ExecSucc r -> return r
+    ExecFail r -> $craftError $ show r|]
+
+
+-- | Try to get STDOUT from a process.
+-- If the command exits with an error code, throw a CraftError.
+stdoutOrError :: Q Exp
+stdoutOrError = [|
+  \case
+    ExecSucc r -> return $ _stdout r
+    ExecFail r -> $craftError $ show r|]
+
+
 
 type ExecEnv = [(String, String)]
 type CWD = FilePath
@@ -254,59 +238,50 @@ latest n = Package n Latest
 instance Craftable Package where
   watchCraft pkg = do
     ce <- ask
-    let pm = ce ^. craftPackageManager
-        name = pkg ^. pkgName
-        ver  = pkg ^. pkgVersion
-        get  = (pm ^. pmGetter) name
-        install = (pm ^. pmInstaller) pkg
-        upgrade = (pm ^. pmUpgrader) pkg
-        error' str = error $ "craft Package `" ++ name ++ "` failed! " ++ str
-        notFound = error' "Not Found."
-        wrongVersion got = error' $ "Wrong Version: " ++ show got
-                                    ++ " Excepted: " ++ show ver
-    get >>= \case             -- Figure out what to do.
-      Nothing -> do           -- It's not installed.
-        install
-        get >>= \case         -- Verify the installation.
-          Nothing -> notFound -- Not Found. The install failed.
-          Just pkg' -> do     -- It worked!
-            let ver' = pkg' ^. pkgVersion
-                ok   = return (Created, pkg')
-            case ver of       -- Ensure the correct version was installed.
-              AnyVersion -> ok
-              Latest     -> ok
-              Version  _ ->
-                if ver == ver' then
-                  ok
-                else
-                  wrongVersion ver'
-      Just pkg' -> do             -- It was already installed.
-        let ver' = pkg' ^. pkgVersion
+    let pm       = ce ^. craftPackageManager
+        name     = pkg ^. pkgName
+        ver      = pkg ^. pkgVersion
+        get      = (pm ^. pmGetter) name
+        install  = (pm ^. pmInstaller) pkg
+        upgrade  = (pm ^. pmUpgrader) pkg
+        pkgError = "craft Package `" ++ name ++ "` failed! "
+        notFound = pkgError ++ "Not Found."
+        wrongVersion got = pkgError ++ "Wrong Version: " ++ show got ++ " Excepted: " ++ show ver
+    get >>= \case                                                                -- Is the package installed?
+      Nothing           -> do                                                    -- It's not installed.
+        install                                                                  -- Install it.
+        get >>= \case                                                            -- Verify the installation.
+          Nothing           -> $craftError notFound                              -- Not Found. The install failed!
+          Just installedPkg ->
+            let ok = return (Created, installedPkg)
+            in case ver of                                                       -- Make sure it's the right version
+                 AnyVersion -> ok
+                 Latest     -> ok
+                 Version  _ -> if ver == installedPkg ^. pkgVersion
+                                then ok
+                                else $craftError $ wrongVersion (installedPkg ^. pkgVersion)
+      Just installedPkg -> do                                                    -- Package was already installed.
+        let installedVersion = installedPkg ^. pkgVersion
         case ver of
-          AnyVersion -> return (Unchanged, pkg')
-          Latest -> do            -- Ensure it's the latest version.
+          AnyVersion -> return (Unchanged, installedPkg)
+          Latest     -> do                                                       -- Ensure it's the latest version.
             upgrade
             get >>= \case
-              Nothing -> notFound -- Where did it go?
-              Just pkg'' -> do
-                let ver'' = pkg'' ^. pkgVersion
-                if ver'' > ver' then
-                  return (Updated, pkg'') -- Upgrade complete.
-                else
-                  return (Unchanged, pkg'') -- Already the latest.
-          Version _ -> -- Expecting a specific version
-            if ver == ver' then
-              return (Unchanged, pkg')
-            else do
-              upgrade -- Try upgrading to the correct version.
-              get >>= \case
-                Nothing -> notFound -- Where did it go?
-                Just pkg'' -> do
-                  let ver'' = pkg'' ^. pkgVersion
-                  if ver'' == ver then
-                    return (Updated, pkg'')
-                  else
-                    wrongVersion ver''
+              Nothing          -> $craftError notFound                           -- Not found. Where did it go?
+              Just upgradedPkg ->
+                return $ if upgradedPkg ^. pkgVersion > installedPkg ^. pkgVersion -- If the package version increased,
+                          then (Updated, upgradedPkg)                            -- Then the package was upgraded
+                          else (Unchanged, upgradedPkg)                          -- Else it was already the latest.
+          Version _  ->                                                          -- Expecting a specific version
+            if ver == installedVersion                                           -- Is the correct version installed?
+             then return (Unchanged, installedPkg)
+             else do
+               upgrade                                                           -- Try upgrading to the correct version.
+               get >>= \case
+                 Nothing          -> $craftError notFound                        -- Where did it go?
+                 Just upgradedPkg -> if ver == upgradedPkg ^. pkgVersion         -- Is the correct version installed?
+                                      then return (Updated, upgradedPkg)
+                                      else $craftError $ wrongVersion (upgradedPkg ^. pkgVersion)
 
 
 instance Destroyable Package where
