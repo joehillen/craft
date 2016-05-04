@@ -183,11 +183,12 @@ instance Craftable File where
 
   craft f = do
     let fp = f ^. path
+    exec_ "touch" ["-a", fp]
     case f ^. content of
-      Nothing -> exec_ "touch" ["-a", fp]
+      Nothing -> return ()
       Just c  -> do
-        actualMD5 <- md5sum fp
         let expectedMD5 = show . md5 $ BL.fromStrict c
+        actualMD5 <- md5sum fp
         unless (actualMD5 == expectedMD5) $ do
           write fp c
           md5AfterWrite <- md5sum fp
