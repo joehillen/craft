@@ -6,7 +6,7 @@ import           Text.Megaparsec.String
 import Formatting hiding (char)
 
 import           Craft hiding (Version(..))
-import qualified Craft.Directory as Directory
+import qualified Craft.Directory as Dir
 
 
 type BranchName = String
@@ -29,10 +29,6 @@ instance Show Version where
   show (Commit sha)  = sha
 
 
-master :: Version
-master = Latest "master"
-
-
 origin :: String
 origin = "origin"
 
@@ -43,7 +39,7 @@ type URL = String
 data Repo
   = Repo
     { _url       :: URL
-    , _directory :: Directory.Path
+    , _directory :: Dir.Directory
     , _version   :: Version
     , _depth     :: Maybe Int
     }
@@ -51,12 +47,12 @@ data Repo
 makeLenses ''Repo
 
 
-repo :: URL -> Directory.Path -> Repo
-repo url' directory' =
+repo :: URL -> Dir.Path -> Repo
+repo url' dirpath =
   Repo
   { _url       = url'
-  , _directory = directory'
-  , _version   = master
+  , _directory = Dir.directory dirpath
+  , _version   = Latest "master"
   , _depth     = Nothing
   }
 
@@ -106,15 +102,15 @@ getVersion :: Craft Version
 getVersion = Commit <$> parseExecStdout (some alphaNumChar) gitBin ["rev-parse", "HEAD"]
 
 
-get :: Directory.Path -> Craft (Maybe Repo)
+get :: Dir.Path -> Craft (Maybe Repo)
 get path =
-  Directory.get path >>= \case
+  Dir.get path >>= \case
     Nothing -> return Nothing
     Just dir -> withCWD dir $ do
       !url'     <- getURL
       !version' <- getVersion
       return . Just
-             $ Repo { _directory = path
+             $ Repo { _directory = dir
                     , _url       = url'
                     , _version   = version'
                     , _depth     = Nothing
@@ -123,7 +119,7 @@ get path =
 
 instance Craftable Repo where
   watchCraft r = do
-    let dp = r ^. directory
+    let dp = r ^. directory . Dir.path
         ver = r ^. version
         verify ver' =
           case ver of
@@ -143,21 +139,23 @@ instance Craftable Repo where
           verify ver'
           return ver'
 
-    Directory.get dp >>= \case
+    Dir.get dp >>= \case
       Nothing -> do
         case r ^. depth of
           Nothing -> git "clone" [r ^. url, dp]
           Just d  -> git "clone" ["--depth", show d, r ^. url, dp]
-        Directory.get dp >>= \case
+        Dir.get dp >>= \case
           Nothing ->
             $craftError $ "craft Git.Repo `" ++ show r ++ "` failed! "
                        ++ "Clone Failed. Directory `" ++ dp ++ "` not found."
-          Just dir ->
+          Just dir -> do
+            craft_ $ r ^. directory
             withCWD dir $ do
               ver' <- checkoutCommit
               return (Created, r & version .~ ver' )
 
-      Just dir ->
+      Just dir -> do
+        craft_ $ r ^. directory
         withCWD dir $ do
           !beforeVersion <- getVersion
           ver' <- checkoutCommit
