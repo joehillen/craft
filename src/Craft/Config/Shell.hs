@@ -14,6 +14,11 @@ import           Craft.Internal.Helpers
 
 newtype ShellFormat = ShellFormat { _shellfmt :: Map String String }
 
+fromList :: [(String, String)] -> ShellFormat
+fromList = ShellFormat . M.fromList
+
+toList :: ShellFormat -> [(String, String)]
+toList = M.toList . _shellfmt
 
 
 instance ConfigFormat ShellFormat where
