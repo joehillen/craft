@@ -41,26 +41,19 @@ main =
 aptPackages :: [Package]
 aptPackages =
   map package
-    [ "autoconf"
-    , "automake"
-    , "build-essential"
+    [ "build-essential"
     , "curl"
-    , "djbdns"
-    , "emacs24-nox"
+    , "dnsutils"
     , "git"
     , "htop"
-    , "netemul"
     , "ntp"
-    , "pv"
     , "sysstat"
     , "tmux"
     , "traceroute"
+    , "vim"
     , "wget"
-    , "xfsprogs"
-    , "zip"
-    , "zsh"
-    , "dnsutils"
     , "whois"
+    , "zip"
     ]
 
 
