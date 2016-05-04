@@ -4,32 +4,25 @@ import           Control.Lens
 import qualified Data.ByteString.Char8 as B8
 
 import           Craft
+import           Craft.User (User, UserID)
+import           Craft.Group (GroupID)
+import           Craft.File.Mode (Mode)
 import           Craft.File (File, file)
 import qualified Craft.File as File
-import           Craft.File.Mode
-import           Craft.Group (GroupID(..))
-import           Craft.User (UserID(..))
 
 
 data Config a
   = Config
-    { _path    :: FilePath
-    , _mode    :: Mode
-    , _ownerID :: UserID
-    , _groupID :: GroupID
-    , _configs :: ConfigFormat a => a
+    { _configFile :: File
+    , _configs    :: ConfigFormat a => a
     }
 
 
 config :: ConfigFormat a => FilePath -> a -> Config a
-config fp cfg = Config
-    { _path    = fp
-    , _mode    = Mode RW R R
-    , _ownerID = UserID 0
-    , _groupID = GroupID 0
-    , _configs = cfg
-    }
-
+config fp cfg =
+  Config { _configFile = file fp & File.strContent .~ showConfig cfg
+         , _configs    = cfg
+         }
 
 class ConfigFormat a where
   showConfig :: a -> String
@@ -42,24 +35,30 @@ class ConfigFormat a where
             Nothing -> fileRead (f ^. File.path)
             Just bs -> return bs
     cfgs <- parse (f ^. File.path) (B8.unpack bs)
-    return Config { _path    = f ^. File.path
-                  , _mode    = f ^. File.mode
-                  , _ownerID = f ^. File.ownerID
-                  , _groupID = f ^. File.groupID
-                  , _configs = cfgs
+    return Config { _configFile = f
+                  , _configs    = cfgs
                   }
 
   fileFromConfig :: Config a -> Craft File
   fileFromConfig cfg =
-    return $ file (_path cfg) & File.mode    .~ _mode cfg
-                              & File.ownerID .~ _ownerID cfg
-                              & File.groupID .~ _groupID cfg
-                              & File.strContent .~ showConfig (_configs cfg)
+    return $ _configFile cfg & File.strContent .~ showConfig (_configs cfg)
 
   {-# MINIMAL showConfig, parse #-}
 
 
 makeLenses ''Config
+
+mode :: Lens' (Config a) Mode
+mode = configFile . File.mode
+
+ownerID :: Lens' (Config a) UserID
+ownerID = configFile . File.ownerID
+
+groupID :: Lens' (Config a) GroupID
+groupID = configFile . File.groupID
+
+ownerAndGroup :: Setter (Config a) (Config a) () User
+ownerAndGroup = configFile . File.ownerAndGroup
 
 
 instance ConfigFormat a => Craftable (Config a) where
@@ -69,11 +68,8 @@ instance ConfigFormat a => Craftable (Config a) where
 
 instance ConfigFormat a => Show (Config a) where
   show cfg = "Config "
-          ++ "{ path = " ++ show (_path cfg)
-          ++ ", mode = " ++ show (_mode cfg)
-          ++ ", ownerID = " ++ show (_ownerID cfg)
-          ++ ", groupID = " ++ show (_groupID cfg)
-          ++ ", configs = \"" ++ showConfig (_configs cfg) ++ "\""
+          ++ "{ _configFile = " ++ show (_configFile cfg)
+          ++ ", _configs = \"" ++ showConfig (_configs cfg) ++ "\""
           ++ "}"
 
 
