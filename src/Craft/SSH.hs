@@ -3,7 +3,8 @@ module Craft.SSH where
 import Control.Lens
 
 import           Craft
-import           Craft.Directory (Directory, Directory(Directory))
+import           Craft.Directory (Directory, directory)
+import qualified Craft.Directory as Dir
 import           Craft.File
 import           Craft.File.Mode
 import           Craft.User (User)
@@ -20,17 +21,14 @@ makeLenses ''PublicKey
 addAuthorizedKey :: User -> PublicKey -> Craft File
 addAuthorizedKey user pk = do
   craft_ $ userDir user
-  craft $
-    file (user ^. User.home </> ".ssh" </> "authorized_keys")
-         & mode       .~ Mode RW O O
-         & ownerID    .~ user ^. User.uid
-         & groupID    .~ user ^. User.gid
-         & strContent .~ pk ^. publicKeyType ++ " " ++ pk ^. publicKey ++ "\n"
+  craft $ file (user ^. User.home </> ".ssh" </> "authorized_keys")
+    & mode          .~ Mode RW O O
+    & ownerAndGroup .~ user
+    & strContent    .~ pk ^. publicKeyType ++ " " ++ pk ^. publicKey ++ "\n"
 
 
 userDir :: User -> Directory
 userDir user =
-  Directory (user ^. User.home </> ".ssh")
-            (Mode RWX O O)
-            (user ^. User.uid)
-            (user ^. User.gid)
+  directory (user ^. User.home </> ".ssh")
+    & Dir.mode          .~ Mode RWX O O
+    & Dir.ownerAndGroup .~ user
