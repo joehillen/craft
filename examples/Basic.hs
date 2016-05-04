@@ -30,11 +30,12 @@ import qualified Craft.User as User
 main :: IO ()
 main =
   runStdoutLoggingT $
-    runCraftVagrant vagrantSettings (craftEnv apt) $ do
+    runCraftVagrant vagrantSettings {vagrantUp = True} (craftEnv apt) $ do
       craft_ $ Hostname "craft-example-basic"
+      craftAptPackages
       Pip.setup
+      mapM_ craft pipPackages
       void addAdmins
-      craftPackages
 
 
 aptPackages :: [Package]
@@ -122,21 +123,16 @@ normalUser name fullname sshPubKey UserOptions{..} = do
                                     , User.optShell      = Just optShell
                                     }
   -- create the user's home directory
-  craft_ $ directory homepath & Dir.mode .~ Mode RWX RX RX
-                              & Dir.ownerID .~ user ^. User.uid
-                              & Dir.groupID .~ user ^. User.gid
+  craft_ $ directory homepath & Dir.ownerAndGroup .~ user
   -- add the user's public key
   void $ SSH.addAuthorizedKey user $ SSH.PublicKey sshPubKey optSSHPubKeyType
   -- if the user's shell is bash
   -- then instal the standard bashrc
   when (optShell == bash) $ do
-    bashrc <- fromJust <$> File.get "/etc/bash.bashrc"
-    craft_ $
-      File (homepath </> ".bashrc")
-           (Mode RW R R)
-           (user ^. User.uid)
-           (user ^. User.gid)
-           (bashrc ^. File.content)
+    let bashrcFP = homepath </> ".bashrc"
+    unlessM (File.exists bashrcFP) $ do
+      exec_ "cp" ["/etc/bash.bashrc", bashrcFP]
+      craft_ $ file bashrcFP & File.ownerAndGroup .~ user
   return user
 
 
@@ -147,17 +143,10 @@ admin :: User.Name
       -> Craft User
 admin name fullname sshPubKey opts = do
   user <- normalUser name fullname sshPubKey opts
-  -- add the user to sudo
-  craft_ $
-    file ("/etc/sudoers.d" </> "10_" ++ show name)
-      & File.strContent .~ show name ++ " ALL=(ALL) NOPASSWD: ALL\n"
+  -- add the user to sudoers
+  craft_ $ file ("/etc/sudoers.d" </> "10_" ++ show name)
+    & File.strContent .~ show name ++ " ALL=(ALL) NOPASSWD: ALL\n"
   return user
-
-
-craftPackages :: Craft ()
-craftPackages = do
-  craftAptPackages
-  mapM_ craft pipPackages
 
 
 craftAptPackages :: Craft ()
