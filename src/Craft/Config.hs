@@ -24,6 +24,7 @@ config fp cfg =
          , _configs    = cfg
          }
 
+
 class ConfigFormat a where
   showConfig :: a -> String
 
@@ -48,14 +49,22 @@ class ConfigFormat a where
 
 makeLenses ''Config
 
+
+path :: Lens' (Config a) FilePath
+path = configFile . File.path
+
+
 mode :: Lens' (Config a) Mode
 mode = configFile . File.mode
+
 
 ownerID :: Lens' (Config a) UserID
 ownerID = configFile . File.ownerID
 
+
 groupID :: Lens' (Config a) GroupID
 groupID = configFile . File.groupID
+
 
 ownerAndGroup :: Setter (Config a) (Config a) () User
 ownerAndGroup = configFile . File.ownerAndGroup
@@ -65,6 +74,7 @@ instance ConfigFormat a => Craftable (Config a) where
   watchCraft cfg = do
     w <- watchCraft_ =<< fileFromConfig cfg
     return (w, cfg)
+
 
 instance ConfigFormat a => Show (Config a) where
   show cfg = "Config "

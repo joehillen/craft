@@ -16,7 +16,7 @@ import           Control.Monad.Reader (ReaderT, MonadReader, runReaderT, ask)
 import qualified Control.Monad.Trans.Class as Trans
 import           Control.Monad.Trans.Free (FreeT, MonadFree, iterT)
 import           Data.ByteString (ByteString)
-import           Data.Monoid ((<>))
+
 import qualified Data.Text as T
 import           Data.Versions (parseV)
 import           Language.Haskell.TH.Syntax (Q, Exp)
