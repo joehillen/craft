@@ -131,67 +131,76 @@ multiple paths mode' owner' group' content' = map go paths
 instance Craftable File where
   watchCraft f = do
     let fp = f ^. path
-        setMode'  = setMode (f ^. mode) fp
-        setOwner' = setOwnerID (f ^. ownerID) fp
-        setGroup' = setGroupID (f ^. groupID) fp
-        md5c = show . md5 . BL.fromStrict . fromMaybe "" $ f ^. content
-        err str = $craftError $ "craft File `" ++ fp ++ "` failed! " ++ str
-        verifyMode m =
-          when (m /= f ^. mode) $ err $ "Wrong Mode: " ++ show m
-                                    ++ " Expected: " ++ show (f ^. mode)
-        verifyOwner o =
-          when (o /= f ^. ownerID) $ err $ "Wrong Owner ID: " ++ show o
-                                    ++ " Expected: " ++ show (f ^. ownerID)
-        verifyGroup g =
-          when (g /= f ^. groupID) $ err $ "Wrong Group ID: " ++ show g
-                                    ++ " Expected: " ++ show (f ^. groupID)
-        verifyStats (m, o, g) =
-          verifyMode m >> verifyOwner o >> verifyGroup g
-
+    let expectedMD5 = show . md5 . BL.fromStrict $ f ^. content . _Just
+    let err str = $craftError $ "craft File `" ++ fp ++ "` failed! " ++ str
+    let verifyMode m =
+          when (m /= f ^. mode) $
+            err $ "Wrong Mode: " ++ show m ++ " Expected: " ++ show (f ^. mode)
+    let verifyOwner o =
+          when (o /= f ^. ownerID) $
+            err $ "Wrong OwnerID: " ++ show o ++ " Expected: " ++ show (f ^. ownerID)
+    let verifyGroup g =
+          when (g /= f ^. groupID) $
+            err $ "Wrong GroupID: " ++ show g ++ " Expected: " ++ show (f ^. groupID)
+    let verifyStats (m, o, g) = verifyMode m >> verifyOwner o >> verifyGroup g
     getStats fp >>= \case
-      Nothing -> do
-        exec_ "touch" [fp]
-        setMode' >> setOwner' >> setGroup'
+      Nothing          -> do
         case f ^. content of
-          Nothing -> return ()
-          Just c -> write fp c
-        getStats fp >>= \case
-          Nothing -> err "Not Found."
-          Just stats' -> do
-            verifyStats stats'
-            case f  ^. content of
-              Nothing -> return (Created, f)
-              Just _ -> do
-                md5content' <- md5sum fp
-                if md5content' == md5c then return (Created, f)
-                                       else err "Content Mismatch."
-
+          Nothing -> exec_ "touch" [fp]
+          Just c  -> write fp c
+        setStats f
+        when (isJust $ f  ^. content) $ do
+          actualMD5 <- md5sum fp
+          unless (actualMD5 == expectedMD5) $
+            err "Content Mismatch."
+        return (Created, f)
       Just (m', o', g') -> do
-        let checks = [ (f ^. mode == m', setMode')
-                     , (f ^. ownerID == o', setOwner')
-                     , (f ^. groupID == g', setGroup')
+        let checks = [ (f ^. mode    == m', setMode    (f ^. mode)    fp)
+                     , (f ^. ownerID == o', setOwnerID (f ^. ownerID) fp)
+                     , (f ^. groupID == g', setGroupID (f ^. groupID) fp)
                      ]
         mapM_ (uncurry unless) checks
         case f ^. content of
-          Nothing ->
-            if all fst checks then
-              return (Unchanged, f)
-            else do
-              getStats fp >>= \case
-                Nothing -> err "Not Found."
-                Just stats'' -> verifyStats stats''
-              return (Updated, f)
-
+          Nothing -> if all fst checks
+                     then return (Unchanged, f)
+                     else do
+                       getStats fp >>= \case
+                         Nothing    -> err "Not Found."
+                         Just stats -> verifyStats stats
+                       return (Updated, f)
           Just c -> do
-            md5content' <- md5sum fp
-            if md5content' == md5c then
-              if all fst checks then return (Unchanged, f)
-                                      else return (Updated, f)
+            actualMD5 <- md5sum fp
+            if actualMD5 == expectedMD5
+            then return $ if all fst checks
+                          then (Unchanged, f)
+                          else (Updated, f)
             else do
               write fp c
-              md5content'' <- md5sum fp
-              if md5content'' == md5c then return (Updated, f)
-                                      else err "Content Mismatch."
+              md5AfterWrite <- md5sum fp
+              if md5AfterWrite == expectedMD5
+                then return (Updated, f)
+                else err "Content Mismatch."
+
+  craft f = do
+    let fp = f ^. path
+    case f ^. content of
+      Nothing -> exec_ "touch" ["-a", fp]
+      Just c  -> do
+        actualMD5 <- md5sum fp
+        let expectedMD5 = show . md5 $ BL.fromStrict c
+        unless (actualMD5 == expectedMD5) $ do
+          write fp c
+          md5AfterWrite <- md5sum fp
+          unless (expectedMD5 == md5AfterWrite) $
+            $craftError $ "craft File `" ++ fp ++ "` failed! Content Mismatch."
+    setStats f
+    return f
+
+setStats f = do
+  let fp = f ^. path
+  setMode    (f ^. mode)    fp
+  setOwnerID (f ^. ownerID) fp
+  setGroupID (f ^. groupID) fp
 
 
 instance Destroyable File where
