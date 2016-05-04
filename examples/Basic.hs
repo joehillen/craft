@@ -19,6 +19,7 @@ import qualified Craft.File as File
 import           Craft.File.Mode
 import qualified Craft.Group as Group
 import           Craft.Hostname (Hostname(..))
+import qualified Craft.Package as Package
 import qualified Craft.Pip as Pip
 import           Craft.Run.Vagrant
 import qualified Craft.SSH as SSH
@@ -31,11 +32,43 @@ main =
   runStdoutLoggingT $
     runCraftVagrant vagrantSettings (craftEnv apt) $ do
       craft_ $ Hostname "craft-example-basic"
-      Apt.update
       Pip.setup
       void addAdmins
-      packages
+      craftPackages
 
+
+aptPackages :: [Package]
+aptPackages =
+  map package
+    [ "autoconf"
+    , "automake"
+    , "build-essential"
+    , "curl"
+    , "djbdns"
+    , "emacs24-nox"
+    , "git"
+    , "htop"
+    , "netemul"
+    , "ntp"
+    , "pv"
+    , "sysstat"
+    , "tmux"
+    , "traceroute"
+    , "wget"
+    , "xfsprogs"
+    , "zip"
+    , "zsh"
+    , "dnsutils"
+    , "whois"
+    ]
+
+
+pipPackages :: [Pip.PipPackage]
+pipPackages =
+  map Pip.latest
+    [ "httpie"
+    , "requests"
+    ]
 
 bash,zsh :: FilePath
 bash = "/bin/bash"
@@ -121,42 +154,14 @@ admin name fullname sshPubKey opts = do
   return user
 
 
-packages :: Craft ()
-packages = do
-  aptPackages
-  pipPackages
+craftPackages :: Craft ()
+craftPackages = do
+  craftAptPackages
+  mapM_ craft pipPackages
 
 
-aptPackages :: Craft ()
-aptPackages =
-  mapM_ (craft . package)
-    [ "autoconf"
-    , "automake"
-    , "build-essential"
-    , "curl"
-    , "djbdns"
-    , "emacs24-nox"
-    , "git"
-    , "htop"
-    , "netemul"
-    , "ntp"
-    , "pv"
-    , "python-pip"
-    , "sysstat"
-    , "tmux"
-    , "traceroute"
-    , "wget"
-    , "xfsprogs"
-    , "zip"
-    , "zsh"
-    , "dnsutils"
-    , "whois"
-    ]
-
-
-pipPackages :: Craft ()
-pipPackages =
-  mapM_ (craft . Pip.latest)
-    [ "httpie"
-    , "requests"
-    ]
+craftAptPackages :: Craft ()
+craftAptPackages = do
+  whenM (any isNothing <$> mapM (Package.get . _pkgName) aptPackages)
+    Apt.update
+  mapM_ craft aptPackages
