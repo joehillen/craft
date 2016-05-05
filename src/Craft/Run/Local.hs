@@ -1,14 +1,14 @@
 module Craft.Run.Local where
 
-import Control.Lens
+import           Control.Lens
+import           Control.Monad.Logger (LoggingT)
 import qualified Control.Monad.Trans as Trans
-import Control.Monad.Logger (LoggingT)
 import qualified Data.ByteString as BS
-import System.Process hiding ( readCreateProcessWithExitCode
-                             , readProcessWithExitCode)
+import           System.Process hiding ( readCreateProcessWithExitCode
+                                       , readProcessWithExitCode)
 
-import Craft.Types
-import Craft.Run.Internal
+import           Craft.Run.Internal
+import           Craft.Types
 
 
 -- | runCraftLocal

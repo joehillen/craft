@@ -28,9 +28,15 @@ library
   exposed-modules:     Craft
                      , Craft.Apt
                      , Craft.Checksum
+                     , Craft.Config
+                     , Craft.Config.Ini
+                     , Craft.Config.Json
+                     , Craft.Config.SSH
+                     , Craft.Config.Shell
+                     , Craft.Config.Yaml
+                     , Craft.DSL
                      , Craft.Daemontools
                      , Craft.Directory
-                     , Craft.DSL
                      , Craft.Facter
                      , Craft.File
                      , Craft.File.Link
@@ -41,11 +47,18 @@ library
                      , Craft.Helpers
                      , Craft.Hostname
                      , Craft.Hosts
-                     , Craft.Internal.Helpers
                      , Craft.Internal.FileDirectory
+                     , Craft.Internal.Helpers
                      , Craft.Internal.UserGroup
                      , Craft.Nginx
+                     , Craft.Package
                      , Craft.Pip
+                     , Craft.Run
+                     , Craft.Run.Internal
+                     , Craft.Run.Local
+                     , Craft.Run.Nspawn
+                     , Craft.Run.SSH
+                     , Craft.Run.Vagrant
                      , Craft.S3File
                      , Craft.SSH
                      , Craft.SSH.PrivateKey
@@ -53,18 +66,6 @@ library
                      , Craft.Types
                      , Craft.Upstart
                      , Craft.User
-                     , Craft.Config
-                     , Craft.Config.Ini
-                     , Craft.Config.Shell
-                     , Craft.Config.SSH
-                     , Craft.Config.Yaml
-                     , Craft.Config.Json
-                     , Craft.Package
-                     , Craft.Run
-                     , Craft.Run.SSH
-                     , Craft.Run.Local
-                     , Craft.Run.Internal
-                     , Craft.Run.Vagrant
                      , Craft.Wget
 
   other-modules:       Craft.Internal
