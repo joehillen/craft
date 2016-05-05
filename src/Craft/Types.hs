@@ -124,6 +124,15 @@ data PackageManager
    }
 
 
+noPackageManager = let err _ = $craftError "No Package Manager" in
+  PackageManager
+  { _pmGetter         = err
+  , _pmInstaller      = err
+  , _pmUpgrader       = err
+  , _pmUninstaller    = err
+  }
+
+
 data CraftEnv
   = CraftEnv
     { _craftPackageManager :: PackageManager
