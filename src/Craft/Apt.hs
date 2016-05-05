@@ -195,9 +195,9 @@ makeLenses ''PPA
 
 findPPAFiles :: PPA -> Craft [File]
 findPPAFiles (PPA url) = do
-  files <- File.find "/etc/apt/sources.list.d" ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
-  let nonEmpty = (> 0) . length . view $ File.content . _Just . unpackedChars
-  filter nonEmpty files
+  fs <- File.find "/etc/apt/sources.list.d" ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
+  let nonEmpty = (> 0) . length . view (File.content . _Just . unpackedChars)
+  return $ filter nonEmpty fs
 
 
 instance Craftable PPA where
