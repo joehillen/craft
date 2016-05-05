@@ -121,7 +121,6 @@ data PackageManager
    , _pmInstaller      :: Package     -> Craft ()
    , _pmUpgrader       :: Package     -> Craft ()
    , _pmUninstaller    :: Package     -> Craft ()
-   , _pmMultiInstaller :: [Package]   -> Craft ()
    }
 
 
@@ -239,14 +238,14 @@ instance Craftable Package where
   watchCraft pkg = do
     ce <- ask
     let pm       = ce ^. craftPackageManager
-        name     = pkg ^. pkgName
-        ver      = pkg ^. pkgVersion
-        get      = (pm ^. pmGetter) name
-        install  = (pm ^. pmInstaller) pkg
-        upgrade  = (pm ^. pmUpgrader) pkg
-        pkgError = "craft Package `" ++ name ++ "` failed! "
-        notFound = pkgError ++ "Not Found."
-        wrongVersion got = pkgError ++ "Wrong Version: " ++ show got ++ " Excepted: " ++ show ver
+    let name     = pkg ^. pkgName
+    let ver      = pkg ^. pkgVersion
+    let get      = (pm ^. pmGetter) name
+    let install  = (pm ^. pmInstaller) pkg
+    let upgrade  = (pm ^. pmUpgrader) pkg
+    let pkgError = "craft Package `" ++ name ++ "` failed! "
+    let notFound = pkgError ++ "Not Found."
+    let wrongVersion got = pkgError ++ "Wrong Version: " ++ show got ++ " Excepted: " ++ show ver
     get >>= \case                                                                -- Is the package installed?
       Nothing           -> do                                                    -- It's not installed.
         install                                                                  -- Install it.

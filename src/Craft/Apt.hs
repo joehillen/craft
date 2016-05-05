@@ -20,16 +20,7 @@ apt =
   , _pmInstaller      = aptInstall
   , _pmUpgrader       = aptInstall
   , _pmUninstaller    = aptRemove
-  , _pmMultiInstaller = aptMultiInstaller
   }
-
-
-aptMultiInstaller :: [Package] -> Craft ()
-aptMultiInstaller []   = return ()
-aptMultiInstaller pkgs = do
-  let latests = filter ((Latest ==) . view pkgVersion) pkgs
-  rest <- filterM (\x -> isNothing <$> getAptPackage (x ^. pkgName)) (pkgs \\ latests)
-  aptInstallMult $ latests `union` rest
 
 
 aptGet :: [String] -> Craft ()
@@ -203,35 +194,34 @@ makeLenses ''PPA
 
 
 findPPAFiles :: PPA -> Craft [File]
-findPPAFiles (PPA url) =
-  filter ((> 0) . length . view (File.content . _Just . unpackedChars))
-          <$> File.find "/etc/apt/sources.list.d"
-              ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
+findPPAFiles (PPA url) = do
+  files <- File.find "/etc/apt/sources.list.d" ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
+  let nonEmpty = (> 0) . length . view $ File.content . _Just . unpackedChars
+  filter nonEmpty files
 
 
 instance Craftable PPA where
   watchCraft ppa@(PPA url) = do
     fs <- findPPAFiles ppa
-    if null fs then do
+    if null fs
+    then do
       craft_ $ package "software-properties-common"
       exec_ "add-apt-repository" ["-y", "ppa:" ++ url]
       update
       return (Created, ppa)
-    else
-      return (Unchanged, ppa)
+    else return (Unchanged, ppa)
 
 
 instance Destroyable PPA where
   watchDestroy ppa@(PPA url) = do
     fsBefore <- findPPAFiles ppa
-    if null fsBefore then
-      return (Unchanged, Nothing)
+    if null fsBefore
+    then return (Unchanged, Nothing)
     else do
       craft_ $ package "software-properties-common"
       exec_ "add-apt-repository" ["-y", "-r", "ppa:" ++ url]
       fsAfter <- findPPAFiles ppa
       unless (null fsAfter) $
-        $craftError $ formatToString ("destroy PPA `"%shown%"` failed! Found: "%shown)
-                                     ppa fsAfter
+        $craftError $ formatToString ("destroy PPA `"%shown%"` failed! Found: "%shown) ppa fsAfter
       update
       return (Removed, Just ppa)
