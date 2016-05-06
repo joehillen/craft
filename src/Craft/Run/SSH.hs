@@ -176,21 +176,34 @@ sshProc session ce command args =
   Process.proc "ssh" ((session ^. sessionArgs)
                       ++ (prependEachWith "-o" [ "ControlMaster=auto"
                                                , "ControlPersist=no" ])
-                      ++ [ (session ^. sessionEnv . connStr), cmd ])
+                      ++ [ (session ^. sessionEnv . connStr), fullExecStr ])
  where
-  cwd = ce ^. craftExecCWD
-  execEnv = map escape (renderEnv $ ce ^. craftExecEnv)
-  sudo = session ^. sessionEnv . sshSudo
-  cmd = unwords
-        ((if sudo then ["sudo", "-n", "-H"] else [])
-         ++ ["sh", "-c", "'", "cd", escape cwd, ";"]
-         ++ execEnv
-         ++ (command : map escape args)
-         ++ ["'"])
-  escape :: String -> String
-  escape = recur backslash [" ", "*", "$", "'"]
+  fullExecStr :: String
+  fullExecStr = unwords (sudoArgs ++ ["sh", "-c", "'", shellStr, "'"])
+
+  sudoArgs :: [String]
+  sudoArgs = if session ^. sessionEnv . sshSudo
+              then ["sudo", "-n", "-H"]
+              else []
+
+  shellStr :: String
+  shellStr = unwords (cdArgs ++ execEnvArgs ++ (command : map (escape specialChars) args))
+
+  specialChars :: [String]
+  specialChars = [" ", "*", "$", "'"]
+
+  execEnvArgs :: [String]
+  execEnvArgs = map (escape specialChars) (renderEnv $ ce ^. craftExecEnv)
+
+  cdArgs :: [String]
+  cdArgs = ["cd", ce ^. craftExecCWD, ";"]
+
+  escape :: [String] -> String -> String
+  escape strs = recur backslash strs
+
   recur _ []     s = s
   recur f (a:as) s = recur f as $ f a s
+
   backslash x = replace x ('\\':x)
 
 
