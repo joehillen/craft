@@ -1,7 +1,6 @@
 module Craft.Facter where
 
-import           Craft
-import Control.Lens
+import Craft
 
 
 setup :: Craft ()

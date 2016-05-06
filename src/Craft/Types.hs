@@ -11,12 +11,11 @@ where
 import           Control.Lens
 import           Control.Monad.Catch
 import           Control.Monad.IO.Class (MonadIO)
-import           Control.Monad.Logger ( LoggingT, MonadLogger, monadLoggerLog, logError)
+import           Control.Monad.Logger (LoggingT, MonadLogger, monadLoggerLog)
 import           Control.Monad.Reader (ReaderT, MonadReader, runReaderT, ask)
 import qualified Control.Monad.Trans.Class as Trans
 import           Control.Monad.Trans.Free (FreeT, MonadFree, iterT)
 import           Data.ByteString (ByteString)
-
 import qualified Data.Text as T
 import           Data.Versions (parseV)
 import           Language.Haskell.TH.Syntax (Q, Exp)
@@ -27,8 +26,8 @@ import           Craft.Helpers
 
 
 newtype Craft a = Craft { unCraft :: ReaderT CraftEnv (FreeT CraftDSL (LoggingT IO)) a }
-  deriving ( Functor, Monad, MonadIO, Applicative
-           , MonadReader CraftEnv, MonadFree CraftDSL, MonadThrow, MonadCatch, MonadLogger)
+  deriving ( Functor, Monad, MonadIO, Applicative, MonadReader CraftEnv
+           , MonadFree CraftDSL, MonadThrow, MonadCatch, MonadLogger)
 
 
 instance (MonadLogger m, Functor f) => MonadLogger (FreeT f m) where
@@ -37,6 +36,7 @@ instance (MonadLogger m, Functor f) => MonadLogger (FreeT f m) where
 
 interpretCraft :: CraftEnv -> (CraftDSL (LoggingT IO a) -> LoggingT IO a) -> Craft a -> LoggingT IO a
 interpretCraft ce interpreter = iterT interpreter . flip runReaderT ce . unCraft
+
 
 type StdOut  = String
 type StdErr  = String
@@ -52,19 +52,36 @@ data Watched
   deriving (Eq, Show)
 
 
-data SuccResult = SuccResult { _stdout   :: StdOut
-                             , _stderr   :: StdErr
-                             , _succProc :: CreateProcess
-                             }
+data SuccResult
+  = SuccResult
+    { _stdout   :: StdOut
+    , _stderr   :: StdErr
+    , _succProc :: CreateProcess
+    }
 
 
-data FailResult = FailResult { _exitcode   :: Int
-                             , _failStdout :: StdOut
-                             , _failStderr :: StdErr
-                             , _failProc   :: CreateProcess
-                             }
+data FailResult
+  = FailResult
+    { _exitcode   :: Int
+    , _failStdout :: StdOut
+    , _failStderr :: StdErr
+    , _failProc   :: CreateProcess
+    }
 
-data ExecResult = ExecFail FailResult | ExecSucc SuccResult
+
+data ExecResult
+  = ExecFail FailResult
+  | ExecSucc SuccResult
+
+
+isSuccess :: ExecResult -> Bool
+isSuccess (ExecSucc _) = True
+isSuccess (ExecFail _) = False
+
+
+isFailure :: ExecResult -> Bool
+isFailure = not . isSuccess
+
 
 errorOnFail :: Q Exp
 errorOnFail = [|
@@ -82,10 +99,8 @@ stdoutOrError = [|
     ExecFail r -> $craftError $ show r|]
 
 
-
 type ExecEnv = [(String, String)]
 type CWD = FilePath
-
 type PackageName = String
 
 
@@ -107,11 +122,11 @@ instance Eq Version where
   (==) (Version a) (Version b) = a == b
 
 
-data Package =
-  Package
-  { _pkgName    :: PackageName
-  , _pkgVersion :: Version
-  }
+data Package
+  = Package
+    { _pkgName    :: PackageName
+    , _pkgVersion :: Version
+    }
   deriving (Eq, Show)
 
 
@@ -124,6 +139,7 @@ data PackageManager
    }
 
 
+noPackageManager :: PackageManager
 noPackageManager = let err _ = $craftError "No Package Manager" in
   PackageManager
   { _pmGetter         = err
@@ -176,6 +192,7 @@ class Craftable a where
 
   {-# MINIMAL watchCraft #-}
 
+
 class Destroyable a where
   watchDestroy :: a -> Craft (Watched, Maybe a)
 
@@ -209,7 +226,6 @@ instance Show FailResult where
                               ]
 
 
-
 showProc :: CreateProcess -> String
 showProc p =
   case cmdspec p of
@@ -228,16 +244,18 @@ instance Ord Version where
   compare (Version _) Latest      = LT
   compare (Version a) (Version b) = compareVersions a b
 
+
 compareVersions :: String -> String -> Ordering
 compareVersions a b = compare (ver a) (ver b)
  where
   ver x = case parseV (T.pack x) of
-            Left err -> error $ "Failed to parse version '" ++ x ++ "': "
-                                ++ show err
-            Right v -> v
+            Left err -> error $ "Failed to parse version '" ++ x ++ "': " ++ show err
+            Right v  -> v
+
 
 package :: PackageName -> Package
 package n = Package n AnyVersion
+
 
 latest :: PackageName -> Package
 latest n = Package n Latest
@@ -248,13 +266,13 @@ instance Craftable Package where
     ce <- ask
     let pm       = ce ^. craftPackageManager
     let name     = pkg ^. pkgName
-    let ver      = pkg ^. pkgVersion
+    let version  = pkg ^. pkgVersion
     let get      = (pm ^. pmGetter) name
     let install  = (pm ^. pmInstaller) pkg
     let upgrade  = (pm ^. pmUpgrader) pkg
     let pkgError = "craft Package `" ++ name ++ "` failed! "
     let notFound = pkgError ++ "Not Found."
-    let wrongVersion got = pkgError ++ "Wrong Version: " ++ show got ++ " Excepted: " ++ show ver
+    let wrongVersion got = pkgError ++ "Wrong Version: " ++ show got ++ " Excepted: " ++ show version
     get >>= \case                                                                -- Is the package installed?
       Nothing           -> do                                                    -- It's not installed.
         install                                                                  -- Install it.
@@ -262,15 +280,15 @@ instance Craftable Package where
           Nothing           -> $craftError notFound                              -- Not Found. The install failed!
           Just installedPkg ->
             let ok = return (Created, installedPkg)
-            in case ver of                                                       -- Make sure it's the right version
+            in case version of                                                   -- Make sure it's the right version
                  AnyVersion -> ok
                  Latest     -> ok
-                 Version  _ -> if ver == installedPkg ^. pkgVersion
+                 Version  _ -> if version == installedPkg ^. pkgVersion
                                 then ok
                                 else $craftError $ wrongVersion (installedPkg ^. pkgVersion)
       Just installedPkg -> do                                                    -- Package was already installed.
         let installedVersion = installedPkg ^. pkgVersion
-        case ver of
+        case version of
           AnyVersion -> return (Unchanged, installedPkg)
           Latest     -> do                                                       -- Ensure it's the latest version.
             upgrade
@@ -281,13 +299,13 @@ instance Craftable Package where
                           then (Updated, upgradedPkg)                            -- Then the package was upgraded
                           else (Unchanged, upgradedPkg)                          -- Else it was already the latest.
           Version _  ->                                                          -- Expecting a specific version
-            if ver == installedVersion                                           -- Is the correct version installed?
+            if version == installedVersion                                       -- Is the correct version installed?
              then return (Unchanged, installedPkg)
              else do
                upgrade                                                           -- Try upgrading to the correct version.
                get >>= \case
                  Nothing          -> $craftError notFound                        -- Where did it go?
-                 Just upgradedPkg -> if ver == upgradedPkg ^. pkgVersion         -- Is the correct version installed?
+                 Just upgradedPkg -> if version == upgradedPkg ^. pkgVersion     -- Is the correct version installed?
                                       then return (Updated, upgradedPkg)
                                       else $craftError $ wrongVersion (upgradedPkg ^. pkgVersion)
 
@@ -296,16 +314,15 @@ instance Destroyable Package where
   watchDestroy pkg = do
     ce <- ask
     let pm   = ce ^. craftPackageManager
-        name = pkg ^. pkgName
-        get  = (pm ^. pmGetter) name
+    let name = pkg ^. pkgName
+    let get  = (pm ^. pmGetter) name
     get >>= \case
       Nothing -> return (Unchanged, Nothing)
-      Just pkg' -> do
+      Just installedPkg -> do
         (pm ^. pmUninstaller) pkg
         get >>= \case
-          Nothing -> return (Removed, Just pkg')
-          Just pkg'' -> error $ "destroy Package `" ++ name ++ "` failed! "
-                                ++ "Found: " ++ show pkg''
+          Nothing            -> return (Removed, Just installedPkg)
+          Just unexpectedPkg -> $craftError $ "destroy Package `" ++ name ++ "` failed! " ++ "Found: " ++ show unexpectedPkg
 
 
 changed :: Watched -> Bool

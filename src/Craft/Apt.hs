@@ -1,16 +1,15 @@
 module Craft.Apt where
 
-import Craft
-import Craft.File (File)
+import           Control.Lens
+import           Control.Monad
+import           Data.ByteString.Lens
+import           Data.String.Utils (replace)
+import           Formatting
+
+import           Craft
+import           Craft.File (File)
 import qualified Craft.File as File
 
-import Control.Lens
-import Control.Monad
-import Data.Maybe
-import Data.ByteString.Lens
-import Data.List (union, (\\))
-import Data.String.Utils (replace)
-import Formatting
 
 
 apt :: PackageManager

@@ -3,7 +3,7 @@ module Craft.Run.Vagrant where
 import           Control.Lens
 import           Control.Monad.Logger (LoggingT)
 import qualified Control.Monad.Trans as Trans
-import           Data.Maybe (fromMaybe, maybeToList)
+import           Data.Maybe (fromMaybe)
 import qualified System.Directory
 import qualified System.Environment
 

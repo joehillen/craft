@@ -3,31 +3,30 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Run.Internal where
 
-import Control.Lens
-import Conduit as C
-import Data.Conduit.Text as CT
-import qualified Data.Conduit.List as CL
-import Data.Conduit.Process (sourceProcessWithStreams)
-import Control.Monad.Reader
-import Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import qualified Data.Text as T
-import System.Directory
-import System.FilePath
-import System.Process
-import qualified System.Process.ListLike as SPLL
-import Data.Monoid ((<>))
---import Data.Streaming.Process
-import System.Exit
-import Control.Monad.Logger (askLoggerIO, logDebugNS, LoggingT, runLoggingT)
+import           Conduit as C
+import           Control.Lens
+import           Control.Monad.Logger (askLoggerIO, logDebugNS, LoggingT, runLoggingT)
+import           Control.Monad.Reader
 import qualified Control.Monad.Trans as Trans
+import           Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
+import qualified Data.Conduit.List as CL
+import           Data.Conduit.Process (sourceProcessWithStreams)
+import           Data.Conduit.Text as CT
+import           Data.Monoid ((<>))
+import qualified Data.Text as T
+import           System.Directory
+import           System.Exit
+import           System.FilePath
+import           System.Process
+import qualified System.Process.ListLike as SPLL
 
-import Craft.Types
+import           Craft.Types
 
 
-isSuccess :: ExitCode -> Bool
-isSuccess ExitSuccess     = True
-isSuccess (ExitFailure _) = False
+isSuccessCode :: ExitCode -> Bool
+isSuccessCode ExitSuccess     = True
+isSuccessCode (ExitFailure _) = False
 
 
 execProc :: CreateProcess -> (ExecResult -> LoggingT IO a) -> LoggingT IO a

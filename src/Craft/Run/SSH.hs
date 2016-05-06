@@ -140,7 +140,7 @@ runSSHFree session (FileRead ce fp next) = do
       p = sshProc session ceOverride "cat" [fp]
   (ec, content, stderr') <-
     Trans.lift $ Proc.BS.readCreateProcessWithExitCode p ""
-  unless (isSuccess ec) $
+  unless (isSuccessCode ec) $
     $craftError $ "Failed to read file '"++ fp ++"': " ++ B8.unpack stderr'
   next content
 runSSHFree session (FileWrite ce fp content next) = do
@@ -149,7 +149,7 @@ runSSHFree session (FileWrite ce fp content next) = do
       p = sshProc session ceOverride "tee" [fp]
   (ec, _, stderr') <-
     Trans.lift $ Proc.BS.readCreateProcessWithExitCode p content
-  unless (isSuccess ec) $
+  unless (isSuccessCode ec) $
     $craftError $ "Failed to write file '" ++ fp ++ "': " ++ B8.unpack stderr'
   next
 runSSHFree session (SourceFile _ src dest next) = do

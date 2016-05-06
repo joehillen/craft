@@ -17,6 +17,7 @@ import           System.FilePath
 import           Craft.Directory      as Dir
 import           Craft.Internal
 
+
 withCWD :: Dir.Directory -> Craft a -> Craft a
 withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. Dir.path)
 

@@ -197,6 +197,7 @@ instance Craftable File where
     setStats f
     return f
 
+setStats :: File -> Craft ()
 setStats f = do
   let fp = f ^. path
   setMode    (f ^. mode)    fp
