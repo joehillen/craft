@@ -20,8 +20,10 @@ data IniFormat = IniFormat { _inifmt :: Ini
                            }
 
 
-iniFormat :: Ini -> IniFormat
-iniFormat ini = IniFormat ini (WriteIniSettings EqualsKeySeparator)
+iniFormat :: [(T.Text, [(T.Text, T.Text)])] -> IniFormat
+iniFormat ini = IniFormat (Ini (HM.fromList $ fmap (fmap HM.fromList) ini))
+                          (WriteIniSettings EqualsKeySeparator)
+
 
 config :: FilePath -> IniFormat -> Config IniFormat
 config = Craft.Config.config
@@ -32,7 +34,10 @@ instance ConfigFormat IniFormat where
   parse fp s =
     case parseIni (T.pack s) of
       Left err -> $craftError $ "Failed to parse ini file" ++ fp ++ ": " ++ err
-      Right x  -> return $ iniFormat x
+
+      Right x  -> return $ IniFormat { _inifmt   = x
+                                     , _settings = WriteIniSettings EqualsKeySeparator
+                                     }
 
 
 get :: FilePath -> Craft (Maybe (Config IniFormat))
