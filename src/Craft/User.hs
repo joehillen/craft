@@ -78,6 +78,7 @@ data Options =
   -- Is the user a system user. Default: False
   }
 
+
 -- Nothing means rely on the system's default behaviour
 opts :: Options
 opts =
@@ -125,18 +126,18 @@ setComment un comment' = userMod un ["--comment", comment']
 setGroup :: UserName -> GroupName -> Craft ()
 setGroup un gn =
   Group.fromName gn  >>= \case
-    Nothing ->
-      $craftError
-      $ formatToString ("setGroup `"%shown%"` `"%shown%"` failed. Group `"%shown%"` not found!")
-                       un gn gn
     Just g  -> userMod un $ toArg "--gid" (g ^. UG.gid)
+    Nothing -> $craftError $ formatToString ("setGroup `"%shown%"` `"%shown%"` failed. Group `"%shown%"` not found!") un gn gn
+
 
 setGroups :: UserName -> [GroupName] -> Craft ()
 setGroups _  []  = return ()
 setGroups un gns = userMod un ["--groups", intercalate "," $ map show gns]
 
+
 setHome :: UserName -> FilePath -> Craft ()
 setHome un path = userMod un ["--home", path]
+
 
 createUser :: UserName -> Options -> Craft User
 createUser un uopts@Options{..} = do
@@ -180,12 +181,12 @@ createUser un uopts@Options{..} = do
 
   handleOpt :: Eq a => Maybe a -> a -> (a -> Craft ()) -> Craft ()
   handleOpt Nothing       _      _ = return ()
-  handleOpt (Just newval) oldval f
-    | newval /= oldval = f newval
-    | otherwise = return ()
+  handleOpt (Just newval) oldval f | newval /= oldval = f newval
+                                   | otherwise        = return ()
 
 sameElems :: Ord a => [a] -> [a] -> Bool
 sameElems xs ys = S.fromList xs == S.fromList ys
+
 
 createUser' :: UserName -> Options -> Craft ()
 createUser' un Options{..} = do
@@ -214,11 +215,14 @@ createUser' un Options{..} = do
       , toArg "--system"      optSystem
       ]
 
+
 lock :: UserName -> Craft ()
 lock un = userMod un ["--lock"]
 
+
 fromName :: Name -> Craft (Maybe User)
 fromName (UserName n) = userFromStr n
+
 
 fromID :: UserID -> Craft (Maybe User)
 fromID = userFromID
