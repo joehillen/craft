@@ -71,8 +71,11 @@ trimNL :: String -> String
 trimNL = reverse . rmNL . reverse
  where
   rmNL [] = []
-  rmNL ('\n':xs) = xs
+  rmNL ('\n':xs) = rmCR xs
   rmNL xs = xs
+  rmCR [] = []
+  rmCR ('\r':xs) = xs
+  rmCR xs = xs
 
 
 findSourceFileIO :: CraftEnv -> FilePath -> IO [FilePath]
