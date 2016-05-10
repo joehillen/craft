@@ -42,7 +42,9 @@ class ConfigFormat a where
 
   fileFromConfig :: Config a -> Craft File
   fileFromConfig cfg =
-    return $ _configFile cfg & File.strContent .~ showConfig (_configs cfg)
+    return $ _configFile cfg
+      & File.strContent .~ showConfig (_configs cfg) ++ "\n"
+
 
   {-# MINIMAL showConfig, parse #-}
 
