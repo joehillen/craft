@@ -15,7 +15,6 @@ import           Data.Bits ((.|.), (.&.))
 import           Data.Char (digitToInt)
 import           Data.DeriveTH
 import           Data.List
-import           Data.Maybe
 import qualified System.Posix
 import           System.Posix (FileMode)
 import           Test.QuickCheck (Arbitrary, choose, arbitrary)

@@ -6,7 +6,6 @@ import qualified Control.Monad.Trans as Trans
 import qualified Data.ByteString as BS
 import           System.Process hiding ( readCreateProcessWithExitCode
                                        , readProcessWithExitCode)
-import           System.FilePath ((</>))
 
 import           Craft.Run.Internal
 import           Craft.Types
