@@ -7,21 +7,20 @@ module Craft.File.Mode
 , toHuman
 , fileModeFromString
 , fromString
-, testFileMode
 )
 where
 
-import Craft.Internal
+import           Data.Bits ((.|.), (.&.))
+import           Data.Char (digitToInt)
+import           Data.DeriveTH
+import           Data.List
+import           Data.Maybe
+import qualified System.Posix
+import           System.Posix (FileMode)
+import           Test.QuickCheck (Arbitrary, choose, arbitrary)
 
-import Data.Bits ((.|.), (.&.))
-import Data.Char (digitToInt)
-import Data.List
-import Data.Maybe
-import System.Posix
+import           Craft.Internal
 
-data Mode
-  = Mode ModeSet ModeSet ModeSet
-  deriving (Eq, Show)
 
 toHuman :: Mode -> String
 toHuman (Mode u g o) =
@@ -32,8 +31,9 @@ toHuman (Mode u g o) =
   tr 'S' = 'T'
   tr   c = c
 
+
 data ModeSet
- = O
+ = O -- ^ O was chosen because it looks like a zero.
  | R
  | W
  | X
@@ -51,12 +51,18 @@ data ModeSet
  | RWXS
  deriving (Eq, Enum, Show)
 
+data Mode
+  = Mode ModeSet ModeSet ModeSet
+  deriving (Eq, Show)
+
+
 toOctalString :: Mode -> String
 toOctalString (Mode u g o) =
   concatMap show $ stickies : map modeSetToOctal l
  where
   stickies = sum $ zipWith (\n m -> n * modeSetToOctalSticky m) [4,2,1] l
   l = [u,g,o]
+
 
 modeSetToOctal :: ModeSet -> Int
 modeSetToOctal O    = 0
@@ -76,6 +82,7 @@ modeSetToOctal RXS  = 5
 modeSetToOctal WXS  = 3
 modeSetToOctal RWXS = 7
 
+
 modeSetToOctalSticky :: ModeSet -> Int
 modeSetToOctalSticky O    = 0
 modeSetToOctalSticky R    = 0
@@ -93,6 +100,7 @@ modeSetToOctalSticky RWS  = 1
 modeSetToOctalSticky RXS  = 1
 modeSetToOctalSticky WXS  = 1
 modeSetToOctalSticky RWXS = 1
+
 
 modeSetToHuman :: ModeSet -> String
 modeSetToHuman O    = "---"
@@ -112,8 +120,10 @@ modeSetToHuman RXS  = "r-s"
 modeSetToHuman WXS  = "-ws"
 modeSetToHuman RWXS = "rws"
 
+
 fromString :: String -> Mode
 fromString = toMode . fileModeFromString . filter (`elem` ['0'..'7'])
+
 
 fileModeFromString :: String -> FileMode
 fileModeFromString [] = error "Cannot get Mode from empty string."
@@ -125,12 +135,15 @@ fileModeFromString [s,u,g,o] =
   fromIntegral $ digitToInt s * (8*8*8) .|. digitToInt u * (8*8) .|. digitToInt g * 8 .|. digitToInt o
 fileModeFromString s = error $ "Mode `" ++ s ++ "` is too long"
 
+
 setMode :: Mode -> FilePath -> Craft ()
 setMode m fp = exec_ "/bin/chmod" [toOctalString m, fp]
+
 
 toFileMode :: Mode -> FileMode
 toFileMode (Mode u g o)
   = uFM u .|. gFM g .|. oFM o
+
 
 toMode :: FileMode -> Mode
 toMode fm = Mode ownerSet groupSet otherSet
@@ -139,9 +152,9 @@ toMode fm = Mode ownerSet groupSet otherSet
       case find (\t -> m == f t) [O ..] of
         Nothing -> error $ "toMode: Unsupported mode: " ++ show m
         Just r -> r
-    ownerSet = convertSet uFM (fm .&. (ownerModes .|. uS))
-    groupSet = convertSet gFM (fm .&. (groupModes .|. gS))
-    otherSet = convertSet oFM (fm .&. (otherModes .|. oT))
+    ownerSet = convertSet uFM (fm .&. (System.Posix.ownerModes .|. uS))
+    groupSet = convertSet gFM (fm .&. (System.Posix.groupModes .|. gS))
+    otherSet = convertSet oFM (fm .&. (System.Posix.otherModes .|. oT))
 
 
 ----------------------------------------
@@ -153,17 +166,18 @@ toMode fm = Mode ownerSet groupSet otherSet
 ----------------------------------------
 
 uR, uW, uX, uS :: FileMode
-uR = ownerReadMode
-uW = ownerWriteMode
-uX = ownerExecuteMode
-uS = setUserIDMode
+uR = System.Posix.ownerReadMode
+uW = System.Posix.ownerWriteMode
+uX = System.Posix.ownerExecuteMode
+uS = System.Posix.setUserIDMode
+
 
 uFM :: ModeSet -> FileMode
-uFM O    = nullFileMode
+uFM O    = System.Posix.nullFileMode
 uFM R    = uR
-uFM W    = uW
-uFM X    = uX
-uFM S    = uS
+uFM  W   =        uW
+uFM   X  =               uX
+uFM    S =                      uS
 uFM RW   = uR .|. uW
 uFM RX   = uR .|.        uX
 uFM RS   = uR .|.               uS
@@ -178,17 +192,17 @@ uFM RWXS = uR .|. uW .|. uX .|. uS
 
 
 gR, gW, gX, gS :: FileMode
-gR = groupReadMode
-gW = groupWriteMode
-gX = groupExecuteMode
-gS = setGroupIDMode
+gR = System.Posix.groupReadMode
+gW = System.Posix.groupWriteMode
+gX = System.Posix.groupExecuteMode
+gS = System.Posix.setGroupIDMode
 
 gFM :: ModeSet -> FileMode
-gFM O    = nullFileMode
+gFM O    = System.Posix.nullFileMode
 gFM R    = gR
-gFM W    = gW
-gFM X    = gX
-gFM S    = gS
+gFM  W   =        gW
+gFM   X  =               gX
+gFM    S =                      gS
 gFM RW   = gR .|. gW
 gFM RX   = gR .|.        gX
 gFM RS   = gR .|.               gS
@@ -203,17 +217,18 @@ gFM RWXS = gR .|. gW .|. gX .|. gS
 
 
 oR, oW, oX, oT :: FileMode
-oR = otherReadMode
-oW = otherWriteMode
-oX = otherExecuteMode
+oR = System.Posix.otherReadMode
+oW = System.Posix.otherWriteMode
+oX = System.Posix.otherExecuteMode
 oT = (512)
 
+
 oFM :: ModeSet -> FileMode
-oFM O    = nullFileMode
+oFM O    = System.Posix.nullFileMode
 oFM R    = oR
-oFM W    = oW
-oFM X    = oX
-oFM S    = oT
+oFM  W   =        oW
+oFM   X  =               oX
+oFM    S =                      oT
 oFM RW   = oR .|. oW
 oFM RX   = oR .|.        oX
 oFM RS   = oR .|.               oT
@@ -227,24 +242,5 @@ oFM WXS  =        oW .|. oX .|. oT
 oFM RWXS = oR .|. oW .|. oX .|. oT
 
 
-testFileMode :: IO Bool
-testFileMode = do
-  rs <- mapM output list
-  return . null $ catMaybes rs
- where
-  list = [(s, u, g, o) | o <- range
-                       , g <- range
-                       , u <- range
-                       , s <- range
-                       ]
-  range = [0..7]
-  output (s, u, g, o) = do
-    let x = s * (8*8*8) .|. u * (8*8) .|. g * 8 .|. o
-    let str = concatMap show [s, u, g, o]
-    let mode = toMode x
-    let fmode = toFileMode mode
-    if toFileMode mode /= x || toMode fmode /= mode then do
-      putStrLn $ str ++ ": toMode " ++ show x ++ " == " ++ show mode ++ "| toFileMode . toMode == " ++ show (toMode fmode)
-      return $ Just str
-    else
-      return Nothing
+derive makeArbitrary ''ModeSet
+derive makeArbitrary ''Mode
