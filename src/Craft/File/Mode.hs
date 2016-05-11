@@ -6,7 +6,8 @@ module Craft.File.Mode
 , toMode
 , toHuman
 , fileModeFromString
-, fromString
+, toOctalString
+, fromOctalString
 )
 where
 
@@ -121,8 +122,8 @@ modeSetToHuman WXS  = "-ws"
 modeSetToHuman RWXS = "rws"
 
 
-fromString :: String -> Mode
-fromString = toMode . fileModeFromString . filter (`elem` ['0'..'7'])
+fromOctalString :: String -> Mode
+fromOctalString = toMode . fileModeFromString . filter (`elem` ['0'..'7'])
 
 
 fileModeFromString :: String -> FileMode

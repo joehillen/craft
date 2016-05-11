@@ -3,7 +3,7 @@ module Craft.Internal.FileDirectory
 , FilePath
 ) where
 
-import Craft.File.Mode (Mode(..), fromString)
+import Craft.File.Mode (Mode(..), fromOctalString)
 import Craft.Group (GroupID(..))
 import Craft.Internal
 import Craft.User (UserID(..))
@@ -54,7 +54,7 @@ statsParser = do
 
 
 modeParser :: Parser Mode
-modeParser = fromString <$> some digitChar
+modeParser = fromOctalString <$> some digitChar
 
 
 digitParser :: Parser Int
