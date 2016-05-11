@@ -68,13 +68,13 @@ colon = char ':'
 -- TESTME
 passwdParser :: Parser (UserName, UserID, GroupID, String, FilePath, FilePath)
 passwdParser = do
-  name <- UserName <$> someTill anyChar colon
-  _ <- manyTill anyChar colon
-  uid' <- UserID . read <$> someTill digitChar colon
-  gid' <- GroupID . read <$> someTill digitChar colon
-  comment' <- manyTill anyChar colon
-  home' <- manyTill anyChar colon
-  shell' <- manyTill anyChar (void eol <|> eof)
+  name      <- UserName <$> someTill anyChar colon
+  _password <- manyTill anyChar colon
+  uid'      <- UserID . read <$> someTill digitChar colon
+  gid'      <- GroupID . read <$> someTill digitChar colon
+  comment'  <- manyTill anyChar colon
+  home'     <- manyTill anyChar colon
+  shell'    <- manyTill anyChar (void eol <|> eof)
   return (name, uid', gid', comment', home', shell')
 
 
@@ -105,6 +105,7 @@ userFromStr nameOrIdStr =
                            , _shell        = shell'
                            , _comment      = comment'
                            }
+
 
 getGroups :: UserName -> Craft [GroupName]
 getGroups (UserName name) = do
@@ -144,28 +145,29 @@ useradd User{..} =
 instance Craftable User where
   watchCraft user = do
     let name = show $ user ^. username
-        notFound = $craftError $ "User `" ++ name ++ "` not found!"
+    let notFound = $craftError $ "User `" ++ name ++ "` not found!"
     userFromStr name >>= \case
-      Nothing -> do
+      Nothing     -> do
         useradd user
         userFromStr name >>= \case
           Nothing -> notFound
-          Just user' -> do
-            verify user' user
-            return (Created, user')
-      Just user' -> do
-        res <- mapM (\(cond, act) -> if cond then return True
-                                             else act >> return False)
-                 [ (user' ^. username  == user ^. username, $notImplemented "set username")
-                 , (user' ^. uid == user ^. uid, $notImplemented "set uid")
-                 , (user' ^. group . groupname == user ^. group . groupname, $notImplemented "set group")
-                 , (user' ^. groups == user ^. groups, $notImplemented "set groups")
-                 , (user' ^. home == user ^. home, $notImplemented "set home")
-                 , (user' ^. passwordHash == user' ^. passwordHash, $notImplemented "set passwordHash")
-                 , (user' ^. shell == user ^. shell, $notImplemented "set shell")
+          Just actualUser -> do
+            verify user actualUser
+            return (Created, actualUser)
+      Just existingUser -> do
+        res <- mapM (\(test', act) -> if test' user existingUser
+                                      then return True
+                                      else act >> return False)
+                 [ (test username,            $notImplemented "set username")
+                 , (test uid,                 $notImplemented "set uid")
+                 , (test (group . groupname), $notImplemented "set group")
+                 , (test groups,              $notImplemented "set groups")
+                 , (test home,                $notImplemented "set home")
+                 , (test passwordHash,        $notImplemented "set passwordHash")
+                 , (test shell,               $notImplemented "set shell")
                  ]
-        if and res then
-          return (Unchanged, user')
+        if and res
+        then return (Unchanged, existingUser)
         else
           userFromStr (show name) >>= \case
             Nothing -> notFound
@@ -174,8 +176,10 @@ instance Craftable User where
               return (Updated, user'')
 
    where
+    test :: Eq a => Lens' b a -> b -> b -> Bool
+    test l a b = a ^. l == b ^. l
     verify :: User -> User -> Craft ()
-    verify _ _ = $notImplemented "verify User"
+    verify _expectedUser _actualUser = $notImplemented "verify User"
 
 
 -- TESTME
