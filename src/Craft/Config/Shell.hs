@@ -36,6 +36,10 @@ get :: FilePath -> Craft (Maybe (Config ShellFormat))
 get = Craft.Config.get
 
 
+config :: FilePath -> [(String, String)] -> Config ShellFormat
+config fp = Craft.Config.config fp . fromList
+
+
 -- TESTME
 parser :: Parsec String ShellFormat
 parser = do
