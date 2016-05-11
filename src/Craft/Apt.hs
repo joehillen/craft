@@ -159,29 +159,23 @@ dpkgDebPackage = dpkgDebShow "${Package}"
 instance Craftable Deb where
   watchCraft d = do
     let name = d ^. debName
-        ver = d ^. debVersion
-        get = getAptPackage name
-        error' str =
-          $craftError $ formatToString ("craft Deb `"%shown%"` failed! "%string)
-                                       d str
-        installAndVerify = do
+    let expectedVersion = d ^. debVersion
+    let get = getAptPackage name
+    let error' str = formatToString ("craft Deb `"%shown%"` failed! "%string) d str
+    let installAndVerify = do
           dpkgInstall $ d ^. debFile
           get >>= \case
-            Nothing -> error' "Package Not Found."
-            Just pkg' -> do
-              let ver' = pkg' ^. pkgVersion
-              when (ver' /= ver) $
-                error' $ formatToString ("Wrong Version: "%shown%" Expected: "%shown)
-                                        ver' ver
+            Nothing -> $craftError $ error' "Package Not Found."
+            Just installedPkg ->
+              when (expectedVersion /= installedPkg ^. pkgVersion) $
+                $craftError . error' $ formatToString ("Wrong Version: "%shown%" Expected: "%shown) (installedPkg ^. pkgVersion) expectedVersion
     get >>= \case
       Nothing  -> do
         installAndVerify
         return (Created, d)
-
-      Just pkg' -> do
-        let ver' = pkg' ^. pkgVersion
-        if ver' == ver then
-          return (Unchanged, d)
+      Just installedPkg ->
+        if expectedVersion == installedPkg ^. pkgVersion
+        then return (Unchanged, d)
         else do
           installAndVerify
           return (Updated, d)
