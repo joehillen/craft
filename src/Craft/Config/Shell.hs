@@ -1,7 +1,6 @@
 module Craft.Config.Shell where
 
 import           Control.Lens
-import           Data.List (intercalate)
 import           Data.Map (Map)
 import qualified Data.Map as M
 import           Data.Maybe (catMaybes)
@@ -22,7 +21,7 @@ toList = M.toList . _shellfmt
 
 
 instance ConfigFormat ShellFormat where
-  showConfig cfgs = intercalate "\n" (map showkv $ M.toList (_shellfmt cfgs)) ++ "\n"
+  showConfig cfgs = unlines . map showkv . M.toList $ _shellfmt cfgs
    where
      showkv :: (String, String) -> String
      showkv (k, v) = k ++ "=" ++ v

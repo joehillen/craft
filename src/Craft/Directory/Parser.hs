@@ -3,8 +3,8 @@ module Craft.Directory.Parser where
 -- |This file is just to keep Megaparsec from conflicting with other modules
 
 import Control.Monad (void)
-import Data.List (intercalate)
 import Text.Megaparsec
+
 
 getFilesParser :: Parsec String [String]
 getFilesParser = stuff `sepBy` newline <* optional newline
@@ -21,8 +21,7 @@ getFilesParser = stuff `sepBy` newline <* optional newline
 testGetFilesParser :: IO Bool
 testGetFilesParser = do
   let expected = ["ab", "lkjasd", "912 12391", " ", "~"] :: [String]
-  let resultE = parse getFilesParser "testGetFilesParser"
-                $ intercalate "\n" (".":"..":expected)
+  let resultE = parse getFilesParser "testGetFilesParser" $ unlines (".":"..":expected)
   case resultE of
     Left err -> do
       putStrLn $ "FAILED: error " ++ show err
