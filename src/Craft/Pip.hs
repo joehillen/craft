@@ -78,7 +78,7 @@ pipInstall :: PipPackage -> Craft ()
 pipInstall pkg = pip $ "install" : pkgArgs pkg
 
 
-instance Craftable PipPackage where
+instance Craftable PipPackage PipPackage where
   watchCraft ppkg@(PipPackage pkg) = do
     let name = pkg ^. pkgName
         ver = pkg ^. pkgVersion

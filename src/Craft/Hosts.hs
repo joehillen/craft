@@ -56,7 +56,7 @@ parse s = do
   return . Hosts $ catMaybes r
 
 
-instance Craftable Hosts where
+instance Craftable Hosts Hosts where
   watchCraft hosts = do
     (w, f) <- watchCraft $ toFile hosts
     r <- fromFile f

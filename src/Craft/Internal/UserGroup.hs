@@ -142,7 +142,7 @@ useradd User{..} =
     ]
 
 
-instance Craftable User where
+instance Craftable User User where
   watchCraft user = do
     let name = show $ user ^. username
     let notFound = $craftError $ "User `" ++ name ++ "` not found!"
@@ -203,7 +203,7 @@ groupFromID :: GroupID -> Craft (Maybe Group)
 groupFromID (GroupID n )= groupFromStr $ show n
 
 
-instance Craftable Group where
+instance Craftable Group Group where
   watchCraft grp = do
     _ <- $notImplemented "craft Group"
     -- groupFromName . groupname

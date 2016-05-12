@@ -117,7 +117,7 @@ get path =
                     }
 
 
-instance Craftable Repo where
+instance Craftable Repo Repo where
   watchCraft r = do
     let dp = r ^. directory . Dir.path
         ver = r ^. version

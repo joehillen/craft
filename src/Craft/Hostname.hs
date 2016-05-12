@@ -16,7 +16,7 @@ get :: Craft Hostname
 get = Hostname <$> ($stdoutOrError =<< exec "hostname" [])
 
 
-instance Craftable Hostname where
+instance Craftable Hostname Hostname where
   watchCraft (Hostname hn) = do
     (Hostname oldhn) <- get
     hosts <- Hosts.get

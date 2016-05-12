@@ -128,7 +128,7 @@ multiple paths mode' owner' group' content' = map go paths
 
 
 
-instance Craftable File where
+instance Craftable File File where
   watchCraft f = do
     let fp = f ^. path
     let expectedMD5 = show . md5 . BL.fromStrict $ f ^. content . _Just

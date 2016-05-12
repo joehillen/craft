@@ -75,12 +75,13 @@ library
                      , Craft.Error
 
   default-language:    Haskell2010
-  default-extensions:  RankNTypes
-                     , OverloadedStrings
-                     , RecordWildCards
+  default-extensions:  BangPatterns
                      , LambdaCase
+                     , MultiParamTypeClasses
+                     , OverloadedStrings
                      , QuasiQuotes
-                     , BangPatterns
+                     , RankNTypes
+                     , RecordWildCards
                      , TemplateHaskell
 
   build-depends:       base >= 4.8 && < 4.9

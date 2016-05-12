@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE FunctionalDependencies #-}
 --{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Types
@@ -179,10 +180,10 @@ makeLenses ''FailResult
 makeLenses ''SuccResult
 
 
-class Craftable a where
-  watchCraft :: a -> Craft (Watched, a)
+class Craftable a b | a -> b where
+  watchCraft :: a -> Craft (Watched, b)
 
-  craft :: a -> Craft a
+  craft :: a -> Craft b
   craft x = snd <$> watchCraft x
 
   craft_ :: a -> Craft ()
@@ -262,7 +263,7 @@ latest :: PackageName -> Package
 latest n = Package n Latest
 
 
-instance Craftable Package where
+instance Craftable Package Package where
   watchCraft pkg = do
     ce <- ask
     let pm       = ce ^. craftPackageManager

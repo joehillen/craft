@@ -108,7 +108,7 @@ updateRcD svc cmd =
   exec_ "/usr/sbin/update-rc.d" ["-f", svc ^. name, cmd]
 
 
-instance Craftable Service where
+instance Craftable Service Service where
   watchCraft svc = do
     let sn = svc ^. name
     whenJust (svc ^. atBoot) $ \x ->

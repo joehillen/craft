@@ -97,7 +97,7 @@ header = (,) <$> noneOf ":" `someTill` try (string ": ")
              <*> anyChar `manyTill` try (skipSome eol <|> eof)
 
 
-instance Craftable S3File where
+instance Craftable S3File S3File where
   watchCraft s3f = do
     let s3f' = s3f & file . File.content .~ Nothing
     let fp = s3f' ^. file . File.path

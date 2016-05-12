@@ -28,7 +28,7 @@ wget url' destfp =
        }
 
 
-instance Craftable Wget where
+instance Craftable Wget Wget where
   watchCraft wg = do
     let destf  = wg ^. dest & content .~ Nothing
         destfp = wg ^. dest . File.path

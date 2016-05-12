@@ -156,7 +156,7 @@ dpkgDebPackage :: File -> Craft String
 dpkgDebPackage = dpkgDebShow "${Package}"
 
 
-instance Craftable Deb where
+instance Craftable Deb Deb where
   watchCraft d = do
     let name = d ^. debName
     let expectedVersion = d ^. debVersion
@@ -193,7 +193,7 @@ findPPAFiles (PPA url) = do
   return $ filter nonEmpty fs
 
 
-instance Craftable PPA where
+instance Craftable PPA PPA where
   watchCraft ppa@(PPA url) = do
     fs <- findPPAFiles ppa
     if null fs

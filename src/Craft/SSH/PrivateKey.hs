@@ -23,12 +23,11 @@ makeLenses ''PrivateKey
 path :: PrivateKey -> FilePath
 path pk = userDir (pk ^. user) ^. Directory.path </> (pk ^. name)
 
-instance Craftable PrivateKey where
+instance Craftable PrivateKey PrivateKey where
   watchCraft pk = do
     craft_ $ userDir $ pk ^. user
     w <- watchCraft_ $ file (path pk)
-                         & File.mode       .~ Mode RW O O
-                         & File.ownerID    .~ pk ^. user . User.uid
-                         & File.groupID    .~ pk ^. user . User.gid
-                         & File.strContent .~ pk ^. content
+                       & File.mode          .~ Mode RW O O
+                       & File.ownerAndGroup .~ pk ^. user
+                       & File.strContent    .~ pk ^. content
     return (w, pk)

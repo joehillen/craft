@@ -24,7 +24,7 @@ sourcedFile fp source' =
   }
 
 
-instance Craftable SourcedFile where
+instance Craftable SourcedFile SourcedFile where
   craft sf = do
     let sf' = sf & file . File.content .~ Nothing
     sourceFile (sf' ^. source) (sf' ^. file . File.path)

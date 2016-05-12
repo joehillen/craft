@@ -72,7 +72,7 @@ ownerAndGroup :: Setter (Config a) (Config a) () User
 ownerAndGroup = configFile . File.ownerAndGroup
 
 
-instance ConfigFormat a => Craftable (Config a) where
+instance ConfigFormat a => Craftable (Config a) (Config a) where
   watchCraft cfg = do
     w <- watchCraft_ =<< fileFromConfig cfg
     return (w, cfg)

@@ -97,7 +97,7 @@ exists :: Path -> Craft Bool
 exists p = isExecSucc <$> exec "/usr/bin/test" ["-d", p]
 
 
-instance Craftable Directory where
+instance Craftable Directory Directory where
   watchCraft d = do
     let dp = d ^. path
         setMode'  = setMode (d ^. mode) dp

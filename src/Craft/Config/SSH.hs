@@ -81,14 +81,13 @@ cfgLookup sectionName key (SSHConfig sections') =
   maybeHead (x:_) = Just x
 
 
-instance Craftable UserConfig where
+instance Craftable UserConfig UserConfig where
   watchCraft cfg = do
     craft_ $ userDir $ cfg ^. user
     w <- watchCraft_ $ file (userPath cfg)
-                         & File.mode .~ Mode RW O O
-                         & File.ownerID .~ cfg ^. user . User.uid
-                         & File.groupID .~ cfg ^. user . User.gid
-                         & File.strContent .~ show cfg
+                       & File.mode          .~ Mode RW O O
+                       & File.ownerAndGroup .~ cfg ^. user
+                       & File.strContent    .~ show cfg
     return (w, cfg)
 
 

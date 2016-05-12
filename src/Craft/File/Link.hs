@@ -40,7 +40,7 @@ create (Link t p) = justdoit t p
   justdoit (Target tp) (Path lp) = exec_ "ln" ["-snf", tp, lp]
 
 
-instance Craftable Link where
+instance Craftable Link Link where
   watchCraft l = do
     let lp = l ^. path
     readlink lp >>= \case
