@@ -30,7 +30,7 @@ In order of priority:
  * Use Text
  * Use logger that supports callstacks
  * Replace use of "error" with proper exception types.
- * Replace `createUser` with `Craftable User`
+ * Craftable User User
  * Remove Exec_
  * Exec as User
  * Send stdin to Exec
@@ -45,7 +45,7 @@ In order of priority:
  * grep
  * Escaping Exec args, i.e. spaces, quotes, pipes, etc
  * Export the most common smart-constructors, e.g. `file`, `directory`, `user`, etc
- * Define `Gettable` with functional dependencies
+ * Define `Gettable` with functional dependencies or type-families
  * Improve `/etc/hosts` parser (very slow)
  * Break up craft into multiple packages
  * Tests

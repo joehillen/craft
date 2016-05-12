@@ -16,9 +16,11 @@ module Craft.User
 where
 
 import           Control.Lens hiding (un)
+import           Control.Monad (foldM)
 import           Data.List (intercalate)
 import qualified Data.Set as S
 import           Formatting
+import           System.FilePath ((</>))
 
 import qualified Craft.Group as Group
 import           Craft.Internal
@@ -38,64 +40,79 @@ gid :: Lens' User GroupID
 gid = group . UG.gid
 
 
-data Options =
-  Options
-  { optUID        :: Maybe UserID
-  , optComment    :: String
+data UserOptions =
+  UserOptions
+  { _optName       :: String
+  , _optUID        :: Maybe UserID
+  , _optComment    :: String
 
   --, optAllowdupe  :: Bool
   -- Whether to allow duplicate UIDs. Default: False
 
-  , optGroup      :: Maybe GroupName
-  -- The default group for a user
+  , _optGroup      :: Maybe GroupName
+  -- ^ The default group for a user
 
-  , optUserGroup  :: Bool
-  -- Create a user group for this user. Default: True
+  , _optUserGroup  :: Bool
+  -- ^ Create a user group for this user. Default: True
 
-  , optGroups     :: [GroupName]
+  , _optGroups     :: [GroupName]
+  -- ^ Other groups
 
-  , optHome       :: Maybe FilePath
+  , _optHome       :: FilePath
 
-  , optCreateHome :: Bool
-  -- Create the user's home directory when creating user. Default: True
+  , _optCreateHome :: Bool
+  -- ^ Create the user's home directory when creating user
 
-  , optPassword   :: Maybe String
+  , _optPassword   :: Maybe String
 
-  , optSalt       :: Maybe String
-  -- The salt to use when creating the user's password
+  , _optSalt       :: Maybe String
+  -- ^ The salt to use when creating the user's password
 
 
   --, password_max_age :: Maybe Int
   --, password_min_age :: Maybe Int
 
-  , optLocked     :: Bool
+  --, _optLocked     :: Bool
   -- Lock the user's account
 
-  , optShell      :: Maybe FilePath
+  , _optShell      :: Maybe FilePath
   -- User's shell
 
-  , optSystem     :: Bool
+  , _optSystem     :: Bool
   -- Is the user a system user. Default: False
   }
+  deriving (Eq, Show)
+makeLenses ''UserOptions
 
 
--- Nothing means rely on the system's default behaviour
-opts :: Options
-opts =
-  Options
-  { optUID     = Nothing
-  , optComment    = ""
-  , optGroup      = Nothing
-  , optUserGroup  = True
-  , optGroups     = []
-  , optHome       = Nothing
-  , optCreateHome = True
-  , optPassword   = Nothing
-  , optSalt       = Nothing
-  , optLocked     = False
-  , optShell      = Nothing
-  , optSystem     = False
+-- Nothing means rely on the system's default behavior
+userOptions :: String -> UserOptions
+userOptions name =
+  UserOptions
+  { _optName       = name
+  , _optUID        = Nothing
+  , _optComment    = name
+  , _optGroup      = Nothing
+  , _optUserGroup  = True
+  , _optGroups     = []
+  , _optHome       = "/home"</>name
+  , _optCreateHome = True
+  , _optPassword   = Nothing
+  , _optSalt       = Nothing
+  , _optShell      = Nothing
+  , _optSystem     = False
+  --, _optLocked     = False
   }
+
+systemUserOptions :: String -> UserOptions
+systemUserOptions name =
+  userOptions name
+  & optHome       .~ "/"
+  & optShell      ?~ "/usr/sbin/nologin"
+  & optCreateHome .~ False
+  & optPassword   ?~ ""
+  & optSystem     .~ True
+  -- & optLocked     .~ True
 
 
 userMod :: UserName -> [String] -> Craft ()
@@ -139,80 +156,80 @@ setHome :: UserName -> FilePath -> Craft ()
 setHome un path = userMod un ["--home", path]
 
 
-createUser :: UserName -> Options -> Craft User
-createUser un uopts@Options{..} = do
-  user' <- fromName un >>= \case
-    Nothing -> do
-      createUser' un uopts
-      fromName un
-    x       -> return x
+instance Craftable UserOptions User where
+  watchCraft uopts = do
+    let notfound = "craft `"++uopts ^. optName++"` failed. Not Found!"
+    let un = UserName $ uopts ^. optName
+    fromName un >>= \case
+      Nothing           -> do
+        createUser uopts
+        fromName un >>= \case
+          Nothing          -> $craftError notfound
+          Just createdUser -> do
+            madeChanges <- ensureUserOpts createdUser uopts
+            if not madeChanges
+              then return (Created, createdUser)
+              else fromName un >>= \case
+                Nothing -> $craftError notfound
+                Just u  -> return (Created, u)
+      Just existingUser -> do
+        madeChanges <- ensureUserOpts existingUser uopts
+        if not madeChanges
+          then return (Unchanged, existingUser)
+          else fromName un >>= \case
+            Nothing -> $craftError notfound
+            Just u  -> return (Updated, u)
 
-  case user' of
-    Nothing   -> $craftError notfound
-    Just user -> do
-      handleOpt optUID (user ^. uid) $
-        setUID un
 
-      when (optComment /= user ^. comment) $
-        setComment un optComment
+ensureUserOpts :: User -> UserOptions -> Craft Bool
+ensureUserOpts user uopts@UserOptions{..} = do
+  let checks =
+        [ maybeOpt _optUID     (user ^. uid)               setUID
+        , opt      _optComment (user ^. comment)           setComment
+        , maybeOpt _optGroup   (user ^. group . groupname) setGroup
+        , opt      _optHome    (user ^. home)              setHome
+        , maybeOpt _optShell   (user ^. shell)             setShell
+        , if sameElems _optGroups (user ^. groups)
+            then setGroups un _optGroups >> return True
+            else return False
+        --TODO: password, salt, lock
+        ] :: [Craft Bool]
+  or <$> sequence checks
+   where
+    un = UserName _optName
+    opt expected actual setter
+      | expected == actual = return False
+      | otherwise          = setter un expected >> return True
+    maybeOpt Nothing _ _                   = return False
+    maybeOpt (Just expected) actual setter = opt expected actual setter
 
-      handleOpt optGroup (user ^. group . groupname) $
-        setGroup un
-
-      handleOpt optHome (user ^. home) $
-        setHome un
-
-      unless (sameElems optGroups $ user ^. groups) $
-        setGroups un optGroups
-
-      handleOpt optShell (user ^. shell) $
-        setShell un
-
-      --TODO: setPassword, setSalt
-
-      when optLocked $
-        lock un
-
-  fromName un >>= \case
-    Nothing -> $craftError notfound
-    Just r  -> return r
- where
-  notfound = "createUser `" ++ show un ++ "` failed. Not Found!"
-
-  handleOpt :: Eq a => Maybe a -> a -> (a -> Craft ()) -> Craft ()
-  handleOpt Nothing       _      _ = return ()
-  handleOpt (Just newval) oldval f | newval /= oldval = f newval
-                                   | otherwise        = return ()
 
 sameElems :: Ord a => [a] -> [a] -> Bool
 sameElems xs ys = S.fromList xs == S.fromList ys
 
 
-createUser' :: UserName -> Options -> Craft ()
-createUser' un Options{..} = do
-  groupArg <- getGroupArg optGroup
-  exec_ "/usr/sbin/useradd" $
-       optsToArgs ++ groupArg ++ groupsArg ++ [show un]
+createUser :: UserOptions -> Craft ()
+createUser UserOptions{..} = do
+  groupArg <- getGroupArg _optGroup
+  exec_ "/usr/sbin/useradd" $ optsToArgs ++ groupArg ++ groupsArg ++ [show _optName]
  where
   getGroupArg :: Maybe GroupName -> Craft [String]
   getGroupArg Nothing = return []
   getGroupArg (Just gn) =
     Group.fromName gn >>= \case
-      Nothing -> $craftError $
-        "Failed to create User `" ++ show un ++ "` "
-        ++ "with group `" ++ show gn ++ "`. Group not found!"
-      Just g -> return $ toArg "--gid" $ g ^. Group.gid
-  groupsArg = toArg "--groups" $ intercalate "," (map show optGroups)
+      Just g  -> return $ toArg "--gid" $ g ^. Group.gid
+      Nothing -> $craftError $ "Failed to create User `"++_optName++"` " ++ "with group `"++show gn++"`. Group not found!"
+  groupsArg = toArg "--groups" $ intercalate "," (map show _optGroups)
   optsToArgs =
     concat
-      [ toArg "--uid"         optUID
-      , toArg "--comment"     optComment
-      , toArg "--home"        optHome
-      , toArg "--create-home" optCreateHome
-      , toArgBool "--user-group" "--no-user-group" optUserGroup
-      , toArg "--password"    (encrypt optSalt optPassword)
-      , toArg "--shell"       optShell
-      , toArg "--system"      optSystem
+      [ toArg "--uid"         _optUID
+      , toArg "--comment"     _optComment
+      , toArg "--home"        _optHome
+      , toArg "--create-home" _optCreateHome
+      , toArgBool "--user-group" "--no-user-group" _optUserGroup
+      , toArg "--password"    (encrypt _optSalt _optPassword)
+      , toArg "--shell"       _optShell
+      , toArg "--system"      _optSystem
       ]
 
 
