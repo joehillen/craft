@@ -8,9 +8,11 @@ import qualified Data.Map.Strict as Map
 import           Control.Monad.Logger (logDebugNS)
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as B8
 import           Data.List (intercalate)
 import           Data.List.Split (splitOn)
 import           Text.Megaparsec
+import           Text.Megaparsec.String
 import           System.FilePath ((</>))
 
 import           Craft.Types
@@ -92,6 +94,14 @@ parseExecStdout parser cmd args = do
   r <- exec cmd args
   s <- $stdoutOrError r
   parseExecResult r parser s
+
+
+parseFile :: Parser a -> FilePath -> Craft a
+parseFile parser fp = do
+  str <- B8.unpack <$> fileRead fp
+  case runParser parser fp str of
+    Right x  -> return x
+    Left err -> $craftError $ "parseFile `"++fp++"` failed: "++show err
 
 
 craftExecPath :: CraftEnv -> [FilePath]

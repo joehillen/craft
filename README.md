@@ -38,6 +38,11 @@ In order of priority:
  * distinguish CraftEnv from EnvVars
    - maybe rename it to CraftSettings
  * Figure out how to use a ReaderT on top of Craft
+ * HasField style fields for FileLike things:
+   - path
+   - mode
+   - owner
+   - group
  * Manage `File` and `FileContent` separately
    (unexpected calls to readFile are slow over the network and usually unnecessary)
  * Add `ToFileContent` and `FromFileContent` typeclasses
@@ -47,6 +52,7 @@ In order of priority:
  * Export the most common smart-constructors, e.g. `file`, `directory`, `user`, etc
  * Define `Gettable` with functional dependencies or type-families
  * Improve `/etc/hosts` parser (very slow)
+ * microlenses?
  * Break up craft into multiple packages
  * Tests
     - Quickcheck
