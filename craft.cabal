@@ -22,7 +22,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  -- ghc-options:         -Wall -Werror
+  ghc-options:         -Wall -Werror
   hs-source-dirs:      src
                      , src/Craft
   exposed-modules:     Craft
