@@ -4,6 +4,7 @@ import           Control.Lens
 import           Control.Monad.Logger (LoggingT)
 import qualified Control.Monad.Trans as Trans
 import qualified Data.ByteString as BS
+import qualified Data.Map.Strict as Map
 import           System.Process hiding ( readCreateProcessWithExitCode
                                        , readProcessWithExitCode)
 
@@ -34,7 +35,7 @@ runCraftLocal ce' = interpretCraft ce' run
 localProc :: CraftEnv -> Command -> Args -> CreateProcess
 localProc ce prog args =
   (proc prog args)
-    { env           = Just (ce ^. craftExecEnv)
+    { env           = Just $ Map.toList (ce ^. craftExecEnv)
     , cwd           = Just (ce ^. craftExecCWD)
     , close_fds     = True
     , create_group  = True

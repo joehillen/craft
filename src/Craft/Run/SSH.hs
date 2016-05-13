@@ -7,6 +7,7 @@ import           Control.Monad.Reader
 import qualified Control.Monad.Trans as Trans
 import qualified Data.ByteString.Char8 as B8
 import           Data.List (intersperse)
+import qualified Data.Map.Strict as Map
 import           Data.Maybe (fromMaybe)
 import           Data.String.Utils (replace)
 import           System.Directory
@@ -127,7 +128,7 @@ runCraftSSH env ce prog =
   withSession env $ \session -> runCraftSSHSession session ce prog
 
 
-runSSHFree :: Session -> (CraftDSL (LoggingT IO a)) -> LoggingT IO a
+runSSHFree :: Session -> CraftDSL (LoggingT IO a) -> LoggingT IO a
 runSSHFree session (Exec ce command args next) = do
   let p = sshProc session ce command args
   execProc p next
@@ -135,7 +136,7 @@ runSSHFree session (Exec_ ce command args next) = do
   let p = sshProc session ce command args
   execProc_ (unwords (command:args)) p next
 runSSHFree session (FileRead ce fp next) = do
-  let ceOverride = ce & craftExecEnv .~ []
+  let ceOverride = ce & craftExecEnv .~ Map.empty
                       & craftExecCWD .~ "/"
       p = sshProc session ceOverride "cat" [fp]
   (ec, content, stderr') <-
@@ -144,7 +145,7 @@ runSSHFree session (FileRead ce fp next) = do
     $craftError $ "Failed to read file '"++ fp ++"': " ++ B8.unpack stderr'
   next content
 runSSHFree session (FileWrite ce fp content next) = do
-  let ceOverride = ce & craftExecEnv .~ []
+  let ceOverride = ce & craftExecEnv .~ Map.empty
                       & craftExecCWD .~ "/"
       p = sshProc session ceOverride "tee" [fp]
   (ec, _, stderr') <-
@@ -173,10 +174,13 @@ runSSHFree _ (ReadSourceFile _ fp next) =
 sshProc :: Session -> CraftEnv -> Command -> Args
         -> Process.CreateProcess
 sshProc session ce command args =
-  Process.proc "ssh" ((session ^. sessionArgs)
-                      ++ (prependEachWith "-o" [ "ControlMaster=auto"
-                                               , "ControlPersist=no" ])
-                      ++ [ (session ^. sessionEnv . connStr), fullExecStr ])
+  Process.proc "ssh" $ session ^. sessionArgs
+                    ++ (prependEachWith "-o" [ "ControlMaster=auto"
+                                             , "ControlPersist=no"
+                                             ])
+                    ++ [ session ^. sessionEnv . connStr
+                       , fullExecStr
+                       ]
  where
   fullExecStr :: String
   fullExecStr = unwords (sudoArgs ++ ["sh", "-c", "'", shellStr, "'"])
@@ -193,13 +197,13 @@ sshProc session ce command args =
   specialChars = [" ", "*", "$", "'"]
 
   execEnvArgs :: [String]
-  execEnvArgs = map (escape specialChars) (renderEnv $ ce ^. craftExecEnv)
+  execEnvArgs = map (escape specialChars) . renderEnv $ ce ^. craftExecEnv
 
   cdArgs :: [String]
   cdArgs = ["cd", ce ^. craftExecCWD, ";"]
 
   escape :: [String] -> String -> String
-  escape strs = recur backslash strs
+  escape = recur backslash
 
   recur _ []     s = s
   recur f (a:as) s = recur f as $ f a s
@@ -208,4 +212,4 @@ sshProc session ce command args =
 
 
 renderEnv :: ExecEnv -> [String]
-renderEnv = map (\(k, v) -> k ++ "=" ++ v)
+renderEnv = map (\(k, v) -> k++"="++v) . Map.toList

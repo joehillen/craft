@@ -4,6 +4,7 @@ import           Control.Lens
 import           Control.Monad.Reader
 import           Control.Monad.Free
 import           Data.ByteString (ByteString)
+import qualified Data.Map.Strict as Map
 import           Control.Monad.Logger (logDebugNS)
 import qualified Data.Text as T
 import qualified Data.ByteString as BS
@@ -94,7 +95,7 @@ parseExecStdout parser cmd args = do
 
 
 craftExecPath :: CraftEnv -> [FilePath]
-craftExecPath = maybe [] (splitOn ":") . lookup "PATH" . view craftExecEnv
+craftExecPath = maybe [] (splitOn ":") . Map.lookup "PATH" . view craftExecEnv
 
 
 -- TESTME
@@ -109,12 +110,6 @@ withPath :: [FilePath] -> Craft a -> Craft a
 withPath = withEnvVar "PATH" . intercalate ":"
 
 
-replaceKey :: Eq a => a -> b -> (a, b) -> (a, b)
-replaceKey k'  v' (k, v)
-  | k == k'   = (k, v')
-  | otherwise = (k, v)
-
-
 withEnv :: ExecEnv -> Craft a -> Craft a
 withEnv env = local (\r -> r & craftExecEnv .~ env)
 
@@ -123,7 +118,7 @@ withEnv env = local (\r -> r & craftExecEnv .~ env)
 withEnvVar :: String -> String -> Craft a -> Craft a
 withEnvVar name val go = do
   ce <- ask
-  let env = map (replaceKey name val) $ ce ^. craftExecEnv
+  let env = Map.insert name val $ ce ^. craftExecEnv
   withEnv env go
 
 

@@ -16,6 +16,7 @@ import           Control.Monad.Reader (ReaderT, MonadReader, runReaderT, ask)
 import qualified Control.Monad.Trans.Class as Trans
 import           Control.Monad.Trans.Free (FreeT, MonadFree, iterT)
 import           Data.ByteString (ByteString)
+import           Data.Map.Strict (Map)
 import qualified Data.Text as T
 import           Data.Versions (parseV)
 import           Language.Haskell.TH.Syntax (Q, Exp)
@@ -99,7 +100,7 @@ stdoutOrError = [|
     ExecFail r -> $craftError $ show r|]
 
 
-type ExecEnv = [(String, String)]
+type ExecEnv = Map String String
 type CWD = FilePath
 type PackageName = String
 

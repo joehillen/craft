@@ -1,24 +1,27 @@
 module Craft
 ( module Craft
-, module Craft.Internal
-, module System.FilePath
-, module Control.Monad.Catch
 , asks
 , ExitCode(..)
+, module X
 )
 where
 
 import           Control.Lens
-import           Control.Monad.Catch
 import           Control.Monad.Reader
-import           System.Exit          (ExitCode (..))
-import           System.FilePath
+import qualified Data.Map.Strict       as Map
 
-import           Craft.Directory      as Dir
-import           Craft.Internal
+import           Craft.Directory       (Directory)
+import qualified Craft.Directory       as Dir
+
+-- |Re-exports
+import           Control.Monad.Catch   as X
+import           System.FilePath       as X
+import           System.Exit           (ExitCode(..))
+
+import           Craft.Internal        as X
 
 
-withCWD :: Dir.Directory -> Craft a -> Craft a
+withCWD :: Directory -> Craft a -> Craft a
 withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. Dir.path)
 
 
@@ -27,6 +30,6 @@ craftEnv pm =
   CraftEnv
   { _craftSourcePaths    = ["."]
   , _craftPackageManager = pm
-  , _craftExecEnv        = [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
+  , _craftExecEnv        = Map.fromList [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
   , _craftExecCWD        = "/"
   }

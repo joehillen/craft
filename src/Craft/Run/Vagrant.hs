@@ -3,6 +3,7 @@ module Craft.Run.Vagrant where
 import           Control.Lens
 import           Control.Monad.Logger (LoggingT)
 import qualified Control.Monad.Trans as Trans
+import qualified Data.Map.Strict as Map
 import           Data.Maybe (fromMaybe)
 import qualified System.Directory
 import qualified System.Environment
@@ -28,20 +29,21 @@ vagrantSettings =
 
 runCraftVagrant :: VagrantSettings -> CraftEnv -> Craft a -> LoggingT IO a
 runCraftVagrant settings env configs = do
+  let box = vagrantBox settings
   sysEnv <- Trans.lift System.Environment.getEnvironment
   cwd <- Trans.lift System.Directory.getCurrentDirectory
-  let box = vagrantBox settings
+  -- vagrant ssh-config
   sshcfg <- runCraftLocal (craftEnv (env ^. craftPackageManager)
-                                    & craftExecEnv .~ sysEnv
+                                    & craftExecEnv .~ Map.fromList sysEnv
                                     & craftExecCWD .~ cwd
                                     ) $ do
     when (vagrantUp settings) $ exec_ "vagrant" ["up", box]
     SSHConfig <$> parseExecStdout parser "vagrant" ["ssh-config", box]
-
   let addr = cfgLookupOrError box "hostname" sshcfg
-      port = read $ cfgLookupOrError box "port" sshcfg
-      user = cfgLookupOrError box "user" sshcfg
-      key  = cfgLookupOrError box "identityfile" sshcfg
+  let port = read $ cfgLookupOrError box "port" sshcfg
+  let user = cfgLookupOrError box "user" sshcfg
+  let key  = cfgLookupOrError box "identityfile" sshcfg
+  -- vagrant ssh
   runCraftSSH (sshEnv addr key & sshUser .~ user
                                & sshPort .~ port
                                & sshSudo .~ True)

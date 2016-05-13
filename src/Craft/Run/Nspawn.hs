@@ -4,6 +4,7 @@ import           Control.Lens
 import           Control.Monad.Logger (LoggingT)
 import qualified Control.Monad.Trans as Trans
 import qualified Data.ByteString as BS
+import qualified Data.Map.Strict as Map
 import           System.Process hiding ( readCreateProcessWithExitCode
                                        , readProcessWithExitCode)
 
@@ -34,7 +35,7 @@ runCraftNspawn dir ce' = interpretCraft ce' run
 nspawnProc :: FilePath -> CraftEnv -> Command -> Args -> CreateProcess
 nspawnProc dir ce cmd args =
   (proc "systemd-nspawn" ("-D":dir:"-q":cmd:args))
-  { env           = Just (ce ^. craftExecEnv)
+  { env           = Just $ Map.toList (ce ^. craftExecEnv)
   , cwd           = Just (ce ^. craftExecCWD)
   , close_fds     = True
   , create_group  = True
