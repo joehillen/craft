@@ -1,6 +1,6 @@
 .PHONY: test clean
 
-basic: Basic.hs
+basic: $(call rwildcard,../src,*.hs) Basic.hs
 	stack ghc -- -O2 -threaded -rtsopts -with-rtsopts=-N -o basic Basic.hs
 
 test: basic

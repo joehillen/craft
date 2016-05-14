@@ -1,8 +1,8 @@
-.PHONY: examples all clean
+.PHONY: examples all clean test build
 
 all: build examples
 
-build:
+build: $(call rwildcard,src,*.hs)
 	stack build
 
 clean:
@@ -11,3 +11,7 @@ clean:
 
 examples: build
 	$(MAKE) -C examples
+
+test:
+	stack build --test
+	$(MAKE) -C examples test
