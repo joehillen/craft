@@ -9,7 +9,6 @@ import qualified Craft.File as File
 import           Craft.File.Mode
 import           Craft.SSH
 import           Craft.User (User)
-import qualified Craft.User as User
 
 
 data PrivateKey
@@ -23,13 +22,13 @@ makeLenses ''PrivateKey
 
 
 path :: Getter PrivateKey FilePath
-path = to $ \pk -> userDir (pk ^. user) ^. Dir.path </> (pk ^. name)
+path = to $ \pk -> (pk^.user.to userDir.Dir.path)</>(pk^.name)
 
 
 instance Craftable PrivateKey PrivateKey where
   watchCraft pk = do
-    craft_ $ userDir $ pk ^. user
-    w <- watchCraft_ $ file (pk ^. path)
+    craft_ $ userDir $ pk^.user
+    w <- watchCraft_ $ file (pk^.path)
                        & File.mode          .~ Mode RW O O
                        & File.ownerAndGroup .~ pk ^. user
                        & File.strContent    .~ pk ^. content

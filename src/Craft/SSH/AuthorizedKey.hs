@@ -8,7 +8,6 @@ import           Text.Megaparsec.String
 import           Craft hiding (try)
 import           Craft.File (File, file)
 import qualified Craft.File as File
-import           Craft.Directory (Directory)
 import qualified Craft.Directory as Dir
 import           Craft.File.Mode
 import           Craft.SSH
@@ -42,7 +41,7 @@ instance Destroyable AuthorizedKey where
     let val = pk^.pubkeyValue
     let newPubKeys = Map.elems $ Map.delete val pubKeysMap
     craft_ $ userDir user
-    watchCraft_ $ userFile user
+    craft_ $ userFile user
        & File.strContent .~ (unlines $ map PK.toString newPubKeys)
     return $ case Map.lookup val pubKeysMap of
                Nothing -> (Unchanged, Nothing)

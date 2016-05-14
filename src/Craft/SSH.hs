@@ -8,8 +8,6 @@ import           Text.Megaparsec.String
 import           Craft
 import           Craft.Directory (Directory, directory)
 import qualified Craft.Directory as Dir
-import           Craft.File (File, file)
-import qualified Craft.File as File
 import           Craft.File.Mode
 import           Craft.User (User)
 import qualified Craft.User as User

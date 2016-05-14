@@ -16,7 +16,6 @@ module Craft.User
 where
 
 import           Control.Lens hiding (un)
-import           Control.Monad (foldM)
 import           Data.List (intercalate)
 import qualified Data.Set as S
 import           Formatting
@@ -87,15 +86,15 @@ makeLenses ''UserOptions
 
 -- Nothing means rely on the system's default behavior
 userOptions :: String -> UserOptions
-userOptions name =
+userOptions n =
   UserOptions
-  { _optName       = name
+  { _optName       = n
   , _optUID        = Nothing
-  , _optComment    = name
+  , _optComment    = n
   , _optGroup      = Nothing
   , _optUserGroup  = True
   , _optGroups     = []
-  , _optHome       = "/home"</>name
+  , _optHome       = "/home"</>n
   , _optCreateHome = True
   , _optPassword   = Nothing
   , _optSalt       = Nothing
@@ -105,8 +104,8 @@ userOptions name =
   }
 
 systemUserOptions :: String -> UserOptions
-systemUserOptions name =
-  userOptions name
+systemUserOptions n =
+  userOptions n
   & optHome       .~ "/"
   & optShell      ?~ "/usr/sbin/nologin"
   & optCreateHome .~ False
@@ -182,7 +181,7 @@ instance Craftable UserOptions User where
 
 
 ensureUserOpts :: User -> UserOptions -> Craft Bool
-ensureUserOpts user uopts@UserOptions{..} = do
+ensureUserOpts user UserOptions{..} = do
   let checks =
         [ maybeOpt _optUID     (user ^. uid)               setUID
         , opt      _optComment (user ^. comment)           setComment

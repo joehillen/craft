@@ -14,7 +14,6 @@ import           Craft.File.Mode
 import           Craft.Internal.Helpers
 import           Craft.SSH
 import           Craft.User (User)
-import qualified Craft.User as User
 
 
 data Section
