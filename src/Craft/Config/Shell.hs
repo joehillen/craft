@@ -79,8 +79,7 @@ comment = space >> char '#' >> manyTill anyChar end >> return ()
 item :: Parsec String (String, String)
 item = do
   space
-  name <- some (alphaNumChar <|> char '_' <|> char '.')
-  space
+  name <- some $ noneOf " ="
   void $ char '='
   -- TODO: quoted values
   value <- try (someTill (noneOf " \r\n#") (lookAhead (oneOf " \r\n#")) <* manyTill anyChar end)
