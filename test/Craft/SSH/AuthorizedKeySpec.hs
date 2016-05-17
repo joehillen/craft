@@ -15,6 +15,8 @@ spec = do
     let parse = MP.parse parsePublicKeys ""
     it "reads empty file" $
       parse "" `shouldParse` []
+    it "reads empty lines" $
+      parse "\n\n\n" `shouldParse` []
     it "reads single RSA public key with no eol or comment" $
       parse "ssh-rsa AAAiumas98dada8ud9m8ad" `shouldParse` [PublicKey RSA "AAAiumas98dada8ud9m8ad" ""]
     it "reads single DSA public key ending in newline" $

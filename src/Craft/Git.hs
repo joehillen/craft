@@ -145,9 +145,8 @@ instance Craftable Repo Repo where
           Nothing -> git "clone" [r ^. url, dp]
           Just d  -> git "clone" ["--depth", show d, r ^. url, dp]
         Dir.get dp >>= \case
-          Nothing ->
-            $craftError $ "craft Git.Repo `" ++ show r ++ "` failed! "
-                       ++ "Clone Failed. Directory `" ++ dp ++ "` not found."
+          Nothing -> $craftError $ "craft Git.Repo `"++show r++"` failed! "
+                                ++ "Clone Failed. Directory `"++dp++"` not found."
           Just dir -> do
             craft_ $ r ^. directory
             withCWD dir $ do

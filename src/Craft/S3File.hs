@@ -13,6 +13,7 @@ import           Text.Megaparsec.String
 import           Craft hiding (try)
 import           Craft.File (File)
 import qualified Craft.File as File
+import           Craft.Internal.Helpers.Parsing
 
 
 data S3File
@@ -41,6 +42,7 @@ s3file fp source' =
 
 url :: Getter S3File String
 url = to (\f -> "https://" ++ f ^. domain ++ "/" ++ f ^. source)
+
 
 
 -- | Add AWS Authentication Headers to curl commands
@@ -94,7 +96,7 @@ httpHeaders = do
 
 header :: Parser (String, String)
 header = (,) <$> noneOf ":" `someTill` try (string ": ")
-             <*> anyChar `manyTill` try (skipSome eol <|> eof)
+             <*> anyChar `manyTill` end
 
 
 instance Craftable S3File S3File where

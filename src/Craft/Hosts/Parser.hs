@@ -9,6 +9,7 @@ import Text.Megaparsec.String
 
 import Craft.Hosts.Types
 import Craft.Types
+import Craft.Internal.Helpers.Parsing
 
 
 parseLine :: Int -> String -> Craft (Maybe (IP, [Name]))
@@ -23,13 +24,13 @@ parseLine ln s =
     setPosition $ pos {sourceLine = ln}
     space
     try (comment >> return Nothing) <|> try (Just <$> item)
-                                    <|> (eof >> return Nothing)
+                                    <|> (end >> return Nothing)
 
 
 comment :: Parser ()
 comment = label "comment" $ do
   void $ char '#'
-  void $ manyTill (noneOf "\r\n") $ try (void eol) <|> eof
+  void $ manyTill (noneOf "\r\n") end
   return ()
 
 

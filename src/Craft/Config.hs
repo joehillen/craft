@@ -14,7 +14,7 @@ import qualified Craft.File as File
 data Config a
   = Config
     { _configFile :: File
-    , _configs    :: ConfigFormat a => a
+    , _configs    :: a
     }
 
 

@@ -8,6 +8,7 @@ import Text.Megaparsec.String
 
 import Craft.Internal
 import Craft.Internal.Helpers
+import Craft.Internal.Helpers.Parsing
 
 
 newtype UserName = UserName String
@@ -74,7 +75,7 @@ passwdParser = do
   gid'      <- GroupID . read <$> someTill digitChar colon
   comment'  <- manyTill anyChar colon
   home'     <- manyTill anyChar colon
-  shell'    <- manyTill anyChar (void eol <|> eof)
+  shell'    <- manyTill anyChar end
   return (name, uid', gid', comment', home', shell')
 
 

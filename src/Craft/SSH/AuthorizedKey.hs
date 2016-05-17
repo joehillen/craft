@@ -2,6 +2,7 @@ module Craft.SSH.AuthorizedKey where
 
 import           Control.Lens
 import qualified Data.Map.Strict as Map
+import           Data.Maybe (catMaybes)
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 
@@ -66,4 +67,6 @@ authkeysToMap = Map.fromList . map (((,)<$>_pubkeyValue<*>id) . _authkey)
 
 
 parsePublicKeys :: Parser [PublicKey]
-parsePublicKeys = parsePublicKey `sepEndBy` eol
+parsePublicKeys = do
+  keys <- (try (Just <$> parsePublicKey) <|> (space >> return Nothing)) `sepEndBy` eol
+  return $ catMaybes keys

@@ -14,6 +14,7 @@ import           Craft.File.Mode
 import           Craft.Internal.Helpers
 import           Craft.SSH
 import           Craft.User (User)
+import           Craft.Internal.Helpers.Parsing
 
 
 data Section
@@ -133,7 +134,7 @@ bodyLine = do
   notFollowedBy eol
   space
   val <- between (char '"') (char '"') (many $ noneOf "\"")
-         <|> someTill anyChar (void eol <|> eof)
+         <|> someTill anyChar end
   void $ optional (space <|> void (many eol))
   return (name, trim val)
 

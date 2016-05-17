@@ -6,6 +6,7 @@ import Text.Megaparsec.String
 
 import Craft
 import Craft.SSH
+import Craft.Internal.Helpers.Parsing
 
 
 data PublicKey
@@ -41,7 +42,7 @@ parsePublicKey = do
   space
   key <- base64Char `someTill` (void spaceChar <|> eof)
   space
-  comment <- anyChar `manyTill` (void (lookAhead eol) <|> eof)
+  comment <- anyChar `manyTill` end
   return $ PublicKey kt key comment
 
 
