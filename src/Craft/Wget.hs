@@ -31,12 +31,12 @@ wget url' destfp =
 instance Craftable Wget Wget where
   watchCraft wg = do
     let destf  = wg ^. dest & content .~ Nothing
-        destfp = wg ^. dest . File.path
-        mismatchError actual = "Checksum Mismatch for `"<>wg ^. url<>"`. "
+    let destfp = wg ^. dest . File.path
+    let mismatchError actual = "Checksum Mismatch for `"<>wg ^. url<>"`. "
                             <> "Expected `"<>show (wg ^. chksum)<>"` "
                             <> "Got `"<>show actual<>"`"
-        check = Checksum.check destf
-        watchDest = do
+    let check = Checksum.check destf
+    let watchDest = do
           w <- watchCraft_ destf
           return (w, wg)
     File.exists destfp >>= \case
@@ -47,7 +47,8 @@ instance Craftable Wget Wget where
             check chksum' >>= \case
               Checksum.Matched      -> watchDest
               Checksum.Failed r     -> $craftError $ show r
-              Checksum.Mismatched _ ->
+              Checksum.Mismatched _ -> do
+                run wg -- Try redownloading the file if the checksum doesn't match.
                 check chksum' >>= \case
                   Checksum.Matched           -> watchDest
                   Checksum.Failed r          -> $craftError $ show r
