@@ -34,14 +34,14 @@ main =
   runStdoutLoggingT $
     runCraftVagrant vagrantSettings {vagrantUp = True} (craftEnv apt) $ do
       craft_ $ Hostname "craft-example-basic"
-      craftAptPackages
+      void $ Apt.craftPackages packages
       Pip.setup
       mapM_ craft pipPackages
       void craftAdmins
 
 
-aptPackages :: [Package]
-aptPackages =
+packages :: [Package]
+packages =
   map package
     [ "build-essential"
     , "curl"
@@ -121,10 +121,3 @@ craftAdmin name fullname sshPubKey userShell = do
   craft_ $ file ("/etc/sudoers.d"</>"10_"++name)
     & File.strContent .~ name++" ALL=(ALL) NOPASSWD: ALL\n"
   return user
-
-
-craftAptPackages :: Craft ()
-craftAptPackages = do
-  whenM (any isNothing <$> mapM (Package.get . _pkgName) aptPackages)
-    Apt.update
-  mapM_ craft aptPackages

@@ -9,6 +9,7 @@ import           Formatting
 import           Craft
 import           Craft.File (File)
 import qualified Craft.File as File
+import qualified Craft.Package as Package
 
 
 
@@ -97,21 +98,19 @@ pkgArg (Package pn (Version v)) = pn ++ "=" ++ v
 
 
 aptRemove :: Package -> Craft ()
-aptRemove Package{..} =
-  aptGet ["remove", _pkgName]
+aptRemove Package{..} = aptGet ["remove", _pkgName]
 
 
 purge :: Package -> Craft ()
-purge Package{..} =
-  aptGet ["remove", _pkgName, "--purge"]
+purge Package{..} = aptGet ["remove", _pkgName, "--purge"]
 
 
 data Deb = Deb { _debFile :: File
                , _debPkg  :: Package
                }
   deriving (Eq, Show)
-
 makeLenses ''Deb
+
 
 debName :: Lens' Deb String
 debName = debPkg . pkgName
@@ -161,7 +160,7 @@ instance Craftable Deb Deb where
     let name = d ^. debName
     let expectedVersion = d ^. debVersion
     let get = getAptPackage name
-    let error' str = formatToString ("craft Deb `"%shown%"` failed! "%string) d str
+    let error' = formatToString ("craft Deb `"%shown%"` failed! "%string) d
     let installAndVerify = do
           dpkgInstall $ d ^. debFile
           get >>= \case
@@ -218,3 +217,20 @@ instance Destroyable PPA where
         $craftError $ formatToString ("destroy PPA `"%shown%"` failed! Found: "%shown) ppa fsAfter
       update
       return (Removed, Just ppa)
+
+
+-- |A function that installs a list of Apt packages,
+-- |but that only runs "apt-get update" if a given package is not already installed.
+-- TESTME
+craftPackages :: [Package] -> Craft [Package]
+craftPackages packages = do
+  whenM ((any comparePackages . zip packages) <$> mapM (Package.get . _pkgName) packages)
+    update
+  mapM craft packages
+ where
+  comparePackages (_, Nothing) = True
+  comparePackages (Package _ expectedVersion, Just (Package _ actualVersion)) =
+    case (expectedVersion, actualVersion) of
+      (AnyVersion, _) -> False
+      (Latest,     _) -> True
+      (x,          y) -> x /= y
