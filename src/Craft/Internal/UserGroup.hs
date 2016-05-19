@@ -131,7 +131,7 @@ userFromID (UserID n) = userFromStr $ show n
 
 useradd :: User -> Craft ()
 useradd User{..} =
-  exec_ "/usr/sbin/useradd" $ args ++ toArg "--gid" (_gid _group)
+  exec_ "useradd" $ args ++ toArg "--gid" (_gid _group)
  where
   args = Prelude.concat
     [ toArg "--uid"      _uid
@@ -208,7 +208,7 @@ instance Craftable Group Group where
   watchCraft grp = do
     _ <- $notImplemented "craft Group"
     -- groupFromName . groupname
-    exec_ "/usr/sbin/groupadd" $ toArg "--gid" (grp ^. gid) ++ [show $ grp ^. groupname]
-    exec_ "/usr/bin/gpasswd" ["--members", intercalate "," (map show (grp ^. members))
+    exec_ "groupadd" $ toArg "--gid" (grp ^. gid) ++ [show $ grp ^. groupname]
+    exec_ "gpasswd" ["--members", intercalate "," (map show (grp ^. members))
                              , show $ grp ^. groupname]
     return (Unchanged, grp)

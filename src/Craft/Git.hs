@@ -58,7 +58,7 @@ repo url' dirpath =
 
 
 gitBin :: FilePath
-gitBin = "/usr/bin/git"
+gitBin = "git"
 
 
 git :: String -> [String] -> Craft ()

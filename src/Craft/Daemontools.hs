@@ -55,7 +55,7 @@ restart s = execRestart $ path s
 
 
 execRestart :: Directory.Path -> Craft ()
-execRestart fp = exec_ "/usr/bin/svc" ["-t", fp]
+execRestart fp = exec_ "svc" ["-t", fp]
 
 
 logRunDefault :: FilePath -> String

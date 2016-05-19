@@ -105,7 +105,7 @@ reload = run "reload"
 
 updateRcD :: Service -> String -> Craft ()
 updateRcD svc cmd =
-  exec_ "/usr/sbin/update-rc.d" ["-f", svc ^. name, cmd]
+  exec_ "update-rc.d" ["-f", svc ^. name, cmd]
 
 
 instance Craftable Service Service where

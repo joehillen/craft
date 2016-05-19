@@ -8,7 +8,7 @@ setup = craft_ $ package "facter"
 
 
 fact :: String -> Craft String
-fact f = rmTrailingNL <$> ($stdoutOrError =<< exec "/usr/bin/facter" [f])
+fact f = rmTrailingNL <$> ($stdoutOrError =<< exec "facter" [f])
 
 
 rmTrailingNL :: String -> String

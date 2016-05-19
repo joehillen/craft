@@ -116,13 +116,13 @@ systemUserOptions n =
 
 userMod :: UserName -> [String] -> Craft ()
 userMod (UserName un) args =
-  exec_ "/usr/sbin/usermod" $ args ++ [un]
+  exec_ "usermod" $ args ++ [un]
 
 
 getUID :: UserName -> Craft (Maybe UserID)
 getUID (UserName "root") = return . Just $ UserID 0
 getUID (UserName un) =
-  exec "/usr/bin/id" ["--user", un] >>= \case
+  exec "id" ["--user", un] >>= \case
     ExecSucc r -> return . Just . UserID . read $ r ^. stdout
     ExecFail _ -> return Nothing
 
@@ -210,7 +210,7 @@ sameElems xs ys = S.fromList xs == S.fromList ys
 createUser :: UserOptions -> Craft ()
 createUser UserOptions{..} = do
   groupArg <- getGroupArg _optGroup
-  exec_ "/usr/sbin/useradd" $ optsToArgs ++ groupArg ++ groupsArg ++ [show _optName]
+  exec_ "useradd" $ optsToArgs ++ groupArg ++ groupsArg ++ [show _optName]
  where
   getGroupArg :: Maybe GroupName -> Craft [String]
   getGroupArg Nothing = return []

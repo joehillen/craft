@@ -24,12 +24,12 @@ link = Link
 
 
 exists :: FilePath -> Craft Bool
-exists lp = isExecSucc <$> exec "/usr/bin/test" ["-L", lp]
+exists lp = isExecSucc <$> exec "test" ["-L", lp]
 
 
 readlink :: Path -> Craft (Maybe FilePath)
 readlink (Path lp) =
-  exec "/bin/readlink" [lp] >>= \case
+  exec "readlink" [lp] >>= \case
     ExecFail _ -> return Nothing
     ExecSucc r -> return . Just . trimTrailing $ r ^. stdout
 

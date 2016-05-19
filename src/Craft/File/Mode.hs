@@ -137,7 +137,7 @@ fileModeFromString s = error $ "Mode `" ++ s ++ "` is too long"
 
 
 setMode :: Mode -> FilePath -> Craft ()
-setMode m fp = exec_ "/bin/chmod" [toOctalString m, fp]
+setMode m fp = exec_ "chmod" [toOctalString m, fp]
 
 
 toFileMode :: Mode -> FileMode

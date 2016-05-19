@@ -24,7 +24,7 @@ apt =
 
 
 aptGet :: [String] -> Craft ()
-aptGet args = exec_ "/usr/bin/apt-get" $ ["-q", "-y"] ++ args
+aptGet args = exec_ "apt-get" $ ["-q", "-y"] ++ args
 
 
 update :: Craft ()
@@ -40,7 +40,7 @@ dpkgQuery = exec dpkgQueryBin
 
 
 dpkgQueryBin :: String
-dpkgQueryBin = "/usr/bin/dpkg-query"
+dpkgQueryBin = "dpkg-query"
 
 
 dpkgQueryStatus :: String -> Craft ExecResult
@@ -135,11 +135,11 @@ packageFromDebFile f = do
 
 dpkgInstall :: File -> Craft ()
 dpkgInstall f =
-  exec_ "/usr/bin/dpkg" ["-i", f ^. File.path]
+  exec_ "dpkg" ["-i", f ^. File.path]
 
 
 dpkgDebBin :: FilePath
-dpkgDebBin = "/usr/bin/dpkg-deb"
+dpkgDebBin = "dpkg-deb"
 
 
 dpkgDebShow :: String -> File -> Craft String

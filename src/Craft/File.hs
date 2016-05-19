@@ -225,7 +225,7 @@ write = fileWrite
 
 
 exists :: FilePath -> Craft Bool
-exists fp = isExecSucc <$> exec "/usr/bin/test" ["-f", fp]
+exists fp = isExecSucc <$> exec "test" ["-f", fp]
 
 
 get :: FilePath -> Craft (Maybe File)

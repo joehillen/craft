@@ -94,7 +94,7 @@ multipleRootOwned paths m = map go paths
 
 
 exists :: Path -> Craft Bool
-exists p = isExecSucc <$> exec "/usr/bin/test" ["-d", p]
+exists p = isExecSucc <$> exec "test" ["-d", p]
 
 
 instance Craftable Directory Directory where
@@ -150,5 +150,5 @@ get dp =
 
 getFiles :: Path -> Craft [File]
 getFiles dp = do
-  fns <- parseExecStdout getFilesParser "/bin/ls" ["-a", "-1", dp]
+  fns <- parseExecStdout getFilesParser "ls" ["-a", "-1", dp]
   catMaybes <$> mapM (File.get . (</> dp)) fns

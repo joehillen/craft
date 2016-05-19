@@ -39,8 +39,8 @@ opts =
 
 createGroup :: Name -> Options -> Craft Group
 createGroup gn Options{..} = do
-  exec_ "/usr/sbin/groupadd" args
-  exec_ "/usr/bin/gpasswd" [ "--members", intercalate "," (map show optUsers)
+  exec_ "groupadd" args
+  exec_ "gpasswd" [ "--members", intercalate "," (map show optUsers)
                            , show gn]
   fromName gn >>= \case
     Nothing -> $craftError $ "createGroup `" ++ show gn ++ "` failed. Not Found!"
