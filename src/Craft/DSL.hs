@@ -136,32 +136,3 @@ withEnvVar name val go = do
 isExecSucc :: ExecResult -> Bool
 isExecSucc (ExecSucc _) = True
 isExecSucc (ExecFail _) = False
-
-
--- | Free CraftDSL functions
-execF :: CraftEnv -> Command -> Args -> Free CraftDSL ExecResult
-execF ce cmd args = liftF $ Exec ce cmd args id
-
-
-execF_ :: CraftEnv -> Command -> Args -> Free CraftDSL ()
-execF_ ce cmd args = liftF $ Exec_ ce cmd args ()
-
-
-fileReadF :: CraftEnv -> FilePath -> Free CraftDSL BS.ByteString
-fileReadF ce fp = liftF $ FileRead ce fp id
-
-
-fileWriteF :: CraftEnv -> FilePath -> BS.ByteString -> Free CraftDSL ()
-fileWriteF ce fp content = liftF $ FileWrite ce fp content ()
-
-
-sourceFileF :: CraftEnv -> FilePath -> FilePath -> Free CraftDSL ()
-sourceFileF ce src dest = liftF $ SourceFile ce src dest ()
-
-
-findSourceFileF :: CraftEnv -> FilePath -> Free CraftDSL [FilePath]
-findSourceFileF ce name = liftF $ FindSourceFile ce name id
-
-
-readSourceFileF :: CraftEnv -> FilePath -> Free CraftDSL BS.ByteString
-readSourceFileF ce fp = liftF $ ReadSourceFile ce fp id
