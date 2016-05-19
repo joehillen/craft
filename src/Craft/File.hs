@@ -233,11 +233,19 @@ get fp =
   getStats fp >>= \case
     Nothing -> return Nothing
     Just (m, o, g) -> do
-      content' <- fileRead fp
       return . Just $ file fp & mode    .~ m
                               & ownerID .~ o
                               & groupID .~ g
-                              & content ?~ content'
+                              & content .~ Nothing
+
+
+getWithContent :: FilePath -> Craft (Maybe File)
+getWithContent fp =
+  get fp >>= \case
+    Nothing -> return Nothing
+    Just f  -> do
+      content' <- fileRead fp
+      return . Just $ f & content ?~ content'
 
 
 md5sum :: FilePath -> Craft String

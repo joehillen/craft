@@ -86,7 +86,6 @@ instance ConfigFormat a => Show (Config a) where
 
 
 get :: ConfigFormat a => FilePath -> Craft (Maybe (Config a))
-get fp =
-  File.get fp >>= \case
-    Nothing -> return Nothing
-    Just f  -> Just <$> configFromFile f
+get fp = File.getWithContent fp >>= \case
+  Nothing -> return Nothing
+  Just f  -> Just <$> configFromFile f

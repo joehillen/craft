@@ -43,10 +43,8 @@ In order of priority:
    - mode
    - owner
    - group
- * Manage `File` and `FileContent` separately
-   (unexpected calls to readFile are slow over the network and usually unnecessary)
- * Add `ToFileContent` and `FromFileContent` typeclasses
  * Refactor file content sourcing (pluggable sourcers: `cp`, `rsync`, `S3`, `http`, etc)
+   - Maybe use Inject for Free, i.e. "Data Types A La Carte"
  * grep
  * Escaping Exec args, i.e. spaces, quotes, pipes, etc
  * Export the most common smart-constructors, e.g. `file`, `directory`, `user`, etc

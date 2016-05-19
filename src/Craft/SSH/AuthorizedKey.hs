@@ -57,9 +57,9 @@ userFile user =
 
 
 get :: User -> Craft [AuthorizedKey]
-get user = do
-  pks <- parseFile parsePublicKeys (user ^. to userFile . File.path)
-  return $ map (AuthorizedKey user) pks
+get user = File.get (user ^. to userFile . File.path) >>= \case
+  Nothing -> return []
+  Just f  -> map (AuthorizedKey user) <$> parseFile parsePublicKeys (f^.File.path)
 
 
 authkeysToMap :: [AuthorizedKey] -> Map.Map String PublicKey

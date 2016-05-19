@@ -96,6 +96,7 @@ parseExecStdout parser cmd args = do
   parseExecResult r parser s
 
 
+-- XXX: What if the file doesn't exist?
 parseFile :: Parser a -> FilePath -> Craft a
 parseFile parser fp = do
   str <- B8.unpack <$> fileRead fp

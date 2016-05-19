@@ -43,7 +43,7 @@ hostsMap f (Hosts cfgs) = Hosts $ Prelude.map f cfgs
 
 get :: Craft Hosts
 get =
-  File.get hostsfp >>= \case
+  File.getWithContent hostsfp >>= \case
     Nothing -> $craftError $ hostsfp ++ " not found!"
     Just f  -> case f ^. File.content of
                  Nothing -> $craftError $ hostsfp ++ " not found!"

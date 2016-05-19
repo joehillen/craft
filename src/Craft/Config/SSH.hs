@@ -56,10 +56,7 @@ userPath uc = userDir (uc ^. user) ^. Directory.path </> "config"
 
 
 get :: FilePath -> Craft (Maybe (Config SSHConfig))
-get fp =
-  File.get fp >>= \case
-    Nothing -> return Nothing
-    Just f  -> Just <$> configFromFile f
+get = Craft.Config.get
 
 
 bodyLookup :: String -> Body -> Maybe String
