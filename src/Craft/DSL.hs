@@ -16,7 +16,6 @@ import           Text.Megaparsec.String
 import           System.FilePath ((</>))
 
 import           Craft.Types
-import           Craft.Helpers
 
 
 -- | Craft DSL
@@ -76,16 +75,16 @@ parseExecResult :: ExecResult -> Parsec String a -> String -> Craft a
 parseExecResult execr parser str =
   case parse parser (showProc $ execResultProc execr) str of
     Right x -> return x
-    Left err ->
-      $craftError $ concatMap appendNL
-        [ "parseExecResult error:"
-        , "<<<< process >>>>"
-        , showProc $ execResultProc execr
-        , "<<<< output >>>>"
-        , str
-        , "<<<< parse error >>>>"
-        , show err
-        ]
+    Left err -> $craftError $
+      unlines
+      [ "parseExecResult error:"
+      , "<<<< process >>>>"
+      , showProc $ execResultProc execr
+      , "<<<< output >>>>"
+      , str
+      , "<<<< parse error >>>>"
+      , show err
+      ]
 
 
 -- | better than grep

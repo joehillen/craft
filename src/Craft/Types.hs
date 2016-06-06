@@ -216,16 +216,17 @@ execResultProc (ExecSucc succr) = succr ^. succProc
 
 
 instance Show FailResult where
-  show r = concatMap appendNL [ "exec failed!"
-                              , "<<<< process >>>>"
-                              , showProc (r ^. failProc)
-                              , "<<<< exit code >>>>"
-                              , show (r ^. exitcode)
-                              , "<<<< stdout >>>>"
-                              , r ^. failStdout
-                              , "<<<< stderr >>>>"
-                              , r ^. failStderr
-                              ]
+  show r = unlines
+           [ "exec failed!"
+           , "<<<< process >>>>"
+           , showProc (r ^. failProc)
+           , "<<<< exit code >>>>"
+           , show (r ^. exitcode)
+           , "<<<< stdout >>>>"
+           , r ^. failStdout
+           , "<<<< stderr >>>>"
+           , r ^. failStderr
+           ]
 
 
 showProc :: CreateProcess -> String
