@@ -18,7 +18,7 @@ apt =
   { _pmGetter         = getAptPackage
   , _pmInstaller      = aptInstall
   , _pmUpgrader       = aptInstall
-  , _pmUninstaller    = aptRemove
+  , _pmUninstaller    = aptPurge
   }
 
 
@@ -49,15 +49,13 @@ dpkgQueryStatus pn = dpkgQuery ["-s", pn]
 expectOutput :: String -> [String] -> Craft String
 expectOutput cmd args = do
   r <- $stdoutOrError =<< exec cmd args
-  when (null r) $
-    $craftError $ formatToString ("'"%string%"' returned an empty result!")
-                                 (unwords $ cmd:args)
+  when (null r) $ $craftError $ formatToString ("'"%string%"' returned an empty result!")
+                                               (unwords $ cmd:args)
   return r
 
 
 dpkgQueryShow :: String -> String -> Craft String
-dpkgQueryShow pattern n =
-  expectOutput dpkgQueryBin [ "--show", "--showformat", pattern, n ]
+dpkgQueryShow pattern n = expectOutput dpkgQueryBin [ "--show", "--showformat", pattern, n ]
 
 
 dpkgQueryVersion :: String -> Craft String
@@ -100,13 +98,14 @@ aptRemove :: Package -> Craft ()
 aptRemove Package{..} = aptGet ["remove", _pkgName]
 
 
-purge :: Package -> Craft ()
-purge Package{..} = aptGet ["remove", _pkgName, "--purge"]
+aptPurge :: Package -> Craft ()
+aptPurge Package{..} = aptGet ["remove", _pkgName, "--purge"]
 
 
-data Deb = Deb { _debFile :: File
-               , _debPkg  :: Package
-               }
+data Deb = Deb
+  { _debFile :: File
+  , _debPkg  :: Package
+  }
   deriving (Eq, Show)
 makeLenses ''Deb
 
