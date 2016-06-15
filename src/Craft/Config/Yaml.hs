@@ -24,4 +24,8 @@ get :: (FromJSON a, ToJSON a) => FilePath -> Craft (Maybe (Config (YamlFormat a)
 get = Craft.Config.get
 
 
+config :: (FromJSON a, ToJSON a) => FilePath -> a -> Config (YamlFormat a)
+config fp = Craft.Config.config fp . YamlFormat
+
+
 makeLenses ''YamlFormat
