@@ -3,8 +3,6 @@ module Craft.Checksum where
 import           Control.Lens
 
 import           Craft
-import           Craft.File (File)
-import qualified Craft.File as File
 
 data Checksum
   = CRC    String
@@ -51,7 +49,7 @@ data Result
 -- 'Mismatched' is returned containing the actual 'Checksum'.
 -- Otherwise 'Matched' is returned.
 check :: File -> Checksum -> Craft Result
-check f chksum = exec (command chksum) [f ^. File.path] >>= \case
+check f chksum = exec (command chksum) [f ^. path] >>= \case
   ExecFail r -> return $ Failed r
   ExecSucc r -> return $
     let mk = case chksum of

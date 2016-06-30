@@ -10,19 +10,17 @@ import           Control.Lens
 import           Control.Monad.Reader
 import qualified Data.Map.Strict       as Map
 
-import           Craft.Directory       (Directory)
-import qualified Craft.Directory       as Dir
-
 -- |Re-exports
 import           Control.Monad.Catch   as X
 import           System.FilePath       as X
 import           System.Exit           (ExitCode(..))
 
 import           Craft.Internal        as X
+import           Craft.Craftable       as X
 
 
 withCWD :: Directory -> Craft a -> Craft a
-withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. Dir.path)
+withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. directoryPath)
 
 
 craftEnv :: PackageManager -> CraftEnv

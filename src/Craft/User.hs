@@ -1,19 +1,4 @@
-
-module Craft.User
-( module Craft.User
-, User(..)
-, UserID(..)
-, UserName(..)
-, username
-, uid
-, comment
-, group
-, groups
-, home
-, passwordHash
-, shell
-)
-where
+module Craft.User where
 
 import           Control.Lens hiding (un)
 import           Data.List (intercalate)
@@ -24,19 +9,18 @@ import           System.FilePath ((</>))
 import qualified Craft.Group as Group
 import           Craft.Internal
 import           Craft.Internal.Helpers
-import qualified Craft.Internal.UserGroup as UG
-import           Craft.Internal.UserGroup hiding (gid)
+import           Craft.Internal.UserGroup
 
 
 type Name = UserName
 
 
 name :: Lens' User Name
-name = username
+name = userName
 
 
 gid :: Lens' User GroupID
-gid = group . UG.gid
+gid = userGroup . Craft.Internal.gid
 
 
 data UserOptions =
@@ -142,7 +126,7 @@ setComment un comment' = userMod un ["--comment", comment']
 setGroup :: UserName -> GroupName -> Craft ()
 setGroup un gn =
   Group.fromName gn  >>= \case
-    Just g  -> userMod un $ toArg "--gid" (g ^. UG.gid)
+    Just g  -> userMod un $ toArg "--gid" (g ^. Craft.Internal.gid)
     Nothing -> $craftError $ formatToString ("setGroup `"%shown%"` `"%shown%"` failed. Group `"%shown%"` not found!") un gn gn
 
 
@@ -152,43 +136,18 @@ setGroups un gns = userMod un ["--groups", intercalate "," $ map show gns]
 
 
 setHome :: UserName -> FilePath -> Craft ()
-setHome un path = userMod un ["--home", path]
-
-
-instance Craftable UserOptions User where
-  watchCraft uopts = do
-    let notfound = "craft `"++uopts ^. optName++"` failed. Not Found!"
-    let un = UserName $ uopts ^. optName
-    fromName un >>= \case
-      Nothing           -> do
-        createUser uopts
-        fromName un >>= \case
-          Nothing          -> $craftError notfound
-          Just createdUser -> do
-            madeChanges <- ensureUserOpts createdUser uopts
-            if not madeChanges
-              then return (Created, createdUser)
-              else fromName un >>= \case
-                Nothing -> $craftError notfound
-                Just u  -> return (Created, u)
-      Just existingUser -> do
-        madeChanges <- ensureUserOpts existingUser uopts
-        if not madeChanges
-          then return (Unchanged, existingUser)
-          else fromName un >>= \case
-            Nothing -> $craftError notfound
-            Just u  -> return (Updated, u)
+setHome un homepath = userMod un ["--home", homepath]
 
 
 ensureUserOpts :: User -> UserOptions -> Craft Bool
 ensureUserOpts user UserOptions{..} = do
   let checks =
-        [ maybeOpt _optUID     (user ^. uid)               setUID
-        , opt      _optComment (user ^. comment)           setComment
-        , maybeOpt _optGroup   (user ^. group . groupname) setGroup
-        , opt      _optHome    (user ^. home)              setHome
-        , maybeOpt _optShell   (user ^. shell)             setShell
-        , if sameElems _optGroups (user ^. groups)
+        [ maybeOpt _optUID     (user ^. uid)                   setUID
+        , opt      _optComment (user ^. userComment)           setComment
+        , maybeOpt _optGroup   (user ^. userGroup . groupName) setGroup
+        , opt      _optHome    (user ^. userHome)              setHome
+        , maybeOpt _optShell   (user ^. userShell)             setShell
+        , if sameElems _optGroups (user ^. userGroups)
             then setGroups un _optGroups >> return True
             else return False
         --TODO: password, salt, lock
@@ -216,7 +175,7 @@ createUser UserOptions{..} = do
   getGroupArg Nothing = return []
   getGroupArg (Just gn) =
     Group.fromName gn >>= \case
-      Just g  -> return $ toArg "--gid" $ g ^. Group.gid
+      Just g  -> return $ toArg "--gid" $ g ^. Craft.Internal.gid
       Nothing -> $craftError $ "Failed to create User `"++_optName++"` " ++ "with group `"++show gn++"`. Group not found!"
   groupsArg = toArg "--groups" $ intercalate "," (map show _optGroups)
   optsToArgs =

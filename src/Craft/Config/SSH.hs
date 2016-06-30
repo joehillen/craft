@@ -7,13 +7,8 @@ import           Text.Megaparsec
 
 import           Craft hiding (try)
 import           Craft.Config
-import qualified Craft.Directory as Directory
-import           Craft.File (file)
-import qualified Craft.File as File
-import           Craft.File.Mode
 import           Craft.Internal.Helpers
 import           Craft.SSH
-import           Craft.User (User)
 import           Craft.Internal.Helpers.Parsing
 
 
@@ -52,7 +47,7 @@ instance ConfigFormat SSHConfig where
 
 
 userPath :: UserConfig -> FilePath
-userPath uc = userDir (uc ^. user) ^. Directory.path </> "config"
+userPath uc = userDir (uc ^. user) ^. path </> "config"
 
 
 get :: FilePath -> Craft (Maybe (Config SSHConfig))
@@ -82,9 +77,9 @@ instance Craftable UserConfig UserConfig where
   watchCraft cfg = do
     craft_ $ userDir $ cfg ^. user
     w <- watchCraft_ $ file (userPath cfg)
-                       & File.mode          .~ Mode RW O O
-                       & File.ownerAndGroup .~ cfg ^. user
-                       & File.strContent    .~ show cfg
+                       & mode          .~ Mode RW O O
+                       & ownerAndGroup .~ cfg ^. user
+                       & strContent .~ show cfg
     return (w, cfg)
 
 

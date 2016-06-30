@@ -1,11 +1,11 @@
 module Craft.Hostname where
 
-import Control.Lens
+import           Control.Lens
+import           Control.Monad.Logger (logInfo)
 import qualified Data.Text as T
-import qualified Craft.File as File
+
+import           Craft
 import qualified Craft.Hosts as Hosts
-import Craft.Internal
-import Control.Monad.Logger (logInfo)
 
 
 data Hostname = Hostname String
@@ -23,7 +23,7 @@ instance Craftable Hostname Hostname where
     if oldhn /= hn then do
       $logInfo . T.pack $ "Hostname " ++ oldhn ++ " /= " ++ hn
       hosts' <- craft $ Hosts.set (Hosts.Name hn) (Hosts.IP "127.0.1.1") hosts
-      craft_ $ File.file "/etc/hostname" & File.strContent .~ hn
+      craft_ $ file "/etc/hostname" & strContent .~ hn
       exec_ "hostname" [hn]
       craft_ $ Hosts.deleteName (Hosts.Name oldhn) hosts'
       (Hostname newhn) <- get
@@ -32,7 +32,7 @@ instance Craftable Hostname Hostname where
                                          ++ " Got: " ++ newhn
       return (Updated, Hostname hn)
     else do
-      craft_ $ File.file "/etc/hostname" & File.strContent .~ hn
+      craft_ $ file "/etc/hostname" & strContent .~ hn
       case Hosts.lookup (Hosts.IP "127.0.1.1") hosts of
         Just names ->
           if Hosts.Name hn `elem` names then

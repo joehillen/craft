@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Directory
 ( module Craft.Directory
 , setGroupID
@@ -14,45 +15,14 @@ import           Formatting
 import           System.FilePath
 
 import           Craft.Directory.Parser
-import           Craft.File (File)
 import qualified Craft.File as File
 import           Craft.File.Mode
-import           Craft.Group (Group, GroupID(..))
 import qualified Craft.Group as Group
 import           Craft.Internal
-import           Craft.Internal.FileDirectory
-import           Craft.User (User, UserID(..))
 import qualified Craft.User as User
 
 
 type Path = FilePath
-
-
-data Directory =
-  Directory
-  { _path    :: Path
-  , _mode    :: Mode
-  , _ownerID :: UserID
-  , _groupID :: GroupID
-  }
-  deriving (Eq, Show)
-makeLenses ''Directory
-
-
-owner :: Setter Directory Directory () User
-owner = sets (\functor d -> doit d (functor ()))
- where doit d o = d & ownerID .~ (o ^. User.uid)
-
-
-group :: Setter Directory Directory () Group
-group = sets (\functor d -> doit d (functor ()))
- where doit d g = d & groupID .~ (g ^. Group.gid)
-
-
-ownerAndGroup :: Setter Directory Directory () User
-ownerAndGroup = sets (\functor d -> doit d (functor ()))
- where doit d u = d & owner .~ u
-                    & group .~ (u ^. User.group)
 
 
 getOwner :: Directory -> Craft User
@@ -71,20 +41,10 @@ getGroup d =
     Just g -> return g
 
 
-directory :: Path -> Directory
-directory dp =
-  Directory
-  { _path    = dp
-  , _mode    = Mode RWX RX RX
-  , _ownerID = UserID 0
-  , _groupID = GroupID 0
-  }
-
-
 multiple :: [Path] -> Mode -> User -> Group -> [Directory]
 multiple paths mode' owner' group' = map go paths
  where
-  go p = Directory p mode' (owner' ^. User.uid) (group' ^. Group.gid)
+  go p = Directory p mode' (owner' ^. uid) (group' ^. gid)
 
 
 multipleRootOwned :: [Path] -> Mode -> [Directory]
@@ -95,50 +55,6 @@ multipleRootOwned paths m = map go paths
 
 exists :: Path -> Craft Bool
 exists p = isExecSucc <$> exec "test" ["-d", p]
-
-
-instance Craftable Directory Directory where
-  watchCraft d = do
-    let dp = d ^. path
-        setMode'  = setMode (d ^. mode) dp
-        setOwner' = setOwnerID (d ^. ownerID) dp
-        setGroup' = setGroupID (d ^. groupID) dp
-        error' str = $craftError
-           $ formatToString ("craft Directory `"%string%"` failed! "%string)
-                            dp str
-        verifyMode m =
-          when (m /= d ^. mode) $
-            error' $ formatToString ("Wrong Mode: "%shown%" Expected: "%shown)
-                                    m (d ^. mode)
-        verifyOwner o =
-          when (o /= d ^. ownerID) $
-            error' $ formatToString ("Wrong Owner ID: "%shown%" Expected: "%shown)
-                                    o (d ^. ownerID)
-        verifyGroup g =
-          when (g /= d ^. groupID) $
-            error' $ formatToString ("Wrong Group ID: "%shown%" Expected: "%shown)
-                                    g (d ^. groupID)
-        verifyStats (m, o, g) =
-          verifyMode m >> verifyOwner o >> verifyGroup g
-    getStats dp >>= \case
-      Nothing -> do
-        exec_ "mkdir" ["-p", dp]
-        setMode' >> setOwner' >> setGroup'
-        getStats dp >>= \case
-          Nothing -> error' "Not Found."
-          Just stats' -> verifyStats stats' >> return (Created, d)
-      Just (m', o', g') -> do
-        let checks = [ (d^.mode    == m', setMode')
-                     , (d^.ownerID == o', setOwner')
-                     , (d^.groupID == g', setGroup')
-                     ]
-        mapM_ (uncurry unless) checks
-        if all fst checks then
-          return (Unchanged, d)
-        else
-          getStats dp >>= \case
-            Nothing -> error' "Not Found."
-            Just stats' -> verifyStats stats' >> return (Updated, d)
 
 
 get :: Path -> Craft (Maybe Directory)

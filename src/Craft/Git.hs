@@ -38,10 +38,10 @@ type URL = String
 
 data Repo
   = Repo
-    { _url       :: URL
-    , _directory :: Dir.Directory
-    , _version   :: Version
-    , _depth     :: Maybe Int
+    { _gitUrl       :: URL
+    , _gitDirectory :: Directory
+    , _gitVersion   :: Version
+    , _gitDepth     :: Maybe Int
     }
   deriving (Eq, Show)
 makeLenses ''Repo
@@ -50,10 +50,10 @@ makeLenses ''Repo
 repo :: URL -> Dir.Path -> Repo
 repo url' dirpath =
   Repo
-  { _url       = url'
-  , _directory = Dir.directory dirpath
-  , _version   = Latest "master"
-  , _depth     = Nothing
+  { _gitUrl       = url'
+  , _gitDirectory = directory dirpath
+  , _gitVersion   = Latest "master"
+  , _gitDepth     = Nothing
   }
 
 
@@ -103,24 +103,24 @@ getVersion = Commit <$> parseExecStdout (some alphaNumChar) gitBin ["rev-parse",
 
 
 get :: Dir.Path -> Craft (Maybe Repo)
-get path =
-  Dir.get path >>= \case
+get dp =
+  Dir.get dp >>= \case
     Nothing -> return Nothing
     Just dir -> withCWD dir $ do
       !url'     <- getURL
       !version' <- getVersion
       return . Just
-             $ Repo { _directory = dir
-                    , _url       = url'
-                    , _version   = version'
-                    , _depth     = Nothing
+             $ Repo { _gitDirectory = dir
+                    , _gitUrl       = url'
+                    , _gitVersion   = version'
+                    , _gitDepth     = Nothing
                     }
 
 
 instance Craftable Repo Repo where
   watchCraft r = do
-    let dp = r ^. directory . Dir.path
-        ver = r ^. version
+    let dp = r ^. gitDirectory . path
+        ver = r ^. gitVersion
         verify ver' =
           case ver of
             Commit _ ->
@@ -131,7 +131,7 @@ instance Craftable Repo Repo where
             _ -> return ()
         checkoutCommit :: Craft Version
         checkoutCommit = do
-          setURL $ r ^. url
+          setURL $ r ^. gitUrl
           git "fetch" [origin]
           git "checkout" ["--force", show ver]
           git "reset" ["--hard"]
@@ -141,20 +141,20 @@ instance Craftable Repo Repo where
 
     Dir.get dp >>= \case
       Nothing -> do
-        case r ^. depth of
-          Nothing -> git "clone" [r ^. url, dp]
-          Just d  -> git "clone" ["--depth", show d, r ^. url, dp]
+        case r ^. gitDepth of
+          Nothing -> git "clone" [r ^. gitUrl, dp]
+          Just d  -> git "clone" ["--depth", show d, r ^. gitUrl, dp]
         Dir.get dp >>= \case
           Nothing -> $craftError $ "craft Git.Repo `"++show r++"` failed! "
                                 ++ "Clone Failed. Directory `"++dp++"` not found."
           Just dir -> do
-            craft_ $ r ^. directory
+            craft_ $ r ^. gitDirectory
             withCWD dir $ do
               ver' <- checkoutCommit
-              return (Created, r & version .~ ver' )
+              return (Created, r & gitVersion .~ ver' )
 
       Just dir -> do
-        craft_ $ r ^. directory
+        craft_ $ r ^. gitDirectory
         withCWD dir $ do
           !beforeVersion <- getVersion
           ver' <- checkoutCommit
@@ -162,4 +162,4 @@ instance Craftable Repo Repo where
             Latest branchName -> git "pull" [origin, branchName]
             _                 -> return ()
           return ( if beforeVersion == ver' then Unchanged else Updated
-                 , r & version .~ ver')
+                 , r & gitVersion .~ ver')

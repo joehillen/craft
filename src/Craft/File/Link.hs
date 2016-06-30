@@ -1,7 +1,8 @@
 module Craft.File.Link where
 
-import Craft
 import Control.Lens
+
+import Craft
 
 
 newtype Target = Target FilePath
@@ -12,11 +13,13 @@ newtype Path = Path FilePath
 
 data Link
  = Link
-   { _target :: Target
-   , _path   :: Path
+   { _linkTarget :: Target
+   , _linkPath   :: Path
    }
   deriving (Eq, Show)
 makeLenses ''Link
+
+-- TODO: intsance FileLike Link where
 
 
 link :: Target -> Path -> Link
@@ -42,21 +45,21 @@ create (Link t p) = justdoit t p
 
 instance Craftable Link Link where
   watchCraft l = do
-    let lp = l ^. path
+    let lp = l ^. linkPath
     readlink lp >>= \case
       Nothing -> do
         craft_ l
         return (Created, l)
       Just target' ->
-        if Target target' == l ^. target then
+        if Target target' == l ^. linkTarget then
           return (Unchanged, l)
         else do
           craft_ l
           return (Updated, l)
 
   craft_ l = do
-    let lp = l ^. path
-    let tp = l ^. target
+    let lp = l ^. linkPath
+    let tp = l ^. linkTarget
     create l
     readlink lp >>= \case
       Nothing -> $craftError $ "craft `" ++ show l ++ "` failed! Not Found."
@@ -64,4 +67,4 @@ instance Craftable Link Link where
         when (Target target' /= tp) $
           $craftError $ "craft `" ++ show l ++ "` failed! "
                      ++ "Wrong Target: " ++ target' ++ " "
-                     ++ "Expected: "    ++ show (l ^. target)
+                     ++ "Expected: "    ++ show (l ^. linkTarget)

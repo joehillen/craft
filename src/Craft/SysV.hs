@@ -61,18 +61,18 @@ service sn = Service { _name = sn
 
 getStatus :: String -> Craft Status
 getStatus sn =
-  exec (path sn) ["status"] >>= \case
+  exec (serviceFilePath sn) ["status"] >>= \case
     (ExecFail _) -> return Stopped
     (ExecSucc _) -> return Running
 
 
-path :: String -> FilePath
-path sn = "/etc/init.d" </> sn
+serviceFilePath :: String -> FilePath
+serviceFilePath sn = "/etc/init.d" </> sn
 
 
 get :: String -> Craft (Maybe Service)
 get sn = do
-  exists <- File.exists (path sn)
+  exists <- File.exists (serviceFilePath sn)
   if exists then do
     status' <- getStatus sn
     return . Just $ Service { _name   = sn
@@ -84,7 +84,7 @@ get sn = do
 
 
 run :: String -> Service -> Craft ()
-run cmd svc = exec_ (path (svc ^. name)) [cmd]
+run cmd svc = exec_ (serviceFilePath (svc ^. name)) [cmd]
 
 
 start :: Service -> Craft ()

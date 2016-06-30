@@ -7,7 +7,6 @@ import           Data.String.Utils (replace)
 import           Formatting
 
 import           Craft
-import           Craft.File (File)
 import qualified Craft.File as File
 import qualified Craft.Package as Package
 
@@ -135,7 +134,7 @@ packageFromDebFile f = do
 
 dpkgInstall :: File -> Craft ()
 dpkgInstall f =
-  exec_ "dpkg" ["-i", f ^. File.path]
+  exec_ "dpkg" ["-i", f ^. path]
 
 
 dpkgDebBin :: FilePath
@@ -144,7 +143,7 @@ dpkgDebBin = "dpkg-deb"
 
 dpkgDebShow :: String -> File -> Craft String
 dpkgDebShow pattern f =
-  expectOutput dpkgDebBin [ "--show", "--showformat", pattern, f ^. File.path ]
+  expectOutput dpkgDebBin [ "--show", "--showformat", pattern, f ^. path ]
 
 
 dpkgDebVersion :: File -> Craft String
@@ -188,7 +187,7 @@ makeLenses ''PPA
 findPPAFiles :: PPA -> Craft [File]
 findPPAFiles (PPA url) = do
   fs <- File.find "/etc/apt/sources.list.d" ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
-  let nonEmpty = (> 0) . length . view (File.content . _Just . unpackedChars)
+  let nonEmpty = (> 0) . length . view (fileContent . _Just . unpackedChars)
   return $ filter nonEmpty fs
 
 

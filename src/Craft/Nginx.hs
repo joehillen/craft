@@ -2,8 +2,6 @@ module Craft.Nginx where
 
 import           Craft
 import           Craft.Internal.Helpers
-import           Craft.File (File, file)
-import qualified Craft.File as File
 import qualified Craft.SysV as SysV
 
 import Control.Lens
@@ -96,8 +94,8 @@ sslServer ssl =
     , _listen           = (AnyAddress, 443, ["ssl"])
     , _serverDirectives =
         [ ("ssl",                 ["on"])
-        , ("ssl_certificate",     [ssl ^. sslCert . File.path])
-        , ("ssl_certificate_key", [ssl ^. sslKey . File.path])
+        , ("ssl_certificate",     [ssl ^. sslCert . path])
+        , ("ssl_certificate_key", [ssl ^. sslKey . path])
         , ("ssl_session_cache",   ["shared:SSL:10m"])
         , ("ssl_session_timeout", ["5m"])
         , ("ssl_protocols",       ["TLSv1", "TLSv1.1", "TLSv1.2"])
@@ -155,8 +153,8 @@ instance Show Server where
 
 
 instance Show Location where
-  show (Location path dirs sublocations) =
-    "location " ++ path ++ " {\n" ++ indent 2 (
+  show (Location fp dirs sublocations) =
+    "location " ++ fp ++ " {\n" ++ indent 2 (
         unlines $ map showDirective dirs
                ++ map show sublocations) ++
     "}\n"
@@ -170,7 +168,7 @@ showListen (addr, port, args) =
 toFile :: Config -> File
 toFile c =
   file (sitesDir </> show (c ^. configPriority) ++ "_" ++ c ^. configName ++ ".conf")
-    & File.strContent .~ show c
+  & strContent .~ show c
 
 
 reload :: Craft ()

@@ -111,8 +111,8 @@ craftExecPath = maybe [] (splitOn ":") . Map.lookup "PATH" . view craftExecEnv
 -- TESTME
 prependPath :: FilePath -> Craft a -> Craft a
 prependPath newpath go = do
-  path <- asks craftExecPath
-  withPath (newpath:path) go
+  execpath <- asks craftExecPath
+  withPath (newpath:execpath) go
 
 
 -- TESTME
@@ -135,3 +135,53 @@ withEnvVar name val go = do
 isExecSucc :: ExecResult -> Bool
 isExecSucc (ExecSucc _) = True
 isExecSucc (ExecFail _) = False
+
+setMode :: Mode -> FilePath -> Craft ()
+setMode m fp = exec_ "chmod" [toOctalString m, fp]
+
+setOwnerID :: UserID -> FilePath -> Craft ()
+setOwnerID (UserID i) fp = exec_ "chown" [show i, fp]
+
+
+setGroupID :: GroupID -> FilePath -> Craft ()
+setGroupID (GroupID i) fp = exec_ "chgrp" [show i, fp]
+
+
+stat :: Command
+stat = "stat"
+
+getMode :: FilePath -> Craft Mode
+getMode fp = parseExecStdout modeParser stat ["-c", "%a", fp]
+
+
+getOwnerID :: FilePath -> Craft UserID
+getOwnerID fp = UserID <$> parseExecStdout digitParser stat ["-c", "%u", fp]
+
+
+getGroupID :: FilePath -> Craft GroupID
+getGroupID fp = GroupID <$> parseExecStdout digitParser stat ["-c", "%g", fp]
+
+
+getStats :: FilePath -> Craft (Maybe (Mode, UserID, GroupID))
+getStats fp =
+  exec stat ["-c", "%a:%u:%g", fp] >>= \case
+    ExecFail _ -> return Nothing
+    ExecSucc r -> Just <$> parseExecResult (ExecSucc r) statsParser (r ^. stdout)
+
+
+statsParser :: Parser (Mode, UserID, GroupID)
+statsParser = do
+  mode' <- modeParser
+  void $ char ':'
+  owner' <- UserID <$> digitParser
+  void $ char ':'
+  group' <- GroupID <$> digitParser
+  return (mode', owner', group')
+
+
+modeParser :: Parser Mode
+modeParser = fromOctalString <$> some digitChar
+
+
+digitParser :: Parser Int
+digitParser = read <$> some digitChar

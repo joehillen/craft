@@ -6,11 +6,6 @@ import           Text.Megaparsec
 import           Text.Megaparsec.String
 
 import           Craft
-import           Craft.Directory (Directory, directory)
-import qualified Craft.Directory as Dir
-import           Craft.File.Mode
-import           Craft.User (User)
-import qualified Craft.User as User
 
 
 data KeyType
@@ -34,9 +29,9 @@ instance Show KeyType where
 
 userDir :: User -> Directory
 userDir user =
-  directory ((user^.User.home)</>".ssh")
-  & Dir.mode          .~ Mode RWX O O
-  & Dir.ownerAndGroup .~ user
+  directory ((user^.userHome)</>".ssh")
+  & mode          .~ Mode RWX O O
+  & ownerAndGroup .~ user
 
 
 parseKeyType :: Parser KeyType

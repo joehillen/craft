@@ -28,6 +28,7 @@ library
   exposed-modules:     Craft
                      , Craft.Apt
                      , Craft.Checksum
+                     , Craft.Craftable
                      , Craft.Config
                      , Craft.Config.Ini
                      , Craft.Config.Json
@@ -47,7 +48,6 @@ library
                      , Craft.Helpers
                      , Craft.Hostname
                      , Craft.Hosts
-                     , Craft.Internal.FileDirectory
                      , Craft.Internal.Helpers
                      , Craft.Internal.Helpers.Parsing
                      , Craft.Internal.UserGroup

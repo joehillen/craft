@@ -11,7 +11,6 @@ import           Text.Megaparsec
 import           Text.Megaparsec.String
 
 import           Craft hiding (try)
-import           Craft.File (File)
 import qualified Craft.File as File
 import           Craft.Internal.Helpers.Parsing
 
@@ -28,11 +27,13 @@ data S3File
 
 makeLenses ''S3File
 
+-- TODO: instance FileLike S3File
+
 
 s3file :: FilePath -> String -> S3File
 s3file fp source' =
   S3File
-  { _file    = File.file fp
+  { _file    = Craft.file fp
   , _domain  = "s3.amazonaws.com"
   , _source  = source'
   , _version = AnyVersion
@@ -101,8 +102,8 @@ header = (,) <$> noneOf ":" `someTill` try (string ": ")
 
 instance Craftable S3File S3File where
   watchCraft s3f = do
-    let s3f' = s3f & file . File.content .~ Nothing
-    let fp = s3f' ^. file . File.path
+    let s3f' = s3f & Craft.S3File.file . fileContent .~ Nothing
+    let fp = s3f' ^. Craft.S3File.file . path
     let downloadFile = do
           hdrs <- authHeaders "GET" s3f
           exec_ "curl" $ hdrs ++ ["-XGET", "-s", "-L", "-o", fp, s3f' ^. url]
@@ -143,7 +144,7 @@ instance Craftable S3File S3File where
                   _              -> verify etag
                 return Created
 
-        fw <- watchCraft_ $ s3f' ^. file
+        fw <- watchCraft_ $ s3f' ^. Craft.S3File.file
         if changed w then
           return (w, s3f')
         else

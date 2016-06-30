@@ -1,13 +1,10 @@
+{-# LANGUAGE TypeFamilies #-}
 module Craft.Config where
 
 import           Control.Lens
 import qualified Data.ByteString.Char8 as B8
 
 import           Craft
-import           Craft.User (User, UserID)
-import           Craft.Group (GroupID)
-import           Craft.File.Mode (Mode)
-import           Craft.File (File, file)
 import qualified Craft.File as File
 
 
@@ -20,7 +17,7 @@ data Config a
 
 config :: ConfigFormat a => FilePath -> a -> Config a
 config fp cfg =
-  Config { _configFile = file fp & File.strContent .~ showConfig cfg
+  Config { _configFile = file fp & strContent .~ showConfig cfg
          , _configs    = cfg
          }
 
@@ -32,18 +29,17 @@ class ConfigFormat a where
 
   configFromFile :: File -> Craft (Config a)
   configFromFile f = do
-    bs <- case f ^. File.content of
-            Nothing -> fileRead (f ^. File.path)
+    bs <- case f ^. fileContent of
+            Nothing -> fileRead (f ^. path)
             Just bs -> return bs
-    cfgs <- parse (f ^. File.path) (B8.unpack bs)
+    cfgs <- parse (f ^. path) (B8.unpack bs)
     return Config { _configFile = f
                   , _configs    = cfgs
                   }
 
   fileFromConfig :: Config a -> Craft File
   fileFromConfig cfg =
-    return $ _configFile cfg
-      & File.strContent .~ showConfig (_configs cfg) ++ "\n"
+    return $ _configFile cfg & strContent .~ showConfig (_configs cfg) ++ "\n"
 
 
   {-# MINIMAL showConfig, parse #-}
@@ -51,26 +47,12 @@ class ConfigFormat a where
 
 makeLenses ''Config
 
-
-path :: Lens' (Config a) FilePath
-path = configFile . File.path
-
-
-mode :: Lens' (Config a) Mode
-mode = configFile . File.mode
-
-
-ownerID :: Lens' (Config a) UserID
-ownerID = configFile . File.ownerID
-
-
-groupID :: Lens' (Config a) GroupID
-groupID = configFile . File.groupID
-
-
-ownerAndGroup :: Setter (Config a) (Config a) () User
-ownerAndGroup = configFile . File.ownerAndGroup
-
+instance FileLike (Config a) where
+  type PathType (Config a) = FilePath
+  path = configFile . filePath
+  mode = configFile . fileMode
+  ownerID = configFile . fileOwnerID
+  groupID = configFile . fileGroupID
 
 instance ConfigFormat a => Craftable (Config a) (Config a) where
   watchCraft cfg = do

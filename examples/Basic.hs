@@ -6,26 +6,17 @@ module Main where
 import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Logger (runStdoutLoggingT)
-import qualified Data.ByteString.Char8 as B8
-import           Data.Maybe
 
 import           Craft
 import           Craft.Apt (apt)
 import qualified Craft.Apt as Apt
-import           Craft.Directory (directory)
-import qualified Craft.Directory as Dir
-import           Craft.File (File(..), file)
 import qualified Craft.File as File
-import           Craft.File.Mode
-import qualified Craft.Group as Group
 import           Craft.Hostname (Hostname(..))
-import qualified Craft.Package as Package
 import qualified Craft.Pip as Pip
 import           Craft.Run.Vagrant
 import           Craft.SSH
 import           Craft.SSH.PublicKey
 import           Craft.SSH.AuthorizedKey
-import           Craft.User (User(..), createUser, UserName(..))
 import qualified Craft.User as User
 
 
@@ -89,24 +80,24 @@ craftNormalUser :: String
                 -> PublicKey
                 -> FilePath
                 -> Craft User
-craftNormalUser name fullname sshPubKey userShell = do
+craftNormalUser name fullname sshPubKey userShell' = do
   -- we only need to install zsh if someone is using it.
-  when (userShell == zsh) $ craft_ $ package "zsh"
+  when (userShell' == zsh) $ craft_ $ package "zsh"
   -- create the user
   user <- craft $ User.userOptions name
                   & User.optComment    .~ fullname
                   & User.optCreateHome .~ False
-                  & User.optShell      .~ Just userShell
+                  & User.optShell      .~ Just userShell'
   -- create the user's home directory
-  craft_ $ directory (user ^. User.home) & Dir.ownerAndGroup .~ user
+  craft_ $ directory (user ^. userHome) & ownerAndGroup .~ user
   -- add the user's public key
   craft_ $ AuthorizedKey user sshPubKey
   -- if the user's shell is bash,
   -- then install the standard bashrc
-  when (userShell == bash) $ do
-    let bashrcFP = (user ^. User.home)</>".bashrc"
+  when (userShell' == bash) $ do
+    let bashrcFP = (user ^. userHome)</>".bashrc"
     unlessM (File.exists bashrcFP) $ exec_ "cp" ["/etc/bash.bashrc", bashrcFP]
-    craft_ $ file bashrcFP & File.ownerAndGroup .~ user
+    craft_ $ file bashrcFP & ownerAndGroup .~ user
   return user
 
 
@@ -115,9 +106,9 @@ craftAdmin :: String
            -> PublicKey
            -> FilePath
            -> Craft User
-craftAdmin name fullname sshPubKey userShell = do
-  user <- craftNormalUser name fullname sshPubKey userShell
+craftAdmin name fullname sshPubKey userShell' = do
+  user <- craftNormalUser name fullname sshPubKey userShell'
   -- add the user to sudoers
   craft_ $ file ("/etc/sudoers.d"</>"10_"++name)
-    & File.strContent .~ name++" ALL=(ALL) NOPASSWD: ALL\n"
+           & strContent .~ name++" ALL=(ALL) NOPASSWD: ALL\n"
   return user

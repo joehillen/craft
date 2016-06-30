@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Internal.UserGroup where
 
 import Control.Lens
@@ -9,57 +10,6 @@ import Text.Megaparsec.String
 import Craft.Internal
 import Craft.Internal.Helpers
 import Craft.Internal.Helpers.Parsing
-
-
-newtype UserName = UserName String
-                   deriving (Eq, Ord)
-newtype UserID = UserID Int
-                 deriving (Eq, Show, Ord)
-newtype GroupName = GroupName String
-                    deriving (Eq, Ord)
-newtype GroupID = GroupID Int
-                  deriving (Eq, Show, Ord)
-
-instance Show GroupName where
-  show (GroupName n) = n
-
-instance Show UserName where
-  show (UserName n) = n
-
-instance ToArg UserID where
-  toArg arg (UserID n) = [arg, show n]
-
-instance ToArg GroupID where
-  toArg arg (GroupID n) = [arg, show n]
-
-data User
-  = User
-    { _username     :: UserName
-    , _uid          :: UserID
-    , _comment      :: String
-    , _group        :: Group
-    , _groups       :: [GroupName]
-    , _home         :: FilePath
-    , _passwordHash :: String
-    --, _salt         :: String
-    --, _locked       :: Bool
-    , _shell        :: FilePath
-    --, system       :: Bool
-    }
- deriving (Eq, Show)
-
-
-data Group
-  = Group
-    { _groupname :: GroupName
-    , _gid       :: GroupID
-    , _members   :: [UserName]
-    }
-  deriving (Eq, Show)
-
-
-makeLenses ''User
-makeLenses ''Group
 
 
 colon :: Parser Char
@@ -97,14 +47,14 @@ userFromStr nameOrIdStr =
       grps <- getGroups nameS
       s <- $stdoutOrError =<< getent "shadow" (show nameS)
       passwordHash' <- parseGetent shadowParser "shadow" (show nameS) s
-      return . Just $ User { _username     = nameS
+      return . Just $ User { _userName     = nameS
                            , _uid          = uid'
-                           , _group        = grp
-                           , _groups       = grps
-                           , _passwordHash = passwordHash'
-                           , _home         = home'
-                           , _shell        = shell'
-                           , _comment      = comment'
+                           , _userGroup        = grp
+                           , _userGroups       = grps
+                           , _userPasswordHash = passwordHash'
+                           , _userHome         = home'
+                           , _userShell        = shell'
+                           , _userComment      = comment'
                            }
 
 
@@ -131,56 +81,16 @@ userFromID (UserID n) = userFromStr $ show n
 
 useradd :: User -> Craft ()
 useradd User{..} =
-  exec_ "useradd" $ args ++ toArg "--gid" (_gid _group)
+  exec_ "useradd" $ args ++ toArg "--gid" (_gid _userGroup)
  where
   args = Prelude.concat
     [ toArg "--uid"      _uid
-    , toArg "--comment"  _comment
-    , toArg "--groups"   $ intercalate "," $ map show _groups
-    , toArg "--home"     _home
-    , toArg "--password" _passwordHash
-    , toArg "--shell"    _shell
+    , toArg "--comment"  _userComment
+    , toArg "--groups"   $ intercalate "," $ map show _userGroups
+    , toArg "--home"     _userHome
+    , toArg "--password" _userPasswordHash
+    , toArg "--shell"    _userShell
     ]
-
-
-instance Craftable User User where
-  watchCraft user = do
-    let name = show $ user ^. username
-    let notFound = $craftError $ "User `" ++ name ++ "` not found!"
-    userFromStr name >>= \case
-      Nothing     -> do
-        useradd user
-        userFromStr name >>= \case
-          Nothing -> notFound
-          Just actualUser -> do
-            verify user actualUser
-            return (Created, actualUser)
-      Just existingUser -> do
-        res <- mapM (\(test', act) -> if test' user existingUser
-                                      then return True
-                                      else act >> return False)
-                 [ (test username,            $notImplemented "set username")
-                 , (test uid,                 $notImplemented "set uid")
-                 , (test (group . groupname), $notImplemented "set group")
-                 , (test groups,              $notImplemented "set groups")
-                 , (test home,                $notImplemented "set home")
-                 , (test passwordHash,        $notImplemented "set passwordHash")
-                 , (test shell,               $notImplemented "set shell")
-                 ]
-        if and res
-        then return (Unchanged, existingUser)
-        else
-          userFromStr (show name) >>= \case
-            Nothing -> notFound
-            Just user'' -> do
-              verify user'' user
-              return (Updated, user'')
-
-   where
-    test :: Eq a => Lens' b a -> b -> b -> Bool
-    test l a b = a ^. l == b ^. l
-    verify :: User -> User -> Craft ()
-    verify _expectedUser _actualUser = $notImplemented "verify User"
 
 
 -- TESTME
@@ -204,11 +114,3 @@ groupFromID :: GroupID -> Craft (Maybe Group)
 groupFromID (GroupID n )= groupFromStr $ show n
 
 
-instance Craftable Group Group where
-  watchCraft grp = do
-    _ <- $notImplemented "craft Group"
-    -- groupFromName . groupname
-    exec_ "groupadd" $ toArg "--gid" (grp ^. gid) ++ [show $ grp ^. groupname]
-    exec_ "gpasswd" ["--members", intercalate "," (map show (grp ^. members))
-                             , show $ grp ^. groupname]
-    return (Unchanged, grp)

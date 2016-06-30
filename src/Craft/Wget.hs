@@ -6,7 +6,6 @@ import           Data.Monoid ((<>))
 import           Craft
 import           Craft.Checksum (Checksum)
 import qualified Craft.Checksum as Checksum
-import           Craft.File (File, file, content)
 import qualified Craft.File as File
 
 data Wget = Wget
@@ -30,8 +29,8 @@ wget url' destfp =
 
 instance Craftable Wget Wget where
   watchCraft wg = do
-    let destf  = wg ^. dest & content .~ Nothing
-    let destfp = wg ^. dest . File.path
+    let destf  = wg ^. dest & fileContent .~ Nothing
+    let destfp = wg ^. dest . path
     let mismatchError actual = "Checksum Mismatch for `"<>wg ^. url<>"`. "
                             <> "Expected `"<>show (wg ^. chksum)<>"` "
                             <> "Got `"<>show actual<>"`"
@@ -68,4 +67,4 @@ instance Craftable Wget Wget where
 
 run :: Wget -> Craft ()
 run wg = exec_ "wget" $ (wg ^. args)
-                     ++ ["-O", wg ^. dest . File.path, wg ^. url]
+                     ++ ["-O", wg ^. dest . path, wg ^. url]

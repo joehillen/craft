@@ -1,11 +1,13 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE FlexibleContexts   #-}
 --{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Types
 ( module Craft.Types
 , module Craft.Error
+, module Craft.File.Mode
 )
 where
 
@@ -13,18 +15,31 @@ import           Control.Lens
 import           Control.Monad.Catch
 import           Control.Monad.IO.Class (MonadIO)
 import           Control.Monad.Logger (LoggingT, MonadLogger, monadLoggerLog)
-import           Control.Monad.Reader (ReaderT, MonadReader, runReaderT, ask)
+import           Control.Monad.Reader (ReaderT, MonadReader, runReaderT)
 import qualified Control.Monad.Trans.Class as Trans
 import           Control.Monad.Trans.Free (FreeT, MonadFree, iterT)
 import           Data.ByteString (ByteString)
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as B8
+import           Data.ByteString.Lens (unpackedChars)
 import           Data.Map.Strict (Map)
 import qualified Data.Text as T
+import           Data.Maybe (isNothing)
 import           Data.Versions (parseV)
 import           Language.Haskell.TH.Syntax (Q, Exp)
 import           System.Process
 
 import           Craft.Error
-import           Craft.Helpers
+import           Craft.Internal.Helpers
+import           Craft.File.Mode
+
+data CraftEnv
+  = CraftEnv
+    { _craftPackageManager :: PackageManager
+    , _craftSourcePaths    :: [FilePath]
+    , _craftExecEnv        :: ExecEnv
+    , _craftExecCWD        :: FilePath
+    }
 
 
 newtype Craft a = Craft { unCraft :: ReaderT CraftEnv (FreeT CraftDSL (LoggingT IO)) a }
@@ -44,14 +59,6 @@ type StdOut  = String
 type StdErr  = String
 type Args    = [String]
 type Command = FilePath
-
-
-data Watched
-  = Unchanged
-  | Created
-  | Updated
-  | Removed
-  deriving (Eq, Show)
 
 
 data SuccResult
@@ -105,6 +112,78 @@ type ExecEnv = Map String String
 type CWD = FilePath
 type PackageName = String
 
+newtype UserName = UserName String
+                   deriving (Eq, Ord)
+newtype UserID = UserID Int
+                 deriving (Eq, Show, Ord)
+newtype GroupName = GroupName String
+                    deriving (Eq, Ord)
+newtype GroupID = GroupID Int
+                  deriving (Eq, Show, Ord)
+
+instance Show GroupName where
+  show (GroupName n) = n
+
+instance Show UserName where
+  show (UserName n) = n
+
+instance ToArg UserID where
+  toArg arg (UserID n) = [arg, show n]
+
+instance ToArg GroupID where
+  toArg arg (GroupID n) = [arg, show n]
+
+
+
+class Eq (PathType a) => FileLike a where
+  type PathType a :: *
+  path    :: Lens' a (PathType a)
+  mode    :: Lens' a Mode
+  ownerID :: Lens' a UserID
+  groupID :: Lens' a GroupID
+
+
+data File
+  = File
+  { _filePath    :: FilePath
+  , _fileMode    :: Mode
+  , _fileOwnerID :: UserID
+  , _fileGroupID :: GroupID
+  , _fileContent :: Maybe ByteString
+  }
+
+
+file :: FilePath -> File
+file fp =
+  File
+  { _filePath    = fp
+  , _fileMode    = Mode RW R R
+  , _fileOwnerID = UserID 0
+  , _fileGroupID = GroupID 0
+  , _fileContent = Nothing
+  }
+
+
+
+data Directory
+  = Directory
+  { _directoryPath    :: FilePath
+  , _directoryMode    :: Mode
+  , _directoryOwnerID :: UserID
+  , _directoryGroupID :: GroupID
+  }
+  deriving (Show, Eq)
+
+
+directory :: FilePath -> Directory
+directory dp =
+  Directory
+  { _directoryPath    = dp
+  , _directoryMode    = Mode RWX RX RX
+  , _directoryOwnerID = UserID 0
+  , _directoryGroupID = GroupID 0
+  }
+
 
 data Version
   = Version String
@@ -151,15 +230,6 @@ noPackageManager = let err _ = $craftError "No Package Manager" in
   }
 
 
-data CraftEnv
-  = CraftEnv
-    { _craftPackageManager :: PackageManager
-    , _craftSourcePaths    :: [FilePath]
-    , _craftExecEnv        :: ExecEnv
-    , _craftExecCWD        :: FilePath
-    }
-
-
 data CraftDSL next
   = Exec  CraftEnv Command Args (ExecResult -> next)
   | Exec_ CraftEnv Command Args next
@@ -173,41 +243,104 @@ data CraftDSL next
 
 makeLenses ''PackageManager
 makeLenses ''CraftEnv
-makePrisms ''Watched
 makeLenses ''Package
 makePrisms ''Version
 makeLenses ''FailResult
 makeLenses ''SuccResult
+makeLenses ''File
+makeLenses ''Directory
 
 
-class Craftable a b | a -> b where
-  watchCraft :: a -> Craft (Watched, b)
+strContent :: Lens' File String
+strContent = lens (view $ fileContent . _Just . unpackedChars)
+                  (\f s -> f & fileContent .~ Just (B8.pack s))
 
-  craft :: a -> Craft b
-  craft x = snd <$> watchCraft x
+instance Eq File where
+  (==) a b = (a ^. filePath == b ^. filePath)
+          && (a ^. fileMode == b ^. fileMode)
+          && (a ^. fileOwnerID == b ^. fileOwnerID)
+          && (a ^. fileGroupID == b ^. fileGroupID)
+          && (  isNothing (a ^. fileContent)
+             || isNothing (b ^. fileContent)
+             || (a ^. fileContent == b ^. fileContent))
 
-  craft_ :: a -> Craft ()
-  craft_ = void . craft
+instance Show File where
+  show f = "File { _filePath = " ++ show (f ^. filePath) ++
+                ", _fileMode = " ++ show (f ^. fileMode) ++
+                ", _fileOwnerID = " ++ show (f ^. fileOwnerID) ++
+                ", _fileGroupID = " ++ show (f ^. fileGroupID) ++
+                ", _fileContent = " ++ showContent (f ^. fileContent) ++
+               " }"
+    where
+      showContent Nothing  = "Nothing"
+      showContent (Just c) = "Just " ++ show (BS.take 30 c) ++ "..."
 
-  watchCraft_ :: a -> Craft Watched
-  watchCraft_ x = fst <$> watchCraft x
-
-  {-# MINIMAL watchCraft #-}
 
 
-class Destroyable a where
-  watchDestroy :: a -> Craft (Watched, Maybe a)
 
-  destroy :: a -> Craft (Maybe a)
-  destroy x = snd <$> watchDestroy x
 
-  destroy_ :: a -> Craft ()
-  destroy_ = void . destroy
+instance FileLike File where
+  type PathType File = FilePath
+  path = filePath
+  mode = fileMode
+  ownerID = fileOwnerID
+  groupID = fileGroupID
 
-  watchDestroy_ :: a -> Craft Watched
-  watchDestroy_ x = fst <$> watchDestroy x
 
-  {-# MINIMAL watchDestroy #-}
+instance FileLike Directory where
+  type PathType Directory = FilePath
+  path = directoryPath
+  mode = directoryMode
+  ownerID = directoryOwnerID
+  groupID = directoryGroupID
+
+
+data User
+  = User
+    { _userName         :: UserName
+    , _uid              :: UserID
+    , _userComment      :: String
+    , _userGroup        :: Group
+    , _userGroups       :: [GroupName]
+    , _userHome         :: FilePath
+    , _userPasswordHash :: String
+    --, _salt         :: String
+    --, _locked       :: Bool
+    , _userShell        :: FilePath
+    --, system       :: Bool
+    }
+ deriving (Eq, Show)
+
+
+data Group
+  = Group
+    { _groupName    :: GroupName
+    , _gid          :: GroupID
+    , _groupMembers :: [UserName]
+    }
+  deriving (Eq, Show)
+
+
+makeLenses ''User
+makeLenses ''Group
+
+
+
+
+owner :: FileLike a => Setter a a () User
+owner = sets (\functor filelike -> doit filelike (functor ()))
+ where doit filelike o = filelike & ownerID .~ (o ^. uid)
+
+
+group :: FileLike a => Setter a a () Group
+group = sets (\functor filelike -> doit filelike (functor ()))
+ where doit filelike g = filelike & groupID .~ (g ^. gid)
+
+
+ownerAndGroup :: FileLike a => Setter a a () User
+ownerAndGroup = sets (\functor filelike -> doit filelike (functor ()))
+ where doit filelike u = filelike & owner .~ u
+                                  & group .~ (u ^. userGroup)
 
 
 execResultProc :: ExecResult -> CreateProcess
@@ -264,89 +397,3 @@ latest :: PackageName -> Package
 latest n = Package n Latest
 
 
-instance Craftable Package Package where
-  watchCraft pkg = do
-    ce <- ask
-    let pm       = ce ^. craftPackageManager
-    let name     = pkg ^. pkgName
-    let version  = pkg ^. pkgVersion
-    let get      = (pm ^. pmGetter) name
-    let install  = (pm ^. pmInstaller) pkg
-    let upgrade  = (pm ^. pmUpgrader) pkg
-    let pkgError = "craft Package `" ++ name ++ "` failed! "
-    let notFound = pkgError ++ "Not Found."
-    let wrongVersion got = pkgError ++ "Wrong Version: " ++ show got ++ " Excepted: " ++ show version
-    get >>= \case                                                                -- Is the package installed?
-      Nothing           -> do                                                    -- It's not installed.
-        install                                                                  -- Install it.
-        get >>= \case                                                            -- Verify the installation.
-          Nothing           -> $craftError notFound                              -- Not Found. The install failed!
-          Just installedPkg ->
-            let ok = return (Created, installedPkg)
-            in case version of                                                   -- Make sure it's the right version
-                 AnyVersion -> ok
-                 Latest     -> ok
-                 Version  _ -> if version == installedPkg ^. pkgVersion
-                                then ok
-                                else $craftError $ wrongVersion (installedPkg ^. pkgVersion)
-      Just installedPkg -> do                                                    -- Package was already installed.
-        let installedVersion = installedPkg ^. pkgVersion
-        case version of
-          AnyVersion -> return (Unchanged, installedPkg)
-          Latest     -> do                                                       -- Ensure it's the latest version.
-            upgrade
-            get >>= \case
-              Nothing          -> $craftError notFound                           -- Not found. Where did it go?
-              Just upgradedPkg ->
-                return $ if upgradedPkg ^. pkgVersion > installedPkg ^. pkgVersion -- If the package version increased,
-                          then (Updated, upgradedPkg)                            -- Then the package was upgraded
-                          else (Unchanged, upgradedPkg)                          -- Else it was already the latest.
-          Version _  ->                                                          -- Expecting a specific version
-            if version == installedVersion                                       -- Is the correct version installed?
-             then return (Unchanged, installedPkg)
-             else do
-               upgrade                                                           -- Try upgrading to the correct version.
-               get >>= \case
-                 Nothing          -> $craftError notFound                        -- Where did it go?
-                 Just upgradedPkg -> if version == upgradedPkg ^. pkgVersion     -- Is the correct version installed?
-                                      then return (Updated, upgradedPkg)
-                                      else $craftError $ wrongVersion (upgradedPkg ^. pkgVersion)
-
-
-instance Destroyable Package where
-  watchDestroy pkg = do
-    ce <- ask
-    let pm   = ce ^. craftPackageManager
-    let name = pkg ^. pkgName
-    let get  = (pm ^. pmGetter) name
-    get >>= \case
-      Nothing -> return (Unchanged, Nothing)
-      Just installedPkg -> do
-        (pm ^. pmUninstaller) pkg
-        get >>= \case
-          Nothing            -> return (Removed, Just installedPkg)
-          Just unexpectedPkg -> $craftError $ "destroy Package `" ++ name ++ "` failed! " ++ "Found: " ++ show unexpectedPkg
-
-
-changed :: Watched -> Bool
-changed = not . unchanged
-
-
-unchanged :: Watched -> Bool
-unchanged Unchanged = True
-unchanged _         = False
-
-
-created :: Watched -> Bool
-created Created = True
-created _       = False
-
-
-updated :: Watched -> Bool
-updated Updated = True
-updated _       = False
-
-
-removed :: Watched -> Bool
-removed Removed = True
-removed _       = False

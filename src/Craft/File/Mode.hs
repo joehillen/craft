@@ -1,7 +1,6 @@
 module Craft.File.Mode
 ( Mode(..)
 , ModeSet(..)
-, setMode
 , toFileMode
 , toMode
 , toHuman
@@ -18,8 +17,6 @@ import           Data.List
 import qualified System.Posix
 import           System.Posix (FileMode)
 import           Test.QuickCheck (Arbitrary, choose, arbitrary)
-
-import           Craft.Internal
 
 
 toHuman :: Mode -> String
@@ -134,10 +131,6 @@ fileModeFromString [u,g,o] =
 fileModeFromString [s,u,g,o] =
   fromIntegral $ digitToInt s * (8*8*8) .|. digitToInt u * (8*8) .|. digitToInt g * 8 .|. digitToInt o
 fileModeFromString s = error $ "Mode `" ++ s ++ "` is too long"
-
-
-setMode :: Mode -> FilePath -> Craft ()
-setMode m fp = exec_ "chmod" [toOctalString m, fp]
 
 
 toFileMode :: Mode -> FileMode

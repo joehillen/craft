@@ -1,10 +1,7 @@
 module Craft.Daemontools where
 
 import           Craft
-import           Craft.File (File, file)
 import qualified Craft.File as File
-import           Craft.File.Mode
-import           Craft.Directory (directory)
 import qualified Craft.Directory as Directory
 import qualified Craft.Upstart as Upstart
 
@@ -51,7 +48,7 @@ path Service{..} = _home </> _name
 
 
 restart :: Service -> Craft ()
-restart s = execRestart $ path s
+restart s = execRestart $ Craft.Daemontools.path s
 
 
 execRestart :: Directory.Path -> Craft ()
@@ -65,16 +62,16 @@ logRunDefault logdest =
 
 envFile :: Directory.Path -> (String, String) -> File
 envFile envDir (varname, varval) =
-  file (envDir </> varname) & File.mode       .~ Mode RW O O
-                            & File.strContent .~ varval
+  file (envDir </> varname) & mode       .~ Mode RW O O
+                            & strContent .~ varval
 
 
 getEnv :: Service -> Craft [(String, String)]
 getEnv svc = do
-  fs <- Directory.getFiles (path svc)
+  fs <- Directory.getFiles (Craft.Daemontools.path svc)
   return $ map go fs
  where
-  go f = (f ^. File.name, f ^. File.strContent)
+  go f = (f ^. File.name, f ^. strContent)
 
 
 {-
