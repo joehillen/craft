@@ -29,6 +29,7 @@ In order of priority:
  * Replace FilePath with [path](https://hackage.haskell.org/package/path)
  * Use Text
  * Use logger that supports callstacks
+ * Separate logger for DSL operations
  * Replace use of "error" with proper exception types.
  * Craftable User User
  * Remove Exec_
