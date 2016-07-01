@@ -3,6 +3,14 @@ module Craft
 , asks
 , ExitCode(..)
 , module X
+-- Control.Lens
+, (&)
+, (.~)
+, (^.)
+, (%~)
+, (?~)
+, view
+, to
 )
 where
 

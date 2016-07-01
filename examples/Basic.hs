@@ -3,7 +3,6 @@
 
 module Main where
 
-import           Control.Lens
 import           Control.Monad
 import           Control.Monad.Logger (runStdoutLoggingT)
 

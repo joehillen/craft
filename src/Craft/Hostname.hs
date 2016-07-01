@@ -1,6 +1,5 @@
 module Craft.Hostname where
 
-import           Control.Lens
 import           Control.Monad.Logger (logInfo)
 import qualified Data.Text as T
 

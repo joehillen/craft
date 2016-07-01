@@ -1,13 +1,12 @@
 module Craft.Pip where
 
-import Craft hiding (package, latest)
+import qualified Formatting as F
+import           Formatting hiding (char)
+import           Text.Megaparsec
+
+import           Craft hiding (package, latest)
 import qualified Craft
 import qualified Craft.File as File
-
-import Control.Lens hiding (noneOf)
-import Text.Megaparsec
-import Formatting hiding (char)
-import qualified Formatting as F
 
 
 newtype PipPackage = PipPackage Package
