@@ -38,11 +38,6 @@ In order of priority:
  * distinguish CraftEnv from EnvVars
    - maybe rename it to CraftSettings
  * Figure out how to use a ReaderT on top of Craft
- * HasField style fields for FileLike things:
-   - path
-   - mode
-   - owner
-   - group
  * Refactor file content sourcing (pluggable sourcers: `cp`, `rsync`, `S3`, `http`, etc)
    - Maybe use Inject for Free, i.e. "Data Types A La Carte"
  * grep
