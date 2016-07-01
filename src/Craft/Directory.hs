@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Directory
 ( module Craft.Directory
 , setGroupID

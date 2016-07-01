@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.File
 ( module Craft.File
 , setGroupID

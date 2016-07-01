@@ -44,8 +44,8 @@ class ConfigFormat a where
 
   {-# MINIMAL showConfig, parse #-}
 
-
 makeLenses ''Config
+
 
 instance FileLike (Config a) where
   type PathType (Config a) = FilePath
@@ -53,6 +53,7 @@ instance FileLike (Config a) where
   mode = configFile . fileMode
   ownerID = configFile . fileOwnerID
   groupID = configFile . fileGroupID
+
 
 instance ConfigFormat a => Craftable (Config a) (Config a) where
   watchCraft cfg = do
