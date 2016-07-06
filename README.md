@@ -30,6 +30,11 @@ In order of priority:
  * Use Text
  * Use logger that supports callstacks
  * Separate logger for DSL operations
+ * take CraftEnv out of runners
+   - make a new runner: runCraft :: CraftEnv PackageManager -> Craft a -> CraftDSL (LoggingT IO a)
+   - rename:
+     - runCraftLocal -> runLocal
+     - runCraftSSH   -> runSSH
  * Replace use of "error" with proper exception types.
  * Craftable User User
  * Remove Exec_

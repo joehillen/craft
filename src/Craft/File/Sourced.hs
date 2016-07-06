@@ -50,3 +50,12 @@ instance Craftable SourcedFile SourcedFile where
       sourceFile (sf ^. source) fp
       craft_ $ sf' ^. Craft.File.Sourced.file
       return (Created, sf')
+
+
+instance Destroyable SourcedFile where
+  watchDestroy sf = do
+    (w, mbf) <- watchDestroy $ sf^.Craft.File.Sourced.file
+    let res = case mbf of
+                Nothing -> Nothing
+                Just f  -> Just $ sf & Craft.File.Sourced.file .~ f
+    return (w, res)
