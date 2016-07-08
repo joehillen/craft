@@ -12,7 +12,7 @@ module Craft.Types
 where
 
 import           Control.Lens
-import           Control.Monad.Catch
+import           Control.Monad.Catch (MonadCatch, MonadThrow)
 import           Control.Monad.IO.Class (MonadIO)
 import           Control.Monad.Logger (LoggingT, MonadLogger, monadLoggerLog)
 import           Control.Monad.Reader (ReaderT, MonadReader, runReaderT)

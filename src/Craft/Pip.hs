@@ -15,10 +15,10 @@ newtype PipPackage = PipPackage Package
 
 setup :: Craft ()
 setup = do
-  mapM_ (craft_ . Craft.package) ["libffi-dev", "libssl-dev", "python-dev"]
+  craft_ $ map Craft.package ["libffi-dev", "libssl-dev", "python-dev"]
   let pippkg = Craft.package "python-pip"
   File.exists "/usr/local/bin/pip" >>= flip unless (craft_ pippkg)
-  mapM_ (craft_ . package) ["pyopenssl", "ndg-httpsclient", "pyasn1"]
+  craft_ $ map package ["pyopenssl", "ndg-httpsclient", "pyasn1"]
   craft_ $ latest "pip"
   destroy_ pippkg
   craft_ $ latest "setuptools"

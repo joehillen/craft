@@ -26,7 +26,7 @@ main =
       craft_ $ Hostname "craft-example-basic"
       void $ Apt.craftPackages packages
       Pip.setup
-      mapM_ craft pipPackages
+      craft_ pipPackages
       void craftAdmins
 
 

@@ -225,7 +225,7 @@ craftPackages :: [Package] -> Craft [Package]
 craftPackages packages = do
   whenM ((any comparePackages . zip packages) <$> mapM (Package.get . _pkgName) packages)
     update
-  mapM craft packages
+  craft packages
  where
   comparePackages (_, Nothing) = True
   comparePackages (Package _ expectedVersion, Just (Package _ actualVersion)) =

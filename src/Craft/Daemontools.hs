@@ -33,10 +33,9 @@ service name' =
 
 setup :: Directory.Path -> Craft ()
 setup home' = do
-  mapM_ (craft_ . package)
-    [ "daemontools"
-    , "daemontools-run"
-    ]
+  craft_ $ map package [ "daemontools"
+                       , "daemontools-run"
+                       ]
   craft_ $ directory home'
   Upstart.get "svscan" >>= \case
     Nothing     -> $craftError "Upstart service `svscan` not found!"

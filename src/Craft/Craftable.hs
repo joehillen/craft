@@ -1,11 +1,12 @@
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE UndecidableInstances #-}
 module Craft.Craftable where
 
 import           Control.Lens
 import           Control.Monad.Reader (ask)
 import qualified Data.ByteString.Lazy as BL
 import           Data.List (intercalate)
-import           Data.Maybe (isJust)
+import           Data.Maybe (isJust, catMaybes)
 import           Formatting hiding (char)
 
 import           Craft.DSL
@@ -78,6 +79,41 @@ class Destroyable a where
   watchDestroy_ x = fst <$> watchDestroy x
 
   {-# MINIMAL watchDestroy #-}
+
+
+instance Craftable a b => Craftable [a] [b] where
+  craft_ = mapM_ craft_
+  craft = mapM craft
+  watchCraft as = do
+    (ws, bs) <- unzip <$> mapM watchCraft as
+    let w = if all (== Unchanged) ws then
+              Unchanged
+            else if all (== Created) ws then
+              Created
+            else
+              Updated
+    return (w, bs)
+
+
+instance Destroyable a => Destroyable [a] where
+  destroy_ = mapM_ destroy_
+  destroy xs = do
+    rs <- mapM destroy xs
+    return $ case catMaybes rs of
+               [] -> Nothing
+               rs' -> Just rs'
+  watchDestroy xs = do
+    (ws, rs) <- unzip <$> mapM watchDestroy xs
+    let w = if all (== Unchanged) ws then
+              Unchanged
+            else if all (== Removed) ws then
+              Removed
+            else
+              Updated
+    let res = case catMaybes rs of
+                [] -> Nothing
+                rs' -> Just rs'
+    return (w, res)
 
 
 instance Craftable User.UserOptions User where
