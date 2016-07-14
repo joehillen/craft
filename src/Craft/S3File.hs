@@ -12,7 +12,6 @@ import           Text.Megaparsec.String
 
 import           Craft hiding (try)
 import qualified Craft.File as File
-import           Craft.Internal.Helpers.Parsing
 
 
 data S3File
@@ -43,7 +42,6 @@ s3file fp source' =
 
 url :: Getter S3File String
 url = to (\f -> "https://" ++ f ^. domain ++ "/" ++ f ^. source)
-
 
 
 -- | Add AWS Authentication Headers to curl commands
@@ -79,25 +77,26 @@ authHeaders method s3f =
              , "--header", "Authorization:AWS " ++ awsKeyID ++ ":" ++ sig
              ]
 
--- auth_header = "Authorization:AWS "+AWSAccessKeyId+":"+sig
--- date_header = "Date:"+ amazons3time
 
 getS3Sum :: S3File -> Craft (Maybe String)
 getS3Sum f = do
   hdrs <- authHeaders "HEAD" f
-  headers <- parseExecStdout httpHeaders "curl" (hdrs ++ ["-XHEAD", "-I", f ^. url])
+  headers <- parseExecStdout httpHeaders "curl" (hdrs ++ ["-s", "-XHEAD", "-I", f ^. url])
   return $ filter ('"' /=) <$> lookup "ETag" headers
 
 
 httpHeaders :: Parser [(String, String)]
 httpHeaders = do
   _ <- string "HTTP/1." >> oneOf "01" >> string " 200 OK" >> eol
-  some header
+  headers <- header `sepEndBy1` eol
+  return headers
 
 
 header :: Parser (String, String)
-header = (,) <$> noneOf ":" `someTill` try (string ": ")
-             <*> anyChar `manyTill` end
+header = do
+  k <- noneOf ":\r\n" `someTill` string ": "
+  v <- many $ noneOf "\r\n"
+  return (k,v)
 
 
 instance Craftable S3File S3File where
