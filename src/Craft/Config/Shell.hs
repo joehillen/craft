@@ -83,5 +83,5 @@ item = do
   void $ char '='
   -- TODO: quoted values
   value <- try (someTill (noneOf " \r\n#") (lookAhead (oneOf " \r\n#")) <* manyTill anyChar end)
-        <|> (space >> manyTill anyChar end >> return "")
+        <|> (many (oneOf " \t") >> manyTill anyChar end >> return "")
   return (name, value)

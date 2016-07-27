@@ -75,6 +75,12 @@ spec = do
                                 , ("b", "b")
                                 , ("c", "c")
                                 ]
+    it "parses multiple values with an empty field" $ do
+      parse parser "" "a=a\nb=\nc=c\n"
+      `shouldParse` ShellFormat [ ("a", "a")
+                                , ("b", "")
+                                , ("c", "c")
+                                ]
     it "works" $ do
       parse parser "" "#foo\na=a\nb=\n#c=c\nd= foo"
       `shouldParse` ShellFormat [ ("a", "a")
