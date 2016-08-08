@@ -133,7 +133,8 @@ packageFromDebFile f = do
 
 dpkgInstall :: File -> Craft ()
 dpkgInstall f =
-  exec_ "dpkg" ["-i", f ^. path]
+  withEnvVar "DEBIAN_FRONTEND" "noninteractive" $
+    exec_ "dpkg" ["-i", f ^. path]
 
 
 dpkgDebBin :: FilePath
