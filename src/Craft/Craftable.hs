@@ -259,7 +259,8 @@ instance Craftable File File where
     let fp = f ^. path
     -- FIXME: Don't use _Just
     let expectedMD5 = show . md5 . BL.fromStrict $ f ^. fileContent . _Just
-    let err str = $craftError $ "craft File `" ++ fp ++ "` failed! " ++ str
+    let err :: String -> Craft a
+        err str = $craftError $ "craft File `"++ fp ++"` failed! "++str
     let verifyMode m =
           when (m /= f ^. mode) $
             err $ "Wrong Mode: " ++ show m ++ " Expected: " ++ show (f ^. mode)
@@ -346,6 +347,7 @@ instance Craftable Directory Directory where
         setMode'  = setMode (d ^. mode) dp
         setOwner' = setOwnerID (d ^. ownerID) dp
         setGroup' = setGroupID (d ^. groupID) dp
+        error' :: String -> Craft a
         error' str = $craftError
            $ formatToString ("craft Directory `"%string%"` failed! "%string)
                             dp str

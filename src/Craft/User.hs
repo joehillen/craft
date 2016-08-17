@@ -142,22 +142,24 @@ setHome un homepath = userMod un ["--home", homepath]
 ensureUserOpts :: User -> UserOptions -> Craft Bool
 ensureUserOpts user UserOptions{..} = do
   let checks =
-        [ maybeOpt _optUID     (user ^. uid)                   setUID
-        , opt      _optComment (user ^. userComment)           setComment
-        , maybeOpt _optGroup   (user ^. userGroup . groupName) setGroup
-        , opt      _optHome    (user ^. userHome)              setHome
-        , maybeOpt _optShell   (user ^. userShell)             setShell
-        , if sameElems _optGroups (user ^. userGroups)
-            then setGroups un _optGroups >> return True
+        [ maybeOpt _optUID     (user^.uid)                   setUID
+        , opt      _optComment (user^.userComment)           setComment
+        , maybeOpt _optGroup   (user^.userGroup . groupName) setGroup
+        , opt      _optHome    (user^.userHome)              setHome
+        , maybeOpt _optShell   (user^.userShell)             setShell
+        , if sameElems _optGroups (user^.userGroups)
+            then setGroups username _optGroups >> return True
             else return False
         --TODO: password, salt, lock
         ] :: [Craft Bool]
   or <$> sequence checks
    where
-    un = UserName _optName
+    username = UserName _optName
+    opt :: Eq a => a -> a -> (UserName -> a -> Craft ()) -> Craft Bool
     opt expected actual setter
       | expected == actual = return False
-      | otherwise          = setter un expected >> return True
+      | otherwise          = setter username expected >> return True
+    maybeOpt :: Eq a => Maybe a -> a -> (UserName -> a -> Craft ()) -> Craft Bool
     maybeOpt Nothing _ _                   = return False
     maybeOpt (Just expected) actual setter = opt expected actual setter
 
