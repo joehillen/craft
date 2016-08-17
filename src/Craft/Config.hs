@@ -1,4 +1,3 @@
-{-# LANGUAGE TypeFamilies #-}
 module Craft.Config where
 
 import           Control.Lens
@@ -48,7 +47,7 @@ makeLenses ''Config
 
 
 instance FileLike (Config a) where
-  type PathType (Config a) = FilePath
+  type FileLikePath (Config a) = FilePath
   path = configFile . filePath
   mode = configFile . fileMode
   ownerID = configFile . fileOwnerID

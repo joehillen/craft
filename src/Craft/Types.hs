@@ -2,7 +2,6 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE TypeFamilies       #-}
 {-# LANGUAGE FlexibleContexts   #-}
---{-# LANGUAGE FlexibleInstances #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Types
 ( module Craft.Types
@@ -135,9 +134,9 @@ instance ToArg GroupID where
 
 
 
-class Eq (PathType a) => FileLike a where
-  type PathType a :: *
-  path    :: Lens' a (PathType a)
+class Eq (FileLikePath a) => FileLike a where
+  type FileLikePath a :: *
+  path    :: Lens' a (FileLikePath a)
   mode    :: Lens' a Mode
   ownerID :: Lens' a UserID
   groupID :: Lens' a GroupID
@@ -280,7 +279,7 @@ instance Show File where
 
 
 instance FileLike File where
-  type PathType File = FilePath
+  type FileLikePath File = FilePath
   path = filePath
   mode = fileMode
   ownerID = fileOwnerID
@@ -288,7 +287,7 @@ instance FileLike File where
 
 
 instance FileLike Directory where
-  type PathType Directory = FilePath
+  type FileLikePath Directory = FilePath
   path = directoryPath
   mode = directoryMode
   ownerID = directoryOwnerID

@@ -43,7 +43,7 @@ getGroup d =
 multiple :: [Path] -> Mode -> User -> Group -> [Directory]
 multiple paths mode' owner' group' = map go paths
  where
-  go p = Directory p mode' (owner' ^. uid) (group' ^. gid)
+  go p = Directory p mode' (owner'^.uid) (group'^.gid)
 
 
 multipleRootOwned :: [Path] -> Mode -> [Directory]
