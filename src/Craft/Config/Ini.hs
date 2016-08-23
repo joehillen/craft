@@ -31,7 +31,7 @@ config = Craft.Config.config
 
 instance ConfigFormat IniFormat where
   showConfig format = T.unpack . printIniWith (_settings format) $ _inifmt format
-  parse fp s =
+  parseConfig fp s =
     case parseIni (T.pack s) of
       Left err -> $craftError $ "Failed to parse ini file" ++ fp ++ ": " ++ err
 

@@ -19,7 +19,7 @@ instance ConfigFormat ShellFormat where
    where
      showkv :: (String, String) -> String
      showkv (k, v) = k++"="++v
-  parse fp s =
+  parseConfig fp s =
     case runParser parser fp s of
       Left err   -> $craftError $ show err
       Right cfgs -> return cfgs

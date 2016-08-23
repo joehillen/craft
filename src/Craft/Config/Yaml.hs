@@ -14,7 +14,7 @@ data YamlFormat a = (FromJSON a, ToJSON a) => YamlFormat { _yamlfmt :: a }
 
 instance (FromJSON a, ToJSON a) => ConfigFormat (YamlFormat a) where
   showConfig = B8.unpack . encode . _yamlfmt
-  parse fp s =
+  parseConfig fp s =
     case decodeEither (B8.pack s) of
       Left err -> $craftError $ "Failed to parse " ++ fp ++ " : " ++ err
       Right x  -> return $ YamlFormat x

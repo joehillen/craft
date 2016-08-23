@@ -16,22 +16,23 @@ data Config a
 
 config :: ConfigFormat a => FilePath -> a -> Config a
 config fp cfg =
-  Config { _configFile = file fp & strContent .~ showConfig cfg
-         , _configs    = cfg
-         }
+  Config
+  { _configFile = file fp & strContent .~ showConfig cfg
+  , _configs    = cfg
+  }
 
 
 class ConfigFormat a where
   showConfig :: a -> String
 
-  parse :: FilePath -> String -> Craft a
+  parseConfig :: FilePath -> String -> Craft a
 
   configFromFile :: File -> Craft (Config a)
   configFromFile f = do
     bs <- case f ^. fileContent of
             Nothing -> fileRead (f ^. path)
             Just bs -> return bs
-    cfgs <- parse (f ^. path) (B8.unpack bs)
+    cfgs <- parseConfig (f^.path) (B8.unpack bs)
     return Config { _configFile = f
                   , _configs    = cfgs
                   }
@@ -41,7 +42,7 @@ class ConfigFormat a where
     return $ _configFile cfg & strContent .~ showConfig (_configs cfg) ++ "\n"
 
 
-  {-# MINIMAL showConfig, parse #-}
+  {-# MINIMAL showConfig, parseConfig #-}
 
 makeLenses ''Config
 

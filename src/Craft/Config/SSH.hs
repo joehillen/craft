@@ -43,7 +43,7 @@ makeLenses ''UserConfig
 
 instance ConfigFormat SSHConfig where
   showConfig = show
-  parse = sshConfigParse
+  parseConfig = sshConfigParse
 
 
 userPath :: UserConfig -> FilePath

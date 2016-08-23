@@ -16,7 +16,7 @@ data JsonFormat a = (FromJSON a, ToJSON a) => JsonFormat { _jsonfmt :: a }
 
 instance (FromJSON a, ToJSON a) => ConfigFormat (JsonFormat a) where
   showConfig = B8.unpack . BSL.toStrict . encodePretty . _jsonfmt
-  parse fp s =
+  parseConfig fp s =
     case eitherDecodeStrict (B8.pack s) of
       Left err -> $craftError $ "Failed to parse " ++ fp ++ " : " ++ err
       Right x  -> return $ JsonFormat x
