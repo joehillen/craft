@@ -44,78 +44,87 @@ defaults = [ RunLevel0
            ]
 
 
-data Service = Service { _name   :: String
-                       , _status :: Status
-                       , _atBoot :: Maybe Bool
-                       }
+data Service = Service
+  { _serviceName   :: String
+  , _serviceStatus :: Status
+  , _serviceAtBoot :: Maybe Bool
+  }
   deriving (Eq, Show)
 makeLenses ''Service
 
 
 service :: String -> Service
-service sn = Service { _name = sn
-                     , _status = Running
-                     , _atBoot = Just True
-                     }
+service sn =
+  Service
+  { _serviceName   = sn
+  , _serviceStatus = Running
+  , _serviceAtBoot = Just True
+  }
 
 
-getStatus :: String -> Craft Status
-getStatus sn =
-  exec (serviceFilePath sn) ["status"] >>= \case
-    (ExecFail _) -> return Stopped
-    (ExecSucc _) -> return Running
-
-
-serviceFilePath :: String -> FilePath
-serviceFilePath sn = "/etc/init.d" </> sn
+servicePath :: String -> Craft (Path Abs FileP)
+servicePath sn = do
+  fn <- parseRelFile sn
+  return $ $(mkAbsDir "/etc/init.d")</>fn
 
 
 get :: String -> Craft (Maybe Service)
 get sn = do
-  exists <- File.exists (serviceFilePath sn)
+  sp <- servicePath sn
+  exists <- File.exists sp
   if exists then do
-    status' <- getStatus sn
-    return . Just $ Service { _name   = sn
-                            , _status = status'
-                            , _atBoot = Nothing
+    status' <- exec (fromAbsFile sp) ["status"]>>= \case
+                 (ExecFail _) -> return Stopped
+                 (ExecSucc _) -> return Running
+    return . Just $ Service { _serviceName   = sn
+                            , _serviceStatus = status'
+                            , _serviceAtBoot = Nothing
                             }
   else
     return Nothing
 
 
-run :: String -> Service -> Craft ()
-run cmd svc = exec_ (serviceFilePath (svc ^. name)) [cmd]
+status :: Service -> Craft Status
+status svc = do
+  sp <- servicePath $ svc^.serviceName
+  exec (fromAbsFile sp) ["status"] >>= \case
+    (ExecFail _) -> return Stopped
+    (ExecSucc _) -> return Running
+
+
+run_ :: String -> Service -> Craft ()
+run_ cmd svc = do
+  sp <- servicePath $ svc^.serviceName
+  exec_ (fromAbsFile sp) [cmd]
 
 
 start :: Service -> Craft ()
-start = run "start"
+start = run_ "start"
 
 
 stop :: Service -> Craft ()
-stop = run "stop"
+stop = run_ "stop"
 
 
 restart :: Service -> Craft ()
-restart = run "restart"
+restart = run_ "restart"
 
 
 reload :: Service -> Craft ()
-reload = run "reload"
+reload = run_ "reload"
 
 
 updateRcD :: Service -> String -> Craft ()
 updateRcD svc cmd =
-  exec_ "update-rc.d" ["-f", svc ^. name, cmd]
+  exec_ "update-rc.d" ["-f", svc^.serviceName, cmd]
 
 
 instance Craftable Service Service where
   watchCraft svc = do
-    let sn = svc ^. name
-    whenJust (svc ^. atBoot) $ \x ->
+    whenJust (svc^.serviceAtBoot) $ \x ->
       updateRcD svc (if x then "defaults" else "remove")
-
-    status' <- getStatus sn
-    case (svc ^. status, status') of
+    status' <- status svc
+    case (svc^.serviceStatus, status') of
       (Running, Running) -> return (Unchanged, svc)
       (Stopped, Stopped) -> return (Unchanged, svc)
       (Running, Stopped) -> do

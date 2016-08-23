@@ -16,14 +16,17 @@ data PrivateKey
 makeLenses ''PrivateKey
 
 
-path :: Getter PrivateKey FilePath
-path = to $ \pk -> (pk^.user.to userDir.Craft.path)</>(pk^.name)
+path :: PrivateKey -> Craft (Path Abs FileP)
+path pk = do
+  n <- parseRelFile $ pk^.name
+  return $ (pk^.user.to userDir.Craft.path)</>n
 
 
 instance Craftable PrivateKey PrivateKey where
   watchCraft pk = do
     craft_ $ userDir $ pk^.user
-    w <- watchCraft_ $ file (pk^.Craft.SSH.PrivateKey.path)
+    pkPath <- Craft.SSH.PrivateKey.path pk
+    w <- watchCraft_ $ file pkPath
                        & mode          .~ Mode RW O O
                        & ownerAndGroup .~ pk ^. user
                        & strContent    .~ pk ^. content

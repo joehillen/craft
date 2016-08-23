@@ -14,6 +14,9 @@ data Hostname = Hostname String
 get :: Craft Hostname
 get = Hostname <$> ($stdoutOrError =<< exec "hostname" [])
 
+hostnamePath :: Path Abs FileP
+hostnamePath = $(mkAbsFile "/etc/hostname")
+
 
 instance Craftable Hostname Hostname where
   watchCraft (Hostname hn) = do
@@ -22,7 +25,7 @@ instance Craftable Hostname Hostname where
     if oldhn /= hn then do
       $logInfo . T.pack $ "Hostname " ++ oldhn ++ " /= " ++ hn
       hosts' <- craft $ Hosts.set (Hosts.Name hn) (Hosts.IP "127.0.1.1") hosts
-      craft_ $ file "/etc/hostname" & strContent .~ hn
+      craft_ $ file hostnamePath & strContent .~ hn
       exec_ "hostname" [hn]
       craft_ $ Hosts.deleteName (Hosts.Name oldhn) hosts'
       (Hostname newhn) <- get
@@ -31,7 +34,7 @@ instance Craftable Hostname Hostname where
                                          ++ " Got: " ++ newhn
       return (Updated, Hostname hn)
     else do
-      craft_ $ file "/etc/hostname" & strContent .~ hn
+      craft_ $ file hostnamePath & strContent .~ hn
       case Hosts.lookup (Hosts.IP "127.0.1.1") hosts of
         Just names ->
           if Hosts.Name hn `elem` names then

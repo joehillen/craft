@@ -18,15 +18,15 @@ instance (FromJSON a, ToJSON a) => ConfigFormat (JsonFormat a) where
   showConfig = B8.unpack . BSL.toStrict . encodePretty . _jsonfmt
   parse fp s =
     case eitherDecodeStrict (B8.pack s) of
-      Left err -> $craftError $ "Failed to parse " ++ fp ++ " : " ++ err
+      Left err -> $craftError $ "Failed to parse "++show fp++" : "++err
       Right x  -> return $ JsonFormat x
 
 
-get :: (FromJSON a, ToJSON a) => FilePath -> Craft (Maybe (Config (JsonFormat a)))
+get :: (FromJSON a, ToJSON a) => Path Abs FileP -> Craft (Maybe (Config (JsonFormat a)))
 get = Craft.Config.get
 
 
-config :: (FromJSON a, ToJSON a) => FilePath -> a -> Config (JsonFormat a)
+config :: (FromJSON a, ToJSON a) => Path Abs FileP -> a -> Config (JsonFormat a)
 config fp = Craft.Config.config fp . JsonFormat
 
 

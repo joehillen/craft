@@ -1,20 +1,19 @@
 module Craft.Nginx where
 
+import           Control.Lens
+
 import           Craft
 import           Craft.Internal.Helpers
 import qualified Craft.SysV as SysV
-
-import Control.Lens
-
 
 setup :: Craft ()
 setup =
   craft_ $ package "nginx"
 
 
-baseDir, sitesDir :: FilePath
-baseDir = "/etc/nginx"
-sitesDir = baseDir </> "sites-enabled"
+baseDir, sitesDir :: Path Abs Dir
+baseDir = $(mkAbsDir "/etc/nginx")
+sitesDir = baseDir </> $(mkRelDir "sites-enabled")
 
 
 data Config
@@ -56,10 +55,10 @@ instance Show Address where
 
 
 type Port      = Int
-data Location  = Location Path [Directive] [Location]
-type Path      = String
-type Directive  = (Name, Args)
-type Name       = String
+data Location  = Location URL [Directive] [Location]
+type URL       = String
+type Directive = (Name, Args)
+type Name      = String
 
 
 makeLenses ''Config
@@ -90,20 +89,20 @@ server =
 sslServer :: SSL -> Server
 sslServer ssl =
   Server
-    { _serverNames      = []
-    , _listen           = (AnyAddress, 443, ["ssl"])
-    , _serverDirectives =
-        [ ("ssl",                 ["on"])
-        , ("ssl_certificate",     [ssl ^. sslCert . path])
-        , ("ssl_certificate_key", [ssl ^. sslKey . path])
-        , ("ssl_session_cache",   ["shared:SSL:10m"])
-        , ("ssl_session_timeout", ["5m"])
-        , ("ssl_protocols",       ["TLSv1", "TLSv1.1", "TLSv1.2"])
-        , ("ssl_ciphers",         ["ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA"])
-        , ("ssl_prefer_server_ciphers", ["on"])
-        ]
-    , _locations = []
-    }
+  { _serverNames      = []
+  , _listen           = (AnyAddress, 443, ["ssl"])
+  , _serverDirectives =
+      [ ("ssl",                       ["on"])
+      , ("ssl_certificate",           [fromAbsFile $ ssl^.sslCert.path])
+      , ("ssl_certificate_key",       [fromAbsFile $ ssl^.sslKey.path])
+      , ("ssl_session_cache",         ["shared:SSL:10m"])
+      , ("ssl_session_timeout",       ["5m"])
+      , ("ssl_protocols",             ["TLSv1", "TLSv1.1", "TLSv1.2"])
+      , ("ssl_ciphers",               ["ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-GCM-SHA384:DHE-RSA-AES128-GCM-SHA256:DHE-DSS-AES128-GCM-SHA256:kEDH+AESGCM:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA:ECDHE-ECDSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-DSS-AES128-SHA256:DHE-RSA-AES256-SHA256:DHE-DSS-AES256-SHA:DHE-RSA-AES256-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA:AES256-SHA:AES:CAMELLIA:DES-CBC3-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!aECDH:!EDH-DSS-DES-CBC3-SHA:!EDH-RSA-DES-CBC3-SHA:!KRB5-DES-CBC3-SHA"])
+      , ("ssl_prefer_server_ciphers", ["on"])
+      ]
+  , _locations = []
+  }
 
 
 
@@ -118,13 +117,13 @@ redirectWWWtoNoWWW servers =
         [ ("return", ["301", "http://" ++ s ^. serverNames . _head ++ "$uri"]) ]
 
 
-logs :: FilePath -> String -> [Directive]
+logs :: Path Abs Dir -> Path Rel FileP -> [Directive]
 logs logdir name =
   [ ("access_log", [ logprefix ++ ".access.log", "combined"])
-  , ("error_log", [ logprefix ++ ".error.log" ])
+  , ("error_log",  [ logprefix ++ ".error.log" ])
   ]
  where
-  logprefix = logdir </> name
+  logprefix = fromAbsFile $ logdir </> name
 
 
 root :: [Directive] -> Location
@@ -165,10 +164,11 @@ showListen (addr, port, args) =
   show addr ++ ":" ++ show port ++ " " ++ unwords args
 
 
-toFile :: Config -> File
-toFile c =
-  file (sitesDir </> show (c ^. configPriority) ++ "_" ++ c ^. configName ++ ".conf")
-  & strContent .~ show c
+toFile :: Config -> Craft File
+toFile c = do
+  fn <- parseRelFile $ (show $ c^.configPriority)++"_"++(c^.configName)++".conf"
+  return $ file (sitesDir</>fn)
+           & strContent .~ show c
 
 
 reload :: Craft ()

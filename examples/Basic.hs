@@ -1,5 +1,6 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
@@ -56,9 +57,9 @@ pipPackages =
     , "requests"
     ]
 
-bash,zsh :: FilePath
-bash = "/bin/bash"
-zsh = "/usr/bin/zsh"
+bash,zsh :: Path Abs FileP
+bash = $(mkAbsFile "/bin/bash")
+zsh  = $(mkAbsFile "/usr/bin/zsh")
 
 
 craftAdmins :: Craft [User]
@@ -77,13 +78,14 @@ craftAdmins = sequence
 craftNormalUser :: String
                 -> String -- Full Name
                 -> PublicKey
-                -> FilePath
+                -> Path Abs FileP
                 -> Craft User
 craftNormalUser name fullname sshPubKey userShell' = do
   -- we only need to install zsh if someone is using it.
   when (userShell' == zsh) $ craft_ $ package "zsh"
   -- create the user
-  user <- craft $ User.userOptions name
+  uopts <- User.userOptions name
+  user <- craft $ uopts
                   & User.optComment    .~ fullname
                   & User.optCreateHome .~ False
                   & User.optShell      .~ Just userShell'
@@ -94,8 +96,8 @@ craftNormalUser name fullname sshPubKey userShell' = do
   -- if the user's shell is bash,
   -- then install the standard bashrc
   when (userShell' == bash) $ do
-    let bashrcFP = (user ^. userHome)</>".bashrc"
-    unlessM (File.exists bashrcFP) $ exec_ "cp" ["/etc/bash.bashrc", bashrcFP]
+    let bashrcFP = (user ^. userHome) </> $(mkRelFile ".bashrc")
+    unlessM (File.exists bashrcFP) $ exec_ "cp" ["/etc/bash.bashrc", fromAbsFile bashrcFP]
     craft_ $ file bashrcFP & ownerAndGroup .~ user
   return user
 
@@ -103,11 +105,12 @@ craftNormalUser name fullname sshPubKey userShell' = do
 craftAdmin :: String
            -> String -- Full Name
            -> PublicKey
-           -> FilePath
+           -> Path Abs FileP
            -> Craft User
 craftAdmin name fullname sshPubKey userShell' = do
   user <- craftNormalUser name fullname sshPubKey userShell'
   -- add the user to sudoers
-  craft_ $ file ("/etc/sudoers.d"</>"10_"++name)
+  sudoersfn <- parseRelFile $ "10_"++name
+  craft_ $ file ($(mkAbsDir "/etc/sudoers.d")</>sudoersfn)
            & strContent .~ name++" ALL=(ALL) NOPASSWD: ALL\n"
   return user

@@ -49,7 +49,7 @@ data Result
 -- 'Mismatched' is returned containing the actual 'Checksum'.
 -- Otherwise 'Matched' is returned.
 check :: File -> Checksum -> Craft Result
-check f chksum = exec (command chksum) [f ^. path] >>= \case
+check f chksum = exec (command chksum) [fromAbsFile $ f^.path] >>= \case
   ExecFail r -> return $ Failed r
   ExecSucc r -> return $
     let mk = case chksum of

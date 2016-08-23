@@ -26,7 +26,6 @@ vagrant up
 
 In order of priority:
 
- * Replace FilePath with [path](https://hackage.haskell.org/package/path)
  * Use Text
  * Use logger that supports callstacks
  * Separate logger for DSL operations
@@ -82,9 +81,8 @@ I plan to convert Craft to a Free Monad with a DSL of:
 ```haskell
 execute        :: Env -> Path -> Command -> Args -> Craft (ExitCode, String, String)
 execute_       :: Env -> Path -> Command -> Args -> Craft ()
-readFile       :: FilePath -> Craft ByteString
-writeFile      :: FilePath -> ByteString -> Craft ()
-readSourceFile :: FilePath -> Craft ByteString
+readFile       :: Path Abs FileP -> Craft ByteString
+writeFile      :: Path Abs FileP -> ByteString -> Craft ()
 ```
 
 This won't allow for the complete freedom I had originally envisioned,

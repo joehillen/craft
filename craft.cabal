@@ -116,6 +116,8 @@ library
                      , memory
                      , monad-logger
                      , mtl
+                     , path
+                     , path-io
                      , process
                      , process-extras
                      , pureMD5

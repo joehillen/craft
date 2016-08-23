@@ -7,9 +7,11 @@ module Craft.Types
 ( module Craft.Types
 , module Craft.Error
 , module Craft.File.Mode
+, module Path
 )
 where
 
+import           Prelude hiding (FilePath)
 import           Control.Lens
 import           Control.Monad.Catch (MonadCatch, MonadThrow)
 import           Control.Monad.IO.Class (MonadIO)
@@ -26,18 +28,25 @@ import qualified Data.Text as T
 import           Data.Maybe (isNothing)
 import           Data.Versions (parseV)
 import           Language.Haskell.TH.Syntax (Q, Exp)
+import           Path hiding (File)
+import qualified Path
 import           System.Process
 
 import           Craft.Error
 import           Craft.Internal.Helpers
 import           Craft.File.Mode
 
+
+-- | FileP is an alias because 'Path.File' collides with 'Craft.File'.
+-- The alias was not named FilePath because it would conflict with Prelude.
+type FileP = Path.File
+
 data CraftEnv
   = CraftEnv
     { _craftPackageManager :: PackageManager
-    , _craftSourcePaths    :: [FilePath]
+    -- , _craftSourcePaths    :: [Path Rel Dir]
     , _craftExecEnv        :: ExecEnv
-    , _craftExecCWD        :: FilePath
+    , _craftExecCWD        :: Path Abs Dir
     }
 
 
@@ -57,7 +66,7 @@ interpretCraft ce interpreter = iterT interpreter . flip runReaderT ce . unCraft
 type StdOut  = String
 type StdErr  = String
 type Args    = [String]
-type Command = FilePath
+type Command = String
 
 
 data SuccResult
@@ -108,7 +117,7 @@ stdoutOrError = [|
 
 
 type ExecEnv = Map String String
-type CWD = FilePath
+type CWD = Path Abs FileP
 type PackageName = String
 
 newtype UserName = UserName String
@@ -144,7 +153,7 @@ class Eq (FileLikePath a) => FileLike a where
 
 data File
   = File
-  { _filePath    :: FilePath
+  { _filePath    :: Path Abs FileP
   , _fileMode    :: Mode
   , _fileOwnerID :: UserID
   , _fileGroupID :: GroupID
@@ -152,7 +161,7 @@ data File
   }
 
 
-file :: FilePath -> File
+file :: Path Abs FileP -> File
 file fp =
   File
   { _filePath    = fp
@@ -166,7 +175,7 @@ file fp =
 
 data Directory
   = Directory
-  { _directoryPath    :: FilePath
+  { _directoryPath    :: Path Abs Dir
   , _directoryMode    :: Mode
   , _directoryOwnerID :: UserID
   , _directoryGroupID :: GroupID
@@ -174,7 +183,7 @@ data Directory
   deriving (Show, Eq)
 
 
-directory :: FilePath -> Directory
+directory :: Path Abs Dir -> Directory
 directory dp =
   Directory
   { _directoryPath    = dp
@@ -232,11 +241,11 @@ noPackageManager = let err _ = $craftError "No Package Manager" in
 data CraftDSL next
   = Exec  CraftEnv Command Args (ExecResult -> next)
   | Exec_ CraftEnv Command Args next
-  | FileRead CraftEnv FilePath (ByteString -> next)
-  | FileWrite CraftEnv FilePath ByteString next
-  | SourceFile CraftEnv FilePath FilePath next
-  | FindSourceFile CraftEnv FilePath ([FilePath] -> next)
-  | ReadSourceFile CraftEnv FilePath (ByteString -> next)
+  | FileRead CraftEnv (Path Abs FileP) (ByteString -> next)
+  | FileWrite CraftEnv (Path Abs FileP) ByteString next
+  -- | SourceFile CraftEnv (Path Abs FileP) (Path Abs FileP) next
+  -- | FindSourceFile CraftEnv (Path Rel FileP) ([Path Rel Dir] -> next)
+  -- | ReadSourceFile CraftEnv (Path Rel FileP) (ByteString -> next)
  deriving Functor
 
 
@@ -279,7 +288,7 @@ instance Show File where
 
 
 instance FileLike File where
-  type FileLikePath File = FilePath
+  type FileLikePath File = Path Abs FileP
   path = filePath
   mode = fileMode
   ownerID = fileOwnerID
@@ -287,7 +296,7 @@ instance FileLike File where
 
 
 instance FileLike Directory where
-  type FileLikePath Directory = FilePath
+  type FileLikePath Directory = Path Abs Dir
   path = directoryPath
   mode = directoryMode
   ownerID = directoryOwnerID
@@ -301,11 +310,11 @@ data User
     , _userComment      :: String
     , _userGroup        :: Group
     , _userGroups       :: [GroupName]
-    , _userHome         :: FilePath
+    , _userHome         :: Path Abs Dir
     , _userPasswordHash :: String
     --, _salt         :: String
     --, _locked       :: Bool
-    , _userShell        :: FilePath
+    , _userShell        :: Path Abs FileP
     --, system       :: Bool
     }
  deriving (Eq, Show)

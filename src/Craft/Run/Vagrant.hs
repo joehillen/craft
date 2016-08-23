@@ -31,7 +31,7 @@ runCraftVagrant :: VagrantSettings -> CraftEnv -> Craft a -> LoggingT IO a
 runCraftVagrant settings env configs = do
   let box = vagrantBox settings
   sysEnv <- Trans.lift System.Environment.getEnvironment
-  cwd <- Trans.lift System.Directory.getCurrentDirectory
+  cwd <- parseAbsDir =<< Trans.lift System.Directory.getCurrentDirectory
   -- vagrant ssh-config
   sshcfg <- runCraftLocal (craftEnv (env ^. craftPackageManager)
                                     & craftExecEnv .~ Map.fromList sysEnv
@@ -42,7 +42,7 @@ runCraftVagrant settings env configs = do
   let addr = cfgLookupOrError box "hostname" sshcfg
   let port = read $ cfgLookupOrError box "port" sshcfg
   let user = cfgLookupOrError box "user" sshcfg
-  let key  = cfgLookupOrError box "identityfile" sshcfg
+  key <- parseAbsFile $ cfgLookupOrError box "identityfile" sshcfg
   -- vagrant ssh
   runCraftSSH (sshEnv addr key & sshUser .~ user
                                & sshPort .~ port

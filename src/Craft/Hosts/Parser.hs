@@ -14,7 +14,7 @@ import Craft.Internal.Helpers.Parsing
 
 parseLine :: Int -> String -> Craft (Maybe (IP, [Name]))
 parseLine ln s =
-  case runParser lineParser hostsfp s of
+  case runParser lineParser (fromAbsFile hostsfp) s of
     Right x  -> return x
     Left err -> $craftError $ show err
  where

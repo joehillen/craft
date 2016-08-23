@@ -16,15 +16,15 @@ instance (FromJSON a, ToJSON a) => ConfigFormat (YamlFormat a) where
   showConfig = B8.unpack . encode . _yamlfmt
   parse fp s =
     case decodeEither (B8.pack s) of
-      Left err -> $craftError $ "Failed to parse " ++ fp ++ " : " ++ err
+      Left err -> $craftError $ "Failed to parse " ++ show fp ++ " : " ++ err
       Right x  -> return $ YamlFormat x
 
 
-get :: (FromJSON a, ToJSON a) => FilePath -> Craft (Maybe (Config (YamlFormat a)))
+get :: (FromJSON a, ToJSON a) => Path Abs FileP -> Craft (Maybe (Config (YamlFormat a)))
 get = Craft.Config.get
 
 
-config :: (FromJSON a, ToJSON a) => FilePath -> a -> Config (YamlFormat a)
+config :: (FromJSON a, ToJSON a) => Path Abs FileP -> a -> Config (YamlFormat a)
 config fp = Craft.Config.config fp . YamlFormat
 
 

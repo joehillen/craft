@@ -134,16 +134,16 @@ packageFromDebFile f = do
 dpkgInstall :: File -> Craft ()
 dpkgInstall f =
   withEnvVar "DEBIAN_FRONTEND" "noninteractive" $
-    exec_ "dpkg" ["-i", f ^. path]
+    exec_ "dpkg" ["-i", fromAbsFile $ f^.path]
 
 
-dpkgDebBin :: FilePath
+dpkgDebBin :: String
 dpkgDebBin = "dpkg-deb"
 
 
 dpkgDebShow :: String -> File -> Craft String
 dpkgDebShow pattern f =
-  expectOutput dpkgDebBin [ "--show", "--showformat", pattern, f ^. path ]
+  expectOutput dpkgDebBin ["--show", "--showformat", pattern, fromAbsFile $ f^.path]
 
 
 dpkgDebVersion :: File -> Craft String
@@ -186,7 +186,7 @@ makeLenses ''PPA
 
 findPPAFiles :: PPA -> Craft [File]
 findPPAFiles (PPA url) = do
-  fs <- File.find "/etc/apt/sources.list.d" ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
+  fs <- File.find $(mkAbsDir "/etc/apt/sources.list.d") ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
   let nonEmpty = (> 0) . length . view (fileContent . _Just . unpackedChars)
   return $ filter nonEmpty fs
 

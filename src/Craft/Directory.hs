@@ -11,7 +11,6 @@ where
 import           Control.Lens
 import           Data.Maybe (catMaybes)
 import           Formatting
-import           System.FilePath
 
 import           Craft.Directory.Parser
 import qualified Craft.File as File
@@ -19,9 +18,6 @@ import           Craft.File.Mode
 import qualified Craft.Group as Group
 import           Craft.Internal
 import qualified Craft.User as User
-
-
-type Path = FilePath
 
 
 getOwner :: Directory -> Craft User
@@ -40,30 +36,30 @@ getGroup d =
     Just g -> return g
 
 
-multiple :: [Path] -> Mode -> User -> Group -> [Directory]
+multiple :: [Path Abs Dir] -> Mode -> User -> Group -> [Directory]
 multiple paths mode' owner' group' = map go paths
  where
   go p = Directory p mode' (owner'^.uid) (group'^.gid)
 
 
-multipleRootOwned :: [Path] -> Mode -> [Directory]
+multipleRootOwned :: [Path Abs Dir] -> Mode -> [Directory]
 multipleRootOwned paths m = map go paths
  where
   go p = directory p & mode .~ m
 
 
-exists :: Path -> Craft Bool
-exists p = isExecSucc <$> exec "test" ["-d", p]
+exists :: Path Abs Dir -> Craft Bool
+exists p = isExecSucc <$> exec "test" ["-d", fromAbsDir p]
 
 
-get :: Path -> Craft (Maybe Directory)
+get :: Path Abs Dir -> Craft (Maybe Directory)
 get dp =
   getStats dp >>= \case
     Nothing -> return Nothing
     Just (m, o, g) -> return . Just $ Directory dp m o g
 
 
-getFiles :: Path -> Craft [File]
+getFiles :: Path Abs Dir -> Craft [File]
 getFiles dp = do
-  fns <- parseExecStdout getFilesParser "ls" ["-a", "-1", dp]
-  catMaybes <$> mapM (File.get . (</> dp)) fns
+  fns <- mapM parseRelFile =<< parseExecStdout getFilesParser "ls" ["-a", "-1", fromAbsDir dp]
+  catMaybes <$> mapM (File.get . (dp </>)) fns

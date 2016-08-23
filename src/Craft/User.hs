@@ -4,7 +4,6 @@ import           Control.Lens hiding (un)
 import           Data.List (intercalate)
 import qualified Data.Set as S
 import           Formatting
-import           System.FilePath ((</>))
 
 import qualified Craft.Group as Group
 import           Craft.Internal
@@ -41,7 +40,7 @@ data UserOptions =
   , _optGroups     :: [GroupName]
   -- ^ Other groups
 
-  , _optHome       :: FilePath
+  , _optHome       :: Path Abs Dir
 
   , _optCreateHome :: Bool
   -- ^ Create the user's home directory when creating user
@@ -58,7 +57,7 @@ data UserOptions =
   --, _optLocked     :: Bool
   -- Lock the user's account
 
-  , _optShell      :: Maybe FilePath
+  , _optShell      :: Maybe (Path Abs FileP)
   -- User's shell
 
   , _optSystem     :: Bool
@@ -69,33 +68,34 @@ makeLenses ''UserOptions
 
 
 -- Nothing means rely on the system's default behavior
-userOptions :: String -> UserOptions
-userOptions n =
-  UserOptions
-  { _optName       = n
-  , _optUID        = Nothing
-  , _optComment    = n
-  , _optGroup      = Nothing
-  , _optUserGroup  = True
-  , _optGroups     = []
-  , _optHome       = "/home"</>n
-  , _optCreateHome = True
-  , _optPassword   = Nothing
-  , _optSalt       = Nothing
-  , _optShell      = Nothing
-  , _optSystem     = False
-  --, _optLocked     = False
-  }
+userOptions :: String -> Craft UserOptions
+userOptions n = do
+  dirName <- parseRelDir n
+  return UserOptions
+         { _optName       = n
+         , _optUID        = Nothing
+         , _optComment    = n
+         , _optGroup      = Nothing
+         , _optUserGroup  = True
+         , _optGroups     = []
+         , _optHome       = $(mkAbsDir "/home")</>dirName
+         , _optCreateHome = True
+         , _optPassword   = Nothing
+         , _optSalt       = Nothing
+         , _optShell      = Nothing
+         , _optSystem     = False
+         --, _optLocked     = False
+         }
 
-systemUserOptions :: String -> UserOptions
-systemUserOptions n =
-  userOptions n
-  & optHome       .~ "/"
-  & optShell      ?~ "/usr/sbin/nologin"
-  & optCreateHome .~ False
-  & optPassword   ?~ ""
-  & optSystem     .~ True
-  -- & optLocked     .~ True
+systemUserOptions :: String -> Craft UserOptions
+systemUserOptions n = do
+  uo <- userOptions n
+  return $ uo & optHome       .~ $(mkAbsDir "/")
+              & optShell      ?~ $(mkAbsFile "/usr/sbin/nologin")
+              & optCreateHome .~ False
+              & optPassword   ?~ ""
+              & optSystem     .~ True
+              -- & optLocked     .~ True
 
 
 userMod :: UserName -> [String] -> Craft ()
@@ -115,8 +115,8 @@ setUID :: UserName -> UserID -> Craft ()
 setUID un uid' = userMod un ["--uid", show uid']
 
 
-setShell :: UserName -> FilePath -> Craft ()
-setShell un shell' = userMod un ["--shell", shell']
+setShell :: UserName -> Path Abs FileP -> Craft ()
+setShell un shell' = userMod un ["--shell", fromAbsFile shell']
 
 
 setComment :: UserName -> String -> Craft ()
@@ -135,8 +135,8 @@ setGroups _  []  = return ()
 setGroups un gns = userMod un ["--groups", intercalate "," $ map show gns]
 
 
-setHome :: UserName -> FilePath -> Craft ()
-setHome un homepath = userMod un ["--home", homepath]
+setHome :: UserName -> Path Abs Dir -> Craft ()
+setHome un homepath = userMod un ["--home", fromAbsDir homepath]
 
 
 ensureUserOpts :: User -> UserOptions -> Craft Bool

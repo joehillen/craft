@@ -16,7 +16,7 @@ colon = char ':'
 
 
 -- TESTME
-passwdParser :: Parser (UserName, UserID, GroupID, String, FilePath, FilePath)
+passwdParser :: Parser (UserName, UserID, GroupID, String, String, String)
 passwdParser = do
   name      <- UserName <$> someTill anyChar colon
   _password <- manyTill anyChar colon
@@ -42,17 +42,19 @@ userFromStr nameOrIdStr =
     ExecSucc r -> do
       (nameS, uid', gid', comment', home', shell') <-
             parseGetent passwdParser "passwd" nameOrIdStr (r ^. stdout)
+      home'' <- parseAbsDir home'
+      shell'' <- parseAbsFile shell'
       grp <- fromJust <$> groupFromID gid'
       grps <- getGroups nameS
       s <- $stdoutOrError =<< getent "shadow" (show nameS)
       passwordHash' <- parseGetent shadowParser "shadow" (show nameS) s
-      return . Just $ User { _userName     = nameS
-                           , _uid          = uid'
+      return . Just $ User { _userName         = nameS
+                           , _uid              = uid'
                            , _userGroup        = grp
                            , _userGroups       = grps
                            , _userPasswordHash = passwordHash'
-                           , _userHome         = home'
-                           , _userShell        = shell'
+                           , _userHome         = home''
+                           , _userShell        = shell''
                            , _userComment      = comment'
                            }
 
@@ -86,9 +88,9 @@ useradd User{..} =
     [ toArg "--uid"      _uid
     , toArg "--comment"  _userComment
     , toArg "--groups"   $ intercalate "," $ map show _userGroups
-    , toArg "--home"     _userHome
+    , toArg "--home"     (fromAbsDir _userHome)
     , toArg "--password" _userPasswordHash
-    , toArg "--shell"    _userShell
+    , toArg "--shell"    (fromAbsFile _userShell)
     ]
 
 

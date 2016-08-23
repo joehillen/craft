@@ -20,9 +20,9 @@ import qualified Data.Map.Strict       as Map
 
 -- |Re-exports
 import           Control.Monad.Catch   as X
-import           System.FilePath       as X
 import           System.Exit           (ExitCode(..))
 
+import           Craft.Types           as X
 import           Craft.Internal        as X
 import           Craft.Craftable       as X
 
@@ -34,8 +34,8 @@ withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. directoryPath)
 craftEnv :: PackageManager -> CraftEnv
 craftEnv pm =
   CraftEnv
-  { _craftSourcePaths    = ["."]
-  , _craftPackageManager = pm
+  -- { _craftSourcePaths    = [$(mkRelDir ".")]
+  { _craftPackageManager = pm
   , _craftExecEnv        = Map.fromList [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
-  , _craftExecCWD        = "/"
+  , _craftExecCWD        = $(mkAbsDir "/")
   }

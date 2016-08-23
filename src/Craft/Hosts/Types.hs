@@ -2,6 +2,7 @@ module Craft.Hosts.Types where
 
 -- | This file is just to prevent a cyclic import between Hosts.hs
 --  and Hosts/Parser.hs
+import Craft.Types
 
 newtype IP = IP String
   deriving (Eq)
@@ -24,5 +25,5 @@ data Hosts = Hosts { configs :: Configs }
              deriving (Eq, Show)
 
 
-hostsfp :: FilePath
-hostsfp = "/etc/hosts"
+hostsfp :: Path Abs FileP
+hostsfp = $(mkAbsFile "/etc/hosts")

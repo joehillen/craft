@@ -2,6 +2,7 @@
 module Craft.Internal.Helpers where
 
 import Data.Char (isSpace)
+import Path
 
 
 indent :: Int -> String -> String
@@ -31,6 +32,9 @@ instance ToArg a => ToArg (Maybe a) where
 instance ToArg Int where
   toArg = showArg
 
+instance ToArg (Path b t) where
+  toArg arg v = [arg, toFilePath v]
+
 toArgBool :: String -> String -> Bool -> [String]
 toArgBool a _ True  = [a]
 toArgBool _ b False = [b]
@@ -40,3 +44,4 @@ showArg arg v = [arg, show v]
 
 toArgs :: ToArg a => String -> [a] -> [String]
 toArgs arg = Prelude.concatMap (toArg arg)
+

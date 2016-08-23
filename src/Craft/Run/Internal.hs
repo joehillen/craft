@@ -1,20 +1,19 @@
 module Craft.Run.Internal where
 
 import           Conduit as C
-import           Control.Lens
+-- import           Control.Lens
 import           Control.Monad.Logger (askLoggerIO, logDebugNS, LoggingT, runLoggingT)
-import           Control.Monad.Reader
+-- import           Control.Monad.Reader
 import qualified Control.Monad.Trans as Trans
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
+-- import           Data.ByteString (ByteString)
+-- import qualified Data.ByteString as BS
 import qualified Data.Conduit.List as CL
 import           Data.Conduit.Process (sourceProcessWithStreams)
 import           Data.Conduit.Text as CT
 import           Data.Monoid ((<>))
 import qualified Data.Text as T
-import           System.Directory
+-- import Path.IO (doesFileExist)
 import           System.Exit
-import           System.FilePath
 import           System.Process
 import qualified System.Process.ListLike as SPLL
 
@@ -75,11 +74,11 @@ trimNL = reverse . rmNL . reverse
   rmCR xs = xs
 
 
-findSourceFileIO :: CraftEnv -> FilePath -> IO [FilePath]
-findSourceFileIO ce name = do
-  let fps = ce ^. craftSourcePaths
-  filterM (\fp -> doesFileExist $ fp </> name) fps
+-- findSourceFileIO :: CraftEnv -> Path Rel FileP -> IO [Path Rel Dir]
+-- findSourceFileIO ce name = do
+--   let fps = ce ^. craftSourcePaths
+--   filterM (\fp -> doesFileExist $ fp </> name) fps
 
 
-readSourceFileIO :: FilePath -> IO ByteString
-readSourceFileIO fp = BS.readFile fp
+-- readSourceFileIO :: Path Rel FileP -> IO ByteString
+-- readSourceFileIO fp = BS.readFile $ fromAbsFile fp
