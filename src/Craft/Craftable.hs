@@ -51,6 +51,27 @@ removed Removed = True
 removed _       = False
 
 
+watch :: Eq a => Craft (Maybe a) -> Craft b -> Craft (Watched, Maybe a, b)
+watch getter action = do
+  !beforeMB <- getter
+  !result   <- action
+  !afterMB  <- getter
+  let (w, x) = case (beforeMB, afterMB) of
+                 (Nothing,     Nothing)    -> (Unchanged, Nothing)
+                 (Just y,      Nothing)    -> (Removed,   Just y)
+                 (Nothing,     Just y)     -> (Created,   Just y)
+                 (Just before, Just after) -> if before == after
+                                                then (Unchanged, Just after)
+                                                else (Updated,   Just after)
+  return (w, x, result)
+
+
+watch_ :: Eq a => Craft (Maybe a) -> Craft b -> Craft Watched
+watch_ getter action = do
+  (w, _, _) <- watch getter action
+  return w
+
+
 class Craftable a b | a -> b where
   watchCraft :: a -> Craft (Watched, b)
 
