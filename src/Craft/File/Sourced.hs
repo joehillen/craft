@@ -3,7 +3,7 @@ module Craft.File.Sourced where
 import           Control.Lens
 
 import           Craft
-import qualified Craft.File as File
+import qualified Craft.File   as File
 
 
 data SourcedFile

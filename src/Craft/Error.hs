@@ -1,10 +1,10 @@
 module Craft.Error where
 
 import           Control.Monad.Catch
-import           Control.Monad.Logger (logError)
-import           Data.Monoid ((<>))
-import qualified Data.Text as T
-import           Language.Haskell.TH.Syntax (Q, Exp)
+import           Control.Monad.Logger       (logError)
+import           Data.Monoid                ((<>))
+import qualified Data.Text                  as T
+import           Language.Haskell.TH.Syntax (Exp, Q)
 
 data CraftError = CraftError String
   deriving Show

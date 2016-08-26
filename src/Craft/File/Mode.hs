@@ -10,13 +10,13 @@ module Craft.File.Mode
 )
 where
 
-import           Data.Bits ((.|.), (.&.))
-import           Data.Char (digitToInt)
+import           Data.Bits       ((.&.), (.|.))
+import           Data.Char       (digitToInt)
 import           Data.DeriveTH
 import           Data.List
+import           System.Posix    (FileMode)
 import qualified System.Posix
-import           System.Posix (FileMode)
-import           Test.QuickCheck (Arbitrary, choose, arbitrary)
+import           Test.QuickCheck (Arbitrary, arbitrary, choose)
 
 
 toHuman :: Mode -> String
@@ -144,7 +144,7 @@ toMode fm = Mode ownerSet groupSet otherSet
     convertSet f m =
       case find (\t -> m == f t) [O ..] of
         Nothing -> error $ "toMode: Unsupported mode: " ++ show m
-        Just r -> r
+        Just r  -> r
     ownerSet = convertSet uFM (fm .&. (System.Posix.ownerModes .|. uS))
     groupSet = convertSet gFM (fm .&. (System.Posix.groupModes .|. gS))
     otherSet = convertSet oFM (fm .&. (System.Posix.otherModes .|. oT))

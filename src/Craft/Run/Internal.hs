@@ -1,17 +1,18 @@
 module Craft.Run.Internal where
 
-import           Conduit as C
+import           Conduit                 as C
 import           Control.Lens
-import           Control.Monad.Logger (askLoggerIO, logDebugNS, LoggingT, runLoggingT)
+import           Control.Monad.Logger    (LoggingT, askLoggerIO, logDebugNS,
+                                          runLoggingT)
 import           Control.Monad.Reader
-import qualified Control.Monad.Trans as Trans
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import qualified Data.Conduit.List as CL
-import           Data.Conduit.Process (sourceProcessWithStreams)
-import           Data.Conduit.Text as CT
-import           Data.Monoid ((<>))
-import qualified Data.Text as T
+import qualified Control.Monad.Trans     as Trans
+import           Data.ByteString         (ByteString)
+import qualified Data.ByteString         as BS
+import qualified Data.Conduit.List       as CL
+import           Data.Conduit.Process    (sourceProcessWithStreams)
+import           Data.Conduit.Text       as CT
+import           Data.Monoid             ((<>))
+import qualified Data.Text               as T
 import           System.Directory
 import           System.Exit
 import           System.FilePath
@@ -67,12 +68,12 @@ execProc_ src p next = do
 trimNL :: String -> String
 trimNL = reverse . rmNL . reverse
  where
-  rmNL [] = []
+  rmNL []        = []
   rmNL ('\n':xs) = rmCR xs
-  rmNL xs = xs
-  rmCR [] = []
+  rmNL xs        = xs
+  rmCR []        = []
   rmCR ('\r':xs) = xs
-  rmCR xs = xs
+  rmCR xs        = xs
 
 
 findSourceFileIO :: CraftEnv -> FilePath -> IO [FilePath]

@@ -1,10 +1,10 @@
 module Craft.Config.ShellSpec (spec) where
 
-import Test.Hspec
-import Test.Hspec.Megaparsec
-import Text.Megaparsec
+import           Test.Hspec
+import           Test.Hspec.Megaparsec
+import           Text.Megaparsec
 
-import Craft.Config.Shell
+import           Craft.Config.Shell
 
 
 spec :: Spec

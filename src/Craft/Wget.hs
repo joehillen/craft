@@ -1,12 +1,12 @@
 module Craft.Wget where
 
 import           Control.Lens
-import           Data.Monoid ((<>))
+import           Data.Monoid    ((<>))
 
 import           Craft
 import           Craft.Checksum (Checksum)
 import qualified Craft.Checksum as Checksum
-import qualified Craft.File as File
+import qualified Craft.File     as File
 
 data Wget = Wget
             { _url    :: String

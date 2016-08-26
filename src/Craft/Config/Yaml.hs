@@ -1,12 +1,13 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE GADTs                     #-}
 module Craft.Config.Yaml where
 
-import Craft
-import Craft.Config
+import           Craft
+import           Craft.Config
 import qualified Data.ByteString.Char8 as B8
 
-import Control.Lens
-import Data.Yaml
+import           Control.Lens
+import           Data.Yaml
 
 
 data YamlFormat a = (FromJSON a, ToJSON a) => YamlFormat { _yamlfmt :: a }

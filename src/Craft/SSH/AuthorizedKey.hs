@@ -1,15 +1,15 @@
 module Craft.SSH.AuthorizedKey where
 
 import           Control.Lens
-import qualified Data.Map.Strict as Map
-import           Data.Maybe (catMaybes)
+import qualified Data.Map.Strict        as Map
+import           Data.Maybe             (catMaybes)
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 
-import           Craft hiding (try)
-import qualified Craft.File as File
+import           Craft                  hiding (try)
+import qualified Craft.File             as File
 import           Craft.SSH
-import           Craft.SSH.PublicKey as PK
+import           Craft.SSH.PublicKey    as PK
 
 
 data AuthorizedKey

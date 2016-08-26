@@ -1,9 +1,9 @@
 module Craft.File.ModeSpec (spec) where
 
-import Test.Hspec
-import Test.Hspec.QuickCheck
+import           Test.Hspec
+import           Test.Hspec.QuickCheck
 
-import Craft.File.Mode
+import           Craft.File.Mode
 
 
 spec :: Spec

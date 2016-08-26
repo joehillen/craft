@@ -14,9 +14,9 @@ import           Data.Maybe
 import           Formatting
 import           System.FilePath
 
+import qualified Craft.Group     as Group
 import           Craft.Internal
-import qualified Craft.User as User
-import qualified Craft.Group as Group
+import qualified Craft.User      as User
 
 
 getOwner :: File -> Craft User

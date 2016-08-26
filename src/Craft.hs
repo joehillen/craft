@@ -16,15 +16,15 @@ where
 
 import           Control.Lens
 import           Control.Monad.Reader
-import qualified Data.Map.Strict       as Map
+import qualified Data.Map.Strict      as Map
 
 -- |Re-exports
-import           Control.Monad.Catch   as X
-import           System.FilePath       as X
-import           System.Exit           (ExitCode(..))
+import           Control.Monad.Catch  as X
+import           System.Exit          (ExitCode (..))
+import           System.FilePath      as X
 
-import           Craft.Internal        as X
-import           Craft.Craftable       as X
+import           Craft.Craftable      as X
+import           Craft.Internal       as X
 
 
 withCWD :: Directory -> Craft a -> Craft a

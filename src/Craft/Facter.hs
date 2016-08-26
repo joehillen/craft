@@ -1,6 +1,6 @@
 module Craft.Facter where
 
-import Craft
+import           Craft
 
 
 setup :: Craft ()

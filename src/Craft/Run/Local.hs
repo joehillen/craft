@@ -2,11 +2,11 @@ module Craft.Run.Local where
 
 import           Control.Lens
 import           Control.Monad.Logger (LoggingT)
-import qualified Control.Monad.Trans as Trans
-import qualified Data.ByteString as BS
-import qualified Data.Map.Strict as Map
-import           System.Process hiding ( readCreateProcessWithExitCode
-                                       , readProcessWithExitCode)
+import qualified Control.Monad.Trans  as Trans
+import qualified Data.ByteString      as BS
+import qualified Data.Map.Strict      as Map
+import           System.Process       hiding (readCreateProcessWithExitCode,
+                                       readProcessWithExitCode)
 
 import           Craft.Run.Internal
 import           Craft.Types

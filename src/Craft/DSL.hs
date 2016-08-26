@@ -1,19 +1,19 @@
 module Craft.DSL where
 
 import           Control.Lens
-import           Control.Monad.Reader
 import           Control.Monad.Free
-import           Data.ByteString (ByteString)
-import qualified Data.Map.Strict as Map
-import           Control.Monad.Logger (logDebugNS)
-import qualified Data.Text as T
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as B8
-import           Data.List (intercalate)
-import           Data.List.Split (splitOn)
+import           Control.Monad.Logger   (logDebugNS)
+import           Control.Monad.Reader
+import           Data.ByteString        (ByteString)
+import qualified Data.ByteString        as BS
+import qualified Data.ByteString.Char8  as B8
+import           Data.List              (intercalate)
+import           Data.List.Split        (splitOn)
+import qualified Data.Map.Strict        as Map
+import qualified Data.Text              as T
+import           System.FilePath        ((</>))
 import           Text.Megaparsec
 import           Text.Megaparsec.String
-import           System.FilePath ((</>))
 
 import           Craft.Types
 

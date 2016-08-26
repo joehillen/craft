@@ -1,7 +1,7 @@
 module Craft.Group where
 
-import Control.Lens
-import           Data.List (intercalate)
+import           Control.Lens
+import           Data.List                (intercalate)
 
 import           Craft.Internal
 import           Craft.Internal.Helpers
@@ -14,10 +14,10 @@ name = groupName
 
 data Options =
   Options
-  { optGID :: Maybe GroupID
+  { optGID       :: Maybe GroupID
   , optAllowdupe :: Bool
-  , optUsers :: [UserName]
-  , optSystem :: Bool
+  , optUsers     :: [UserName]
+  , optSystem    :: Bool
   }
 
 opts :: Options

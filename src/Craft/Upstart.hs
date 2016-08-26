@@ -2,7 +2,7 @@ module Craft.Upstart where
 
 import           Craft
 
-import           Control.Lens hiding (noneOf)
+import           Control.Lens    hiding (noneOf)
 import           Text.Megaparsec
 
 type ServiceName = String

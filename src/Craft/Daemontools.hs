@@ -1,11 +1,11 @@
 module Craft.Daemontools where
 
 import           Craft
-import qualified Craft.File as File
 import qualified Craft.Directory as Directory
-import qualified Craft.Upstart as Upstart
+import qualified Craft.File      as File
+import qualified Craft.Upstart   as Upstart
 
-import Control.Lens
+import           Control.Lens
 import           Data.ByteString (ByteString)
 
 

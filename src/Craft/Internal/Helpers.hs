@@ -1,7 +1,7 @@
 {-# LANGUAGE FlexibleInstances #-}
 module Craft.Internal.Helpers where
 
-import Data.Char (isSpace)
+import           Data.Char (isSpace)
 
 
 indent :: Int -> String -> String

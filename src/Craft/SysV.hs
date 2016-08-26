@@ -1,9 +1,9 @@
 module Craft.SysV where
 
-import Control.Lens
+import           Control.Lens
 
-import Craft
-import qualified Craft.File as File
+import           Craft
+import qualified Craft.File   as File
 
 
 data Status = Running

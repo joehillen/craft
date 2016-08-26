@@ -1,9 +1,9 @@
 module Craft.Package where
 
-import Control.Lens
-import Control.Monad.Reader
+import           Control.Lens
+import           Control.Monad.Reader
 
-import Craft.Types
+import           Craft.Types
 
 
 get :: PackageName -> Craft (Maybe Package)

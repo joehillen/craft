@@ -1,21 +1,22 @@
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE UndecidableInstances   #-}
 module Craft.Craftable where
 
 import           Control.Lens
-import           Control.Monad.Reader (ask)
-import qualified Data.ByteString.Lazy as BL
-import           Data.List (intercalate)
-import           Data.Maybe (isJust, catMaybes)
-import           Formatting hiding (char)
+import           Control.Monad.Reader     (ask)
+import qualified Data.ByteString.Lazy     as BL
+import           Data.List                (intercalate)
+import           Data.Maybe               (catMaybes, isJust)
+import           Formatting               hiding (char)
 
 import           Craft.DSL
-import           Craft.Types
+import qualified Craft.File               as File
 import           Craft.Helpers
 import           Craft.Internal.Helpers
-import qualified Craft.File as File
-import qualified Craft.User as User
 import           Craft.Internal.UserGroup
+import           Craft.Types
+import qualified Craft.User               as User
 
 
 data Watched
@@ -121,7 +122,7 @@ instance Destroyable a => Destroyable [a] where
   destroy xs = do
     rs <- mapM destroy xs
     return $ case catMaybes rs of
-               [] -> Nothing
+               []  -> Nothing
                rs' -> Just rs'
   watchDestroy xs = do
     (ws, rs) <- unzip <$> mapM watchDestroy xs
@@ -132,7 +133,7 @@ instance Destroyable a => Destroyable [a] where
             else
               Updated
     let res = case catMaybes rs of
-                [] -> Nothing
+                []  -> Nothing
                 rs' -> Just rs'
     return (w, res)
 

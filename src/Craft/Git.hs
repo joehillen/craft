@@ -1,12 +1,12 @@
 module Craft.Git where
 
-import           Control.Lens hiding (noneOf)
+import           Control.Lens           hiding (noneOf)
+import           Formatting             hiding (char)
 import           Text.Megaparsec
 import           Text.Megaparsec.String
-import Formatting hiding (char)
 
-import           Craft hiding (Version(..))
-import qualified Craft.Directory as Dir
+import           Craft                  hiding (Version (..))
+import qualified Craft.Directory        as Dir
 
 
 type BranchName = String

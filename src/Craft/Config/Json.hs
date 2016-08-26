@@ -1,4 +1,5 @@
-{-# LANGUAGE GADTs #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE GADTs                     #-}
 module Craft.Config.Json where
 
 import           Control.Lens
@@ -7,8 +8,8 @@ import           Data.Aeson.Encode.Pretty (encodePretty)
 
 import           Craft
 import           Craft.Config
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.ByteString.Char8 as B8
+import qualified Data.ByteString.Char8    as B8
+import qualified Data.ByteString.Lazy     as BSL
 
 
 data JsonFormat a = (FromJSON a, ToJSON a) => JsonFormat { _jsonfmt :: a }

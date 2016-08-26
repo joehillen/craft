@@ -1,7 +1,7 @@
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TypeFamilies       #-}
-{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE TypeFamilies               #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Types
 ( module Craft.Types
@@ -11,26 +11,27 @@ module Craft.Types
 where
 
 import           Control.Lens
-import           Control.Monad.Catch (MonadCatch, MonadThrow)
-import           Control.Monad.IO.Class (MonadIO)
-import           Control.Monad.Logger (LoggingT, MonadLogger, monadLoggerLog)
-import           Control.Monad.Reader (ReaderT, MonadReader, runReaderT)
-import qualified Control.Monad.Trans.Class as Trans
-import           Control.Monad.Trans.Free (FreeT, MonadFree, iterT)
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as B8
-import           Data.ByteString.Lens (unpackedChars)
-import           Data.Map.Strict (Map)
-import qualified Data.Text as T
-import           Data.Maybe (isNothing)
-import           Data.Versions (parseV)
-import           Language.Haskell.TH.Syntax (Q, Exp)
+import           Control.Monad.Catch        (MonadCatch, MonadThrow)
+import           Control.Monad.IO.Class     (MonadIO)
+import           Control.Monad.Logger       (LoggingT, MonadLogger,
+                                             monadLoggerLog)
+import           Control.Monad.Reader       (MonadReader, ReaderT, runReaderT)
+import qualified Control.Monad.Trans.Class  as Trans
+import           Control.Monad.Trans.Free   (FreeT, MonadFree, iterT)
+import           Data.ByteString            (ByteString)
+import qualified Data.ByteString            as BS
+import qualified Data.ByteString.Char8      as B8
+import           Data.ByteString.Lens       (unpackedChars)
+import           Data.Map.Strict            (Map)
+import           Data.Maybe                 (isNothing)
+import qualified Data.Text                  as T
+import           Data.Versions              (parseV)
+import           Language.Haskell.TH.Syntax (Exp, Q)
 import           System.Process
 
 import           Craft.Error
-import           Craft.Internal.Helpers
 import           Craft.File.Mode
+import           Craft.Internal.Helpers
 
 data CraftEnv
   = CraftEnv
@@ -212,10 +213,10 @@ data Package
 
 data PackageManager
  = PackageManager
-   { _pmGetter         :: PackageName -> Craft (Maybe Package)
-   , _pmInstaller      :: Package     -> Craft ()
-   , _pmUpgrader       :: Package     -> Craft ()
-   , _pmUninstaller    :: Package     -> Craft ()
+   { _pmGetter      :: PackageName -> Craft (Maybe Package)
+   , _pmInstaller   :: Package     -> Craft ()
+   , _pmUpgrader    :: Package     -> Craft ()
+   , _pmUninstaller :: Package     -> Craft ()
    }
 
 
@@ -364,7 +365,7 @@ instance Show FailResult where
 showProc :: CreateProcess -> String
 showProc p =
   case cmdspec p of
-    ShellCommand s -> s
+    ShellCommand s     -> s
     RawCommand fp args -> unwords [fp, unwords args]
 
 

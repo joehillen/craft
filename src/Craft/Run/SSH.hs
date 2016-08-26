@@ -1,20 +1,20 @@
 module Craft.Run.SSH where
 
-import           Control.Exception.Lifted (bracket)
+import           Control.Exception.Lifted  (bracket)
 import           Control.Lens
-import           Control.Monad.Logger (LoggingT)
+import           Control.Monad.Logger      (LoggingT)
 import           Control.Monad.Reader
-import qualified Control.Monad.Trans as Trans
-import qualified Data.ByteString.Char8 as B8
-import           Data.List (intersperse)
-import qualified Data.Map.Strict as Map
-import           Data.Maybe (fromMaybe)
-import           Data.String.Utils (replace)
+import qualified Control.Monad.Trans       as Trans
+import qualified Data.ByteString.Char8     as B8
+import           Data.List                 (intersperse)
+import qualified Data.Map.Strict           as Map
+import           Data.Maybe                (fromMaybe)
+import           Data.String.Utils         (replace)
 import           System.Directory
-import           System.Process (ProcessHandle)
-import qualified System.Process as Process
+import           System.Process            (ProcessHandle)
+import qualified System.Process            as Process
 import qualified System.Process.ByteString as Proc.BS
-import           System.Random hiding (next)
+import           System.Random             hiding (next)
 
 import           Craft.Helpers
 import           Craft.Run.Internal

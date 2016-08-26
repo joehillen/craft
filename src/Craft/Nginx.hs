@@ -2,9 +2,9 @@ module Craft.Nginx where
 
 import           Craft
 import           Craft.Internal.Helpers
-import qualified Craft.SysV as SysV
+import qualified Craft.SysV             as SysV
 
-import Control.Lens
+import           Control.Lens
 
 
 setup :: Craft ()

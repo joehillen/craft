@@ -9,16 +9,16 @@ module Craft.Directory
 where
 
 import           Control.Lens
-import           Data.Maybe (catMaybes)
+import           Data.Maybe             (catMaybes)
 import           Formatting
 import           System.FilePath
 
 import           Craft.Directory.Parser
-import qualified Craft.File as File
+import qualified Craft.File             as File
 import           Craft.File.Mode
-import qualified Craft.Group as Group
+import qualified Craft.Group            as Group
 import           Craft.Internal
-import qualified Craft.User as User
+import qualified Craft.User             as User
 
 
 type Path = FilePath

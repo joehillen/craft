@@ -20,14 +20,14 @@ module Craft.Hosts
 where
 
 
-import           Control.Lens hiding (set, noneOf)
-import           Control.Monad (zipWithM)
+import           Control.Lens          hiding (noneOf, set)
+import           Control.Monad         (zipWithM)
 import qualified Data.ByteString.Char8 as B8
-import qualified Data.List as L
-import           Data.Maybe (catMaybes)
+import qualified Data.List             as L
+import           Data.Maybe            (catMaybes)
 
 import           Craft
-import qualified Craft.File as File
+import qualified Craft.File            as File
 import           Craft.Hosts.Parser
 import           Craft.Hosts.Types
 

@@ -6,16 +6,16 @@ module Craft.Config.Ini
 )
 where
 
-import Control.Lens
-import Data.Ini
+import           Control.Lens
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Text as T
+import           Data.Ini
+import qualified Data.Text           as T
 
-import Craft.Config
-import Craft.Types
+import           Craft.Config
+import           Craft.Types
 
 
-data IniFormat = IniFormat { _inifmt :: Ini
+data IniFormat = IniFormat { _inifmt   :: Ini
                            , _settings :: WriteIniSettings
                            }
 

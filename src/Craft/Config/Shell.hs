@@ -1,10 +1,10 @@
 module Craft.Config.Shell where
 
-import           Control.Lens hiding (set, noneOf)
-import           Data.Maybe (catMaybes)
-import           Text.Megaparsec hiding (parse)
+import           Control.Lens                   hiding (noneOf, set)
+import           Data.Maybe                     (catMaybes)
+import           Text.Megaparsec                hiding (parse)
 
-import           Craft hiding (try)
+import           Craft                          hiding (try)
 import           Craft.Config
 import           Craft.Internal.Helpers.Parsing
 
@@ -50,7 +50,7 @@ config fp = Craft.Config.config fp . ShellFormat
 dedup :: ShellFormat -> ShellFormat
 dedup cfgs = go empty cfgs
  where
-  go m (ShellFormat          [])   = m
+  go m (ShellFormat          []) = m
   go m (ShellFormat ((k, v):xs)) = go (set k v m) (ShellFormat xs)
 
 

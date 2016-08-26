@@ -4,7 +4,7 @@ import           Control.Lens
 import qualified Data.ByteString.Char8 as B8
 
 import           Craft
-import qualified Craft.File as File
+import qualified Craft.File            as File
 
 
 data Config a

@@ -3,12 +3,12 @@ module Craft.Apt where
 import           Control.Lens
 import           Control.Monad
 import           Data.ByteString.Lens
-import           Data.String.Utils (replace)
+import           Data.String.Utils    (replace)
 import           Formatting
 
 import           Craft
-import qualified Craft.File as File
-import qualified Craft.Package as Package
+import qualified Craft.File           as File
+import qualified Craft.Package        as Package
 
 
 
@@ -84,7 +84,7 @@ aptInstall pkg = aptGet $ aptInstallArgs ++ [pkgArg pkg]
 
 
 aptInstallMult :: [Package] -> Craft ()
-aptInstallMult [] = return ()
+aptInstallMult []   = return ()
 aptInstallMult pkgs = aptGet $ aptInstallArgs ++ map pkgArg pkgs
 
 

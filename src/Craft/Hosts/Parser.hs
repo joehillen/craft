@@ -2,14 +2,14 @@ module Craft.Hosts.Parser where
 
 -- |This file is just to keep Megaparsec from conflicting with other modules
 
-import Control.Monad (void)
-import Data.List (intercalate)
-import Text.Megaparsec
-import Text.Megaparsec.String
+import           Control.Monad                  (void)
+import           Data.List                      (intercalate)
+import           Text.Megaparsec
+import           Text.Megaparsec.String
 
-import Craft.Hosts.Types
-import Craft.Types
-import Craft.Internal.Helpers.Parsing
+import           Craft.Hosts.Types
+import           Craft.Internal.Helpers.Parsing
+import           Craft.Types
 
 
 parseLine :: Int -> String -> Craft (Maybe (IP, [Name]))

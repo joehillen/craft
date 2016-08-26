@@ -2,14 +2,14 @@ module Craft.Run.Vagrant where
 
 import           Control.Lens
 import           Control.Monad.Logger (LoggingT)
-import qualified Control.Monad.Trans as Trans
-import qualified Data.Map.Strict as Map
-import           Data.Maybe (fromMaybe)
+import qualified Control.Monad.Trans  as Trans
+import qualified Data.Map.Strict      as Map
+import           Data.Maybe           (fromMaybe)
 import qualified System.Directory
 import qualified System.Environment
 
 import           Craft
-import           Craft.Config.SSH (SSHConfig(..), parser, cfgLookup)
+import           Craft.Config.SSH     (SSHConfig (..), cfgLookup, parser)
 
 
 data VagrantSettings
