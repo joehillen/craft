@@ -67,6 +67,7 @@ library
                      , Craft.SSH.PublicKey
                      , Craft.SysV
                      , Craft.Types
+                     , Craft.Ubuntu
                      , Craft.Upstart
                      , Craft.User
                      , Craft.Wget
