@@ -34,8 +34,7 @@ withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. directoryPath)
 craftEnv :: PackageManager -> CraftEnv
 craftEnv pm =
   CraftEnv
-  { _craftSourcePaths    = ["."]
-  , _craftPackageManager = pm
+  { _craftPackageManager = pm
   , _craftExecEnv        = Map.fromList [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
   , _craftExecCWD        = "/"
   }

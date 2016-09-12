@@ -28,7 +28,6 @@ exec cmd args = do
 
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
-  logDebugNS "exec_" $ T.unwords $ map T.pack (cmd:args)
   ce <- ask
   liftF $ Exec_ ce cmd args ()
 
@@ -45,30 +44,11 @@ fileWrite fp content = do
   liftF $ FileWrite ce fp content ()
 
 
-sourceFile :: FilePath -> FilePath -> Craft ()
-sourceFile name dest = do
+sourceDataFile :: FilePath -> FilePath -> Craft ()
+sourceDataFile name dest = do
   ce <- ask
-  fp <- findSourceFile name
+  fp
   liftF $ SourceFile ce fp dest ()
-
-
-findSourceFile :: FilePath -> Craft FilePath
-findSourceFile name = do
-  ce <- ask
-  let fps = ce ^. craftSourcePaths
-  files <- liftF $ FindSourceFile ce name id
-  if null files then
-    $craftError $ "Source file `" ++ name ++ "` not found in file sources: "
-                   ++ show fps
-  else
-    return $ head files </> name
-
-
-readSourceFile :: FilePath -> Craft ByteString
-readSourceFile name = do
-  ce <- ask
-  fp <- findSourceFile name
-  liftF $ ReadSourceFile ce fp id
 
 
 parseExecResult :: ExecResult -> Parsec String a -> String -> Craft a

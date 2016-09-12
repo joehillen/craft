@@ -12,24 +12,34 @@ import           Craft.Run.Internal
 import           Craft.Types
 
 
-runCraftNspawn :: FilePath -> CraftEnv -> Craft a -> LoggingT IO a
-runCraftNspawn dir ce' = interpretCraft ce' run
- where
-  dir' = reverse . dropWhile (== '/') $ reverse dir
-  run (Exec ce command args next) =
-    let p = nspawnProc dir ce command args in execProc p next
-  run (Exec_ ce command args next) =
-    let p = nspawnProc dir ce command args in execProc_ (showProc p) p next
-  run (FileRead _ fp next) =
-    Trans.lift (BS.readFile (dir'++fp)) >>= next
-  run (FileWrite _ fp content next) =
-    Trans.lift (BS.writeFile (dir'++fp) content) >> next
-  run (SourceFile ce src dest next) =
-    run (Exec_ ce "/bin/cp" [src, (dir'++dest)] next)
-  run (ReadSourceFile _ fp next) =
-    Trans.lift (readSourceFileIO fp) >>= next
-  run (FindSourceFile ce name next) =
-    Trans.lift (findSourceFileIO ce name) >>= next
+runNspawn :: FilePath -> CraftRunner
+runNspawn dir =
+  let dir' = reverse . dropWhile (== '/') $ reverse dir
+  in CraftRunner
+     { runExec =
+         \ce command args ->
+           let p = nspawnProc dir' ce command args
+           in execProc p
+     , runExec_ =
+         \ce command args ->
+           let p = nspawnProc dir' ce command args
+           in execProc_ (showProc p) p
+     , runFileRead =
+         \fp -> Trans.lift . BS.readFile $ dir'++fp
+     , runFileWrite =
+         \fp content ->
+           Trans.lift $ BS.writeFile (dir'++fp) content
+     , runSourceFile =
+         \src dest ->
+           let p = (proc "/bin/cp" [src, (dir'++dest)])
+                   { env           = Nothing
+                   , cwd           = Nothing
+                   , close_fds     = True
+                   , create_group  = True
+                   , delegate_ctlc = False
+                   }
+           in execProc_ (showProc p) p
+     }
 
 
 nspawnProc :: FilePath -> CraftEnv -> Command -> Args -> CreateProcess

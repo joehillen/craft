@@ -165,10 +165,6 @@ runSSHFree session (SourceFile _ src dest next) = do
                      else [])
              ++ [ src , (session ^. sessionEnv . connStr) ++ ":" ++ dest ])
   execProc_ (showProc p) p next
-runSSHFree _ (FindSourceFile ce name next) =
-  Trans.lift (findSourceFileIO ce name) >>= next
-runSSHFree _ (ReadSourceFile _ fp next) =
-  Trans.lift (readSourceFileIO fp) >>= next
 
 
 sshProc :: Session -> CraftEnv -> Command -> Args
