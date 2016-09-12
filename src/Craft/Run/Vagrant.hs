@@ -33,22 +33,30 @@ runCraftVagrant settings env configs = do
   sysEnv <- Trans.lift System.Environment.getEnvironment
   cwd <- Trans.lift System.Directory.getCurrentDirectory
   -- vagrant ssh-config
-  sshcfg <- runCraftLocal (craftEnv (env ^. craftPackageManager)
-                                    & craftExecEnv .~ Map.fromList sysEnv
-                                    & craftExecCWD .~ cwd
-                                    ) $ do
-    when (vagrantUp settings) $ exec_ "vagrant" ["up", box]
-    SSHConfig <$> parseExecStdout parser "vagrant" ["ssh-config", box]
+  sshcfg <-
+    runCraft
+      runLocal
+      (craftEnv (env ^. craftPackageManager)
+       & craftExecEnv .~ Map.fromList sysEnv
+       & craftExecCWD .~ cwd)
+      $ do
+        when (vagrantUp settings) $ exec_ "vagrant" ["up", box]
+        SSHConfig <$> parseExecStdout parser "vagrant" ["ssh-config", box]
   let addr = cfgLookupOrError box "hostname" sshcfg
   let port = read $ cfgLookupOrError box "port" sshcfg
   let user = cfgLookupOrError box "user" sshcfg
   let key  = cfgLookupOrError box "identityfile" sshcfg
   -- vagrant ssh
-  runCraftSSH (sshEnv addr key & sshUser .~ user
-                               & sshPort .~ port
-                               & sshSudo .~ True)
-              env
-              configs
+  withSession
+    (sshEnv addr key
+     & sshUser .~ user
+     & sshPort .~ port
+     & sshSudo .~ True)
+    $ \session ->
+        runCraft
+          (runSSHSession session)
+          env
+          configs
 
 
 cfgLookupOrError :: String -> String -> SSHConfig -> String

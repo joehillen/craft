@@ -118,53 +118,51 @@ withSession env =
           (Trans.lift . closeSession)
 
 
-runCraftSSHSession :: Session -> CraftEnv -> Craft a -> LoggingT IO a
-runCraftSSHSession session ce = interpretCraft ce $ runSSHFree session
+runSSHSession :: Session -> CraftRunner
+runSSHSession session =
+  CraftRunner
+  { runExec =
+      \ce command args ->
+        execProc $ sshProc session ce command args
+  , runExec_ =
+      \ce command args ->
+        let p = sshProc session ce command args
+        in execProc_ (unwords (command:args)) p
+  , runFileRead =
+      \fp -> do
+        let p = sshProc session craftEnvOverride "cat" [fp]
+        (ec, content, stderr') <-
+          Trans.lift $ Proc.BS.readCreateProcessWithExitCode p ""
+        unless (isSuccessCode ec) $
+          $craftError $ "Failed to read file '"++ fp ++"': " ++ B8.unpack stderr'
+        return content
+  , runFileWrite =
+      \fp content -> do
+        let p = sshProc session craftEnvOverride "tee" [fp]
+        (ec, _, stderr') <-
+          Trans.lift $ Proc.BS.readCreateProcessWithExitCode p content
+        unless (isSuccessCode ec) $
+          $craftError $ "Failed to write file '" ++ fp ++ "': " ++ B8.unpack stderr'
+  , runSourceFile =
+      \src dest ->
+        let p = Process.proc "rsync"
+                  (   [ "--quiet" -- suppress non-error messages
+                      , "--checksum" -- skip based on checksum, not mod-time & size
+                      , "--compress" -- compress file data during the transfer
+                        -- specify the remote shell to use
+                      , "--rsh=ssh " ++ unwords (session ^. sessionArgs)]
+                  ++ (if session ^. sessionEnv . sshSudo
+                          then ["--super", "--rsync-path=sudo rsync"]
+                          else [])
+                  ++ [ src , (session ^. sessionEnv . connStr) ++ ":" ++ dest ])
+        in execProc_ (showProc p) p
+  }
 
-
--- | runCraftSSH
-runCraftSSH :: SSHEnv -> CraftEnv -> Craft a -> LoggingT IO a
-runCraftSSH env ce prog =
-  withSession env $ \session -> runCraftSSHSession session ce prog
-
-
-runSSHFree :: Session -> CraftDSL (LoggingT IO a) -> LoggingT IO a
-runSSHFree session (Exec ce command args next) = do
-  let p = sshProc session ce command args
-  execProc p next
-runSSHFree session (Exec_ ce command args next) = do
-  let p = sshProc session ce command args
-  execProc_ (unwords (command:args)) p next
-runSSHFree session (FileRead ce fp next) = do
-  let ceOverride = ce & craftExecEnv .~ Map.empty
-                      & craftExecCWD .~ "/"
-      p = sshProc session ceOverride "cat" [fp]
-  (ec, content, stderr') <-
-    Trans.lift $ Proc.BS.readCreateProcessWithExitCode p ""
-  unless (isSuccessCode ec) $
-    $craftError $ "Failed to read file '"++ fp ++"': " ++ B8.unpack stderr'
-  next content
-runSSHFree session (FileWrite ce fp content next) = do
-  let ceOverride = ce & craftExecEnv .~ Map.empty
-                      & craftExecCWD .~ "/"
-      p = sshProc session ceOverride "tee" [fp]
-  (ec, _, stderr') <-
-    Trans.lift $ Proc.BS.readCreateProcessWithExitCode p content
-  unless (isSuccessCode ec) $
-    $craftError $ "Failed to write file '" ++ fp ++ "': " ++ B8.unpack stderr'
-  next
-runSSHFree session (SourceFile _ src dest next) = do
-  let p = Process.proc "rsync"
-            (   [ "--quiet" -- suppress non-error messages
-                , "--checksum" -- skip based on checksum, not mod-time & size
-                , "--compress" -- compress file data during the transfer
-                  -- specify the remote shell to use
-                , "--rsh=ssh " ++ unwords (session ^. sessionArgs)]
-             ++ (if session ^. sessionEnv . sshSudo
-                     then ["--super", "--rsync-path=sudo rsync"]
-                     else [])
-             ++ [ src , (session ^. sessionEnv . connStr) ++ ":" ++ dest ])
-  execProc_ (showProc p) p next
+craftEnvOverride :: CraftEnv
+craftEnvOverride =
+  craftEnv noPackageManager
+  & craftExecEnv .~ Map.empty
+  & craftExecCWD .~ "/"
 
 
 sshProc :: Session -> CraftEnv -> Command -> Args

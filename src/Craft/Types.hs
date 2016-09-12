@@ -22,6 +22,7 @@ import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Char8      as B8
 import           Data.ByteString.Lens       (unpackedChars)
 import           Data.Map.Strict            (Map)
+import qualified Data.Map.Strict            as Map
 import           Data.Maybe                 (isNothing)
 import qualified Data.Text                  as T
 import           Data.Versions              (parseV)
@@ -38,6 +39,15 @@ data CraftEnv = CraftEnv
   { _craftPackageManager :: PackageManager
   , _craftExecEnv        :: ExecEnv
   , _craftExecCWD        :: FilePath
+  }
+
+
+craftEnv :: PackageManager -> CraftEnv
+craftEnv pm =
+  CraftEnv
+  { _craftPackageManager = pm
+  , _craftExecEnv        = Map.fromList [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
+  , _craftExecCWD        = "/"
   }
 
 
@@ -282,6 +292,7 @@ makeLenses ''FailResult
 makeLenses ''SuccResult
 makeLenses ''File
 makeLenses ''Directory
+
 
 
 strContent :: Lens' File String

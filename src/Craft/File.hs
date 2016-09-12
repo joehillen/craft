@@ -39,12 +39,6 @@ name :: Getter File String
 name = filePath . to takeFileName
 
 
-fromSource :: FilePath -> FilePath -> Craft File
-fromSource sourcefp fp = do
-  c <- readSourceFile sourcefp
-  return $ file fp & fileContent ?~ c
-
-
 multiple :: [FilePath] -> Mode -> User -> Group -> Maybe ByteString -> [File]
 multiple paths mode' owner' group' content' = map go paths
  where

@@ -4,14 +4,12 @@ import           Control.Lens
 import           Control.Monad.Free
 import           Control.Monad.Logger   (logDebugNS)
 import           Control.Monad.Reader
-import           Data.ByteString        (ByteString)
 import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Char8  as B8
 import           Data.List              (intercalate)
 import           Data.List.Split        (splitOn)
 import qualified Data.Map.Strict        as Map
 import qualified Data.Text              as T
-import           System.FilePath        ((</>))
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 
@@ -33,22 +31,17 @@ exec_ cmd args = do
 
 
 fileRead :: FilePath -> Craft BS.ByteString
-fileRead fp = do
-  ce <- ask
-  liftF $ FileRead ce fp id
+fileRead fp =
+  liftF $ FileRead fp id
 
 
 fileWrite :: FilePath -> BS.ByteString -> Craft ()
-fileWrite fp content = do
-  ce <- ask
-  liftF $ FileWrite ce fp content ()
+fileWrite fp content =
+  liftF $ FileWrite fp content ()
 
 
-sourceDataFile :: FilePath -> FilePath -> Craft ()
-sourceDataFile name dest = do
-  ce <- ask
-  fp
-  liftF $ SourceFile ce fp dest ()
+sourceFile :: (IO FilePath) -> FilePath -> Craft ()
+sourceFile sourcer dest = liftF $ SourceFile sourcer dest ()
 
 
 parseExecResult :: ExecResult -> Parsec String a -> String -> Craft a
