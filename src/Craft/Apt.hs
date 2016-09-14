@@ -5,7 +5,7 @@ import           Control.Monad
 import           Formatting
 
 import           Craft
-import qualified Craft.Package        as Package
+import qualified Craft.Package as Package
 
 
 
@@ -73,7 +73,7 @@ getAptPackage pn =
 
 
 aptInstallArgs :: [String]
-aptInstallArgs = ["-o", "DPkg::Options::=--force-confold", "install"]
+aptInstallArgs = ["-o", "DPkg::Options::=--force-confnew", "install"]
 
 
 aptInstall :: Package -> Craft ()
@@ -131,7 +131,11 @@ packageFromDebFile f = do
 dpkgInstall :: File -> Craft ()
 dpkgInstall f =
   withEnvVar "DEBIAN_FRONTEND" "noninteractive" $
-    exec_ "dpkg" ["-i", f ^. path]
+    exec_ "dpkg"
+      [ "--force-overwrite"
+      , "--force-confnew"
+      , "-i", f ^. path
+      ]
 
 
 dpkgDebBin :: FilePath
