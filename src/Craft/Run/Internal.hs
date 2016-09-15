@@ -1,18 +1,14 @@
 module Craft.Run.Internal where
 
-import           Conduit as C
--- import           Control.Lens
-import           Control.Monad.Logger (askLoggerIO, logDebugNS, LoggingT, runLoggingT)
--- import           Control.Monad.Reader
-import qualified Control.Monad.Trans as Trans
--- import           Data.ByteString (ByteString)
--- import qualified Data.ByteString as BS
-import qualified Data.Conduit.List as CL
-import           Data.Conduit.Process (sourceProcessWithStreams)
-import           Data.Conduit.Text as CT
-import           Data.Monoid ((<>))
-import qualified Data.Text as T
--- import Path.IO (doesFileExist)
+import           Conduit                 as C
+import           Control.Monad.Logger    (LoggingT, askLoggerIO, logDebugNS,
+                                          runLoggingT)
+import qualified Control.Monad.Trans     as Trans
+import qualified Data.Conduit.List       as CL
+import           Data.Conduit.Process    (sourceProcessWithStreams)
+import           Data.Conduit.Text       as CT
+import           Data.Monoid             ((<>))
+import qualified Data.Text               as T
 import           System.Exit
 import           System.Process
 import qualified System.Process.ListLike as SPLL
@@ -25,19 +21,19 @@ isSuccessCode ExitSuccess     = True
 isSuccessCode (ExitFailure _) = False
 
 
-execProc :: CreateProcess -> (ExecResult -> LoggingT IO a) -> LoggingT IO a
-execProc p next = do
+execProc :: CreateProcess -> LoggingT IO ExecResult
+execProc p = do
   logDebugNS "exec|process" $ T.pack $ showProc p
   (exit', stdoutRaw, stderrRaw) <- Trans.lift $ SPLL.readCreateProcessWithExitCode p "" {- stdin -}
   let stdout' = trimNL stdoutRaw
   let stderr' = trimNL stderrRaw
-  next $ case exit' of
-           ExitSuccess      -> ExecSucc $ SuccResult stdout' stderr' p
-           ExitFailure code -> ExecFail $ FailResult code stdout' stderr' p
+  return $ case exit' of
+    ExitSuccess      -> ExecSucc $ SuccResult stdout' stderr' p
+    ExitFailure code -> ExecFail $ FailResult code stdout' stderr' p
 
 
-execProc_ :: String -> CreateProcess -> LoggingT IO a -> LoggingT IO a
-execProc_ src p next = do
+execProc_ :: String -> CreateProcess -> LoggingT IO ()
+execProc_ src p = do
   let p' = p { std_in  = CreatePipe
              , std_out = CreatePipe
              , std_err = CreatePipe
@@ -56,7 +52,7 @@ execProc_ src p next = do
                                (pipeConsumer logger srcErr)
   case ec of
     ExitFailure n -> $craftError $ "exec_ `" ++ src ++ "` failed with code: " ++ show n
-    ExitSuccess   -> next
+    ExitSuccess   -> return ()
  where
    pipeConsumer logger s = decodeUtf8C =$= CT.lines =$ awaitForever (\txt ->
      (`runLoggingT` logger) (logDebugNS s txt))
@@ -66,19 +62,9 @@ execProc_ src p next = do
 trimNL :: String -> String
 trimNL = reverse . rmNL . reverse
  where
-  rmNL [] = []
+  rmNL []        = []
   rmNL ('\n':xs) = rmCR xs
-  rmNL xs = xs
-  rmCR [] = []
+  rmNL xs        = xs
+  rmCR []        = []
   rmCR ('\r':xs) = xs
-  rmCR xs = xs
-
-
--- findSourceFileIO :: CraftEnv -> Path Rel FileP -> IO [Path Rel Dir]
--- findSourceFileIO ce name = do
---   let fps = ce ^. craftSourcePaths
---   filterM (\fp -> doesFileExist $ fp </> name) fps
-
-
--- readSourceFileIO :: Path Rel FileP -> IO ByteString
--- readSourceFileIO fp = BS.readFile $ fromAbsFile fp
+  rmCR xs        = xs

@@ -1,16 +1,15 @@
 module Craft.DSL where
 
 import           Control.Lens
-import           Control.Monad.Reader
 import           Control.Monad.Free
--- import           Data.ByteString (ByteString)
-import qualified Data.Map.Strict as Map
-import           Control.Monad.Logger (logDebugNS)
-import qualified Data.Text as T
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as B8
-import           Data.List (intercalate)
-import           Data.List.Split (splitOn)
+import           Control.Monad.Logger   (logDebugNS)
+import           Control.Monad.Reader
+import qualified Data.ByteString        as BS
+import qualified Data.ByteString.Char8  as B8
+import           Data.List              (intercalate)
+import           Data.List.Split        (splitOn)
+import qualified Data.Map.Strict        as Map
+import qualified Data.Text              as T
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 
@@ -27,46 +26,22 @@ exec cmd args = do
 
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
-  logDebugNS "exec_" $ T.unwords $ map T.pack (cmd:args)
   ce <- ask
   liftF $ Exec_ ce cmd args ()
 
 
 fileRead :: Path Abs FileP -> Craft BS.ByteString
-fileRead fp = do
-  ce <- ask
-  liftF $ FileRead ce fp id
+fileRead fp =
+  liftF $ FileRead fp id
 
 
 fileWrite :: Path Abs FileP -> BS.ByteString -> Craft ()
-fileWrite fp content = do
-  ce <- ask
-  liftF $ FileWrite ce fp content ()
+fileWrite fp content =
+  liftF $ FileWrite fp content ()
 
 
--- sourceFile :: Path Rel FileP -> Path Abs FileP -> Craft ()
--- sourceFile name dest = do
---   ce <- ask
---   fp <- findSourceFile name
---   liftF $ SourceFile ce fp dest ()
-
-
--- findSourceFile :: Path Rel FileP -> Craft (Path Abs FileP)
--- findSourceFile name = do
---   ce <- ask
---   let fps = ce^.craftSourcePaths
---   files <- liftF $ FindSourceFile ce name id
---   if null files then
---     $craftError $ "Source file `"++show name++"` not found in file sources: "++show fps
---   else
---     return $ head files
-
-
--- readSourceFile :: Path Rel FileP -> Craft ByteString
--- readSourceFile name = do
---   ce <- ask
---   fp <- findSourceFile name
---   liftF $ ReadSourceFile ce fp id
+sourceFile :: (IO FilePath) -> Path Abs FileP -> Craft ()
+sourceFile sourcer dest = liftF $ SourceFile sourcer dest ()
 
 
 parseExecResult :: ExecResult -> Parsec String a -> String -> Craft a

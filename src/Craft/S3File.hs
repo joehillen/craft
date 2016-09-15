@@ -1,17 +1,17 @@
 module Craft.S3File where
 
-import           Control.Lens hiding (noneOf)
-import           Control.Monad.Logger (logDebug)
-import           Crypto.Hash (SHA1)
-import           Crypto.MAC.HMAC (HMAC, hmac)
+import           Control.Lens            hiding (noneOf)
+import           Control.Monad.Logger    (logDebug)
+import           Crypto.Hash             (SHA1)
+import           Crypto.MAC.HMAC         (HMAC, hmac)
 import           Data.ByteArray.Encoding
-import qualified Data.ByteString.Char8 as B8
-import qualified Data.Text as T
+import qualified Data.ByteString.Char8   as B8
+import qualified Data.Text               as T
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 
-import           Craft hiding (try)
-import qualified Craft.File as File
+import           Craft                   hiding (try)
+import qualified Craft.File              as File
 
 
 data S3File

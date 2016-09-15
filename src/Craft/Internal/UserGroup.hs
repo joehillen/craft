@@ -1,14 +1,14 @@
 module Craft.Internal.UserGroup where
 
-import Control.Lens
-import Data.List (intercalate)
-import Data.Maybe (fromJust)
-import Text.Megaparsec
-import Text.Megaparsec.String
+import           Control.Lens
+import           Data.List                      (intercalate)
+import           Data.Maybe                     (fromJust)
+import           Text.Megaparsec
+import           Text.Megaparsec.String
 
-import Craft.Internal
-import Craft.Internal.Helpers
-import Craft.Internal.Helpers.Parsing
+import           Craft.Internal
+import           Craft.Internal.Helpers
+import           Craft.Internal.Helpers.Parsing
 
 
 colon :: Parser Char

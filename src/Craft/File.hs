@@ -13,9 +13,9 @@ import           Data.ByteString (ByteString)
 import           Data.Maybe
 import           Formatting
 
+import qualified Craft.Group     as Group
 import           Craft.Internal
-import qualified Craft.User as User
-import qualified Craft.Group as Group
+import qualified Craft.User      as User
 
 
 getOwner :: File -> Craft User
@@ -37,12 +37,6 @@ getGroup f =
 -- TODO: name :: Lens' File (Path Rel FileP)
 name :: Getter File (Path Rel FileP)
 name = filePath . to filename
-
-
--- fromSource :: FilePath -> FilePath -> Craft File
--- fromSource sourcefp fp = do
---   c <- readSourceFile sourcefp
---   return $ file fp & fileContent ?~ c
 
 
 multiple :: [Path Abs FileP] -> Mode -> User -> Group -> Maybe ByteString -> [File]

@@ -1,8 +1,8 @@
 module Craft.File.Link where
 
-import Control.Lens
+import           Control.Lens
 
-import Craft
+import           Craft
 
 
 newtype TargetPath = TargetPath FilePath

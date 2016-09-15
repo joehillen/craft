@@ -1,9 +1,9 @@
 module Craft.S3FileSpec (spec) where
 
-import           Data.List (intercalate)
+import           Data.List             (intercalate)
 import           Test.Hspec
 import           Test.Hspec.Megaparsec
-import qualified Text.Megaparsec as MP
+import qualified Text.Megaparsec       as MP
 
 import           Craft.S3File
 

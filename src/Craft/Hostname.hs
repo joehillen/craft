@@ -1,10 +1,10 @@
 module Craft.Hostname where
 
 import           Control.Monad.Logger (logInfo)
-import qualified Data.Text as T
+import qualified Data.Text            as T
 
 import           Craft
-import qualified Craft.Hosts as Hosts
+import qualified Craft.Hosts          as Hosts
 
 
 data Hostname = Hostname String

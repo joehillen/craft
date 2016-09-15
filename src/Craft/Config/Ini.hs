@@ -6,16 +6,16 @@ module Craft.Config.Ini
 )
 where
 
-import Control.Lens
-import Data.Ini
+import           Control.Lens
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Text as T
+import           Data.Ini
+import qualified Data.Text           as T
 
-import Craft.Config
-import Craft.Types
+import           Craft.Config
+import           Craft.Types
 
 
-data IniFormat = IniFormat { _inifmt :: Ini
+data IniFormat = IniFormat { _inifmt   :: Ini
                            , _settings :: WriteIniSettings
                            }
 
@@ -31,7 +31,7 @@ config = Craft.Config.config
 
 instance ConfigFormat IniFormat where
   showConfig format = T.unpack . printIniWith (_settings format) $ _inifmt format
-  parse fp s =
+  parseConfig fp s =
     case parseIni (T.pack s) of
       Left err -> $craftError $ "Failed to parse ini file"++show fp++": "++err
       Right x  -> return $ IniFormat

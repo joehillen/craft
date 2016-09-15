@@ -1,11 +1,11 @@
 module Craft.User where
 
-import           Control.Lens hiding (un)
-import           Data.List (intercalate)
-import qualified Data.Set as S
+import           Control.Lens             hiding (un)
+import           Data.List                (intercalate)
+import qualified Data.Set                 as S
 import           Formatting
 
-import qualified Craft.Group as Group
+import qualified Craft.Group              as Group
 import           Craft.Internal
 import           Craft.Internal.Helpers
 import           Craft.Internal.UserGroup

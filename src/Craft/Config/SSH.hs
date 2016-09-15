@@ -1,15 +1,15 @@
 module Craft.Config.SSH where
 
-import           Control.Lens hiding (noneOf)
-import           Data.Char (toLower)
-import           Data.Maybe (catMaybes)
+import           Control.Lens                   hiding (noneOf)
+import           Data.Char                      (toLower)
+import           Data.Maybe                     (catMaybes)
 import           Text.Megaparsec
 
-import           Craft hiding (try)
+import           Craft                          hiding (try)
 import           Craft.Config
 import           Craft.Internal.Helpers
-import           Craft.SSH
 import           Craft.Internal.Helpers.Parsing
+import           Craft.SSH
 
 
 data Section
@@ -43,7 +43,7 @@ makeLenses ''UserConfig
 
 instance ConfigFormat SSHConfig where
   showConfig = show
-  parse = sshConfigParse
+  parseConfig = sshConfigParse
 
 
 userPath :: UserConfig -> Path Abs FileP
@@ -62,7 +62,7 @@ bodyLookup key body =
 cfgLookup :: String -> String -> SSHConfig -> Maybe String
 cfgLookup sectionName key (SSHConfig sections') =
   case body of
-    Just b -> bodyLookup key b
+    Just b  -> bodyLookup key b
     Nothing -> Nothing
  where
   body = maybeHead . catMaybes $ map f sections'
@@ -99,8 +99,8 @@ showBody body = indent 4 . unlines $ map (\(n, v) -> n ++ " " ++ v) body
 
 
 instance Show Section where
-  show (Host hostname body)  = "Host " ++ hostname ++ "\n" ++ showBody body
-  show (Match match body)    = "Match " ++ match ++ "\n" ++ showBody body
+  show (Host hostname body) = "Host " ++ hostname ++ "\n" ++ showBody body
+  show (Match match body)   = "Match " ++ match ++ "\n" ++ showBody body
 
 
 parseTitle :: Parsec String (String, String)

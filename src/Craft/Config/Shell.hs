@@ -1,10 +1,10 @@
 module Craft.Config.Shell where
 
-import           Control.Lens hiding (set, noneOf)
-import           Data.Maybe (catMaybes)
-import           Text.Megaparsec hiding (parse)
+import           Control.Lens                   hiding (noneOf, set)
+import           Data.Maybe                     (catMaybes)
+import           Text.Megaparsec                hiding (parse)
 
-import           Craft hiding (try)
+import           Craft                          hiding (try)
 import           Craft.Config
 import           Craft.Internal.Helpers.Parsing
 
@@ -19,8 +19,8 @@ instance ConfigFormat ShellFormat where
    where
      showkv :: (String, String) -> String
      showkv (k, v) = k++"="++v
-  parse fp s =
-    case runParser parser (show fp) s of
+  parseConfig fp s =
+    case runParser parser (fromAbsFile fp) s of
       Left err   -> $craftError $ show err
       Right cfgs -> return cfgs
 
@@ -50,7 +50,7 @@ config fp = Craft.Config.config fp . ShellFormat
 dedup :: ShellFormat -> ShellFormat
 dedup cfgs = go empty cfgs
  where
-  go m (ShellFormat          [])   = m
+  go m (ShellFormat          []) = m
   go m (ShellFormat ((k, v):xs)) = go (set k v m) (ShellFormat xs)
 
 

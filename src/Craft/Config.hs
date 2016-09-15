@@ -4,7 +4,7 @@ import           Control.Lens
 import qualified Data.ByteString.Char8 as B8
 
 import           Craft
-import qualified Craft.File as File
+import qualified Craft.File            as File
 
 
 data Config a
@@ -16,22 +16,23 @@ data Config a
 
 config :: ConfigFormat a => Path Abs FileP -> a -> Config a
 config fp cfg =
-  Config { _configFile = file fp & strContent .~ showConfig cfg
-         , _configs    = cfg
-         }
+  Config
+  { _configFile = file fp & strContent .~ showConfig cfg
+  , _configs    = cfg
+  }
 
 
 class ConfigFormat a where
   showConfig :: a -> String
 
-  parse :: Path Abs FileP -> String -> Craft a
+  parseConfig :: Path Abs FileP -> String -> Craft a
 
   configFromFile :: File -> Craft (Config a)
   configFromFile f = do
     bs <- case f ^. fileContent of
             Nothing -> fileRead (f ^. path)
             Just bs -> return bs
-    cfgs <- parse (f^.path) (B8.unpack bs)
+    cfgs <- parseConfig (f^.path) (B8.unpack bs)
     return Config { _configFile = f
                   , _configs    = cfgs
                   }
@@ -41,7 +42,7 @@ class ConfigFormat a where
     return $ _configFile cfg & strContent .~ showConfig (_configs cfg) ++ "\n"
 
 
-  {-# MINIMAL showConfig, parse #-}
+  {-# MINIMAL showConfig, parseConfig #-}
 
 makeLenses ''Config
 

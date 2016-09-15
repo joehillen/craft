@@ -4,7 +4,8 @@ import           Control.Lens
 
 import           Craft
 import           Craft.Internal.Helpers
-import qualified Craft.SysV as SysV
+import qualified Craft.SysV             as SysV
+
 
 setup :: Craft ()
 setup =

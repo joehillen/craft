@@ -1,12 +1,12 @@
 module Craft.Pip where
 
-import qualified Formatting as F
-import           Formatting hiding (char)
+import           Formatting      hiding (char)
+import qualified Formatting      as F
 import           Text.Megaparsec
 
-import           Craft hiding (package, latest)
+import           Craft           hiding (latest, package)
 import qualified Craft
-import qualified Craft.File as File
+import qualified Craft.File      as File
 
 
 newtype PipPackage = PipPackage Package
@@ -70,8 +70,8 @@ pip args = withPath [$(mkAbsDir "/usr/local/bin"), $(mkAbsDir "/usr/bin")] $ exe
 pkgArgs :: PipPackage -> [String]
 pkgArgs (PipPackage (Package pn pv)) = go pv
  where
-  go AnyVersion = [pn]
-  go Latest = ["--upgrade", pn]
+  go AnyVersion  = [pn]
+  go Latest      = ["--upgrade", pn]
   go (Version v) = ["--ignore-installed", pn ++ "==" ++ v]
 
 

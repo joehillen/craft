@@ -7,9 +7,9 @@ module Craft.Helpers
 )
 where
 
-import Control.Monad (when, unless, void)
-import System.Console.ANSI
-import Data.Digest.Pure.MD5 (md5)
+import           Control.Monad        (unless, void, when)
+import           Data.Digest.Pure.MD5 (md5)
+import           System.Console.ANSI
 
 
 color :: Color -> IO a -> IO a

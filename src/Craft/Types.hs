@@ -1,7 +1,7 @@
-{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DeriveFunctor              #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE TypeFamilies       #-}
-{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE TypeFamilies               #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 module Craft.Types
 ( module Craft.Types
@@ -11,30 +11,34 @@ module Craft.Types
 )
 where
 
-import           Prelude hiding (FilePath)
 import           Control.Lens
-import           Control.Monad.Catch (MonadCatch, MonadThrow)
-import           Control.Monad.IO.Class (MonadIO)
-import           Control.Monad.Logger (LoggingT, MonadLogger, monadLoggerLog)
-import           Control.Monad.Reader (ReaderT, MonadReader, runReaderT)
-import qualified Control.Monad.Trans.Class as Trans
-import           Control.Monad.Trans.Free (FreeT, MonadFree, iterT)
-import           Data.ByteString (ByteString)
-import qualified Data.ByteString as BS
-import qualified Data.ByteString.Char8 as B8
-import           Data.ByteString.Lens (unpackedChars)
-import           Data.Map.Strict (Map)
-import qualified Data.Text as T
-import           Data.Maybe (isNothing)
-import           Data.Versions (parseV)
-import           Language.Haskell.TH.Syntax (Q, Exp)
-import           Path hiding (File)
+import           Control.Monad.Catch        (MonadCatch, MonadThrow)
+import           Control.Monad.IO.Class     (MonadIO)
+import           Control.Monad.Logger       (LoggingT, MonadLogger, logDebugN,
+                                             monadLoggerLog)
+import           Control.Monad.Reader       (MonadReader, ReaderT, runReaderT)
+import qualified Control.Monad.Trans.Class  as Trans
+import           Control.Monad.Trans.Free   (FreeT, MonadFree, iterT)
+import           Data.ByteString            (ByteString)
+import qualified Data.ByteString            as BS
+import qualified Data.ByteString.Char8      as B8
+import           Data.ByteString.Lens       (unpackedChars)
+import           Data.Map.Strict            (Map)
+import qualified Data.Map.Strict            as Map
+import           Data.Maybe                 (isNothing)
+import qualified Data.Text                  as T
+import           Data.Versions              (parseV)
+import           Formatting
+import           Language.Haskell.TH.Syntax (Exp, Q)
+import           Path                       hiding (File)
 import qualified Path
+import           Prelude                    hiding (FilePath)
+import qualified Prelude
 import           System.Process
 
 import           Craft.Error
-import           Craft.Internal.Helpers
 import           Craft.File.Mode
+import           Craft.Internal.Helpers
 
 
 -- | FileP is an alias because 'Path.File' collides with 'Craft.File'.
@@ -44,10 +48,18 @@ type FileP = Path.File
 data CraftEnv
   = CraftEnv
     { _craftPackageManager :: PackageManager
-    -- , _craftSourcePaths    :: [Path Rel Dir]
     , _craftExecEnv        :: ExecEnv
     , _craftExecCWD        :: Path Abs Dir
     }
+
+
+craftEnv :: PackageManager -> CraftEnv
+craftEnv pm =
+  CraftEnv
+  { _craftPackageManager = pm
+  , _craftExecEnv        = Map.fromList [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
+  , _craftExecCWD        = $(mkAbsDir "/")
+  }
 
 
 newtype Craft a = Craft { unCraft :: ReaderT CraftEnv (FreeT CraftDSL (LoggingT IO)) a }
@@ -61,6 +73,37 @@ instance (MonadLogger m, Functor f) => MonadLogger (FreeT f m) where
 
 interpretCraft :: CraftEnv -> (CraftDSL (LoggingT IO a) -> LoggingT IO a) -> Craft a -> LoggingT IO a
 interpretCraft ce interpreter = iterT interpreter . flip runReaderT ce . unCraft
+
+
+data CraftRunner = CraftRunner
+  { runExec       :: CraftEnv -> Command -> Args -> LoggingT IO ExecResult
+  , runExec_      :: CraftEnv -> Command -> Args -> LoggingT IO ()
+  , runFileRead   :: Path Abs FileP -> LoggingT IO ByteString
+  , runFileWrite  :: Path Abs FileP -> ByteString -> LoggingT IO ()
+  , runSourceFile :: Prelude.FilePath -> Path Abs FileP -> LoggingT IO ()
+  }
+
+
+runCraft :: CraftRunner -> CraftEnv -> Craft a -> LoggingT IO a
+runCraft runner ce dsl = do
+  iterT interpreter $ flip runReaderT ce $ unCraft dsl
+ where
+   interpreter (Exec ce' cmd args next) = do
+     logDebugN $ sformat ("Exec "%string%" "%string) cmd (unwords args)
+     (runExec runner) ce' cmd args >>= next
+   interpreter (Exec_ ce' cmd args next) = do
+     logDebugN $ sformat ("Exec_ "%string%" "%string) cmd (unwords args)
+     (runExec_ runner) ce' cmd args >> next
+   interpreter (FileRead fp next) = do
+     logDebugN $ sformat ("FileRead "%shown) fp
+     (runFileRead runner) fp >>= next
+   interpreter (FileWrite fp content next) = do
+     logDebugN $ sformat ("FileWrite "%shown) fp
+     (runFileWrite runner) fp content >> next
+   interpreter (SourceFile sourcer dest next) = do
+     src <- Trans.lift sourcer
+     logDebugN $ sformat ("SourceFile "%string%" "%shown) src dest
+     (runSourceFile runner) src dest >> next
 
 
 type StdOut  = String
@@ -221,15 +264,16 @@ data Package
 
 data PackageManager
  = PackageManager
-   { _pmGetter         :: PackageName -> Craft (Maybe Package)
-   , _pmInstaller      :: Package     -> Craft ()
-   , _pmUpgrader       :: Package     -> Craft ()
-   , _pmUninstaller    :: Package     -> Craft ()
+   { _pmGetter      :: PackageName -> Craft (Maybe Package)
+   , _pmInstaller   :: Package     -> Craft ()
+   , _pmUpgrader    :: Package     -> Craft ()
+   , _pmUninstaller :: Package     -> Craft ()
    }
 
 
 noPackageManager :: PackageManager
-noPackageManager = let err _ = $craftError "No Package Manager" in
+noPackageManager =
+  let err _ = $craftError "No Package Manager" in
   PackageManager
   { _pmGetter         = err
   , _pmInstaller      = err
@@ -241,12 +285,14 @@ noPackageManager = let err _ = $craftError "No Package Manager" in
 data CraftDSL next
   = Exec  CraftEnv Command Args (ExecResult -> next)
   | Exec_ CraftEnv Command Args next
-  | FileRead CraftEnv (Path Abs FileP) (ByteString -> next)
-  | FileWrite CraftEnv (Path Abs FileP) ByteString next
-  -- | SourceFile CraftEnv (Path Abs FileP) (Path Abs FileP) next
-  -- | FindSourceFile CraftEnv (Path Rel FileP) ([Path Rel Dir] -> next)
-  -- | ReadSourceFile CraftEnv (Path Rel FileP) (ByteString -> next)
+  | FileRead (Path Abs FileP) (ByteString -> next)
+  | FileWrite (Path Abs FileP) ByteString next
+  | SourceFile (IO Prelude.FilePath) (Path Abs FileP) next
  deriving Functor
+
+
+data CraftRunDSL next
+  = CraftRunDSL (CraftDSL next)
 
 
 makeLenses ''PackageManager
@@ -257,6 +303,7 @@ makeLenses ''FailResult
 makeLenses ''SuccResult
 makeLenses ''File
 makeLenses ''Directory
+
 
 
 strContent :: Lens' File String
@@ -272,6 +319,7 @@ instance Eq File where
              || isNothing (b ^. fileContent)
              || (a ^. fileContent == b ^. fileContent))
 
+
 instance Show File where
   show f = "File { _filePath = " ++ show (f ^. filePath) ++
                 ", _fileMode = " ++ show (f ^. fileMode) ++
@@ -280,8 +328,11 @@ instance Show File where
                 ", _fileContent = " ++ showContent (f ^. fileContent) ++
                " }"
     where
-      showContent Nothing  = "Nothing"
-      showContent (Just c) = "Just " ++ show (BS.take 30 c) ++ "..."
+      maxlen = 30
+      showContent Nothing = "Nothing"
+      showContent (Just c)
+        | BS.length c > maxlen = "Just " ++ show (BS.take maxlen c) ++ "..."
+        | otherwise            = "Just " ++ show c
 
 
 
@@ -373,7 +424,7 @@ instance Show FailResult where
 showProc :: CreateProcess -> String
 showProc p =
   case cmdspec p of
-    ShellCommand s -> s
+    ShellCommand s     -> s
     RawCommand fp args -> unwords [fp, unwords args]
 
 

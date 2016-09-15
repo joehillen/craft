@@ -2,8 +2,8 @@ module Craft.Directory.Parser where
 
 -- |This file is just to keep Megaparsec from conflicting with other modules
 
-import Control.Monad (void)
-import Text.Megaparsec
+import           Control.Monad   (void)
+import           Text.Megaparsec
 
 
 getFilesParser :: Parsec String [String]

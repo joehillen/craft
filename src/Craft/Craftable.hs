@@ -1,21 +1,22 @@
 {-# LANGUAGE FunctionalDependencies #-}
-{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE MultiParamTypeClasses  #-}
+{-# LANGUAGE UndecidableInstances   #-}
 module Craft.Craftable where
 
 import           Control.Lens
-import           Control.Monad.Reader (ask)
-import qualified Data.ByteString.Lazy as BL
-import           Data.List (intercalate)
-import           Data.Maybe (isJust, catMaybes)
-import           Formatting hiding (char)
+import           Control.Monad.Reader     (ask)
+import qualified Data.ByteString.Lazy     as BL
+import           Data.List                (intercalate)
+import           Data.Maybe               (catMaybes, isJust)
+import           Formatting               hiding (char)
 
 import           Craft.DSL
-import           Craft.Types
+import qualified Craft.File               as File
 import           Craft.Helpers
 import           Craft.Internal.Helpers
-import qualified Craft.File as File
-import qualified Craft.User as User
 import           Craft.Internal.UserGroup
+import           Craft.Types
+import qualified Craft.User               as User
 
 
 data Watched
@@ -49,6 +50,27 @@ updated _       = False
 removed :: Watched -> Bool
 removed Removed = True
 removed _       = False
+
+
+watch :: Eq a => Craft (Maybe a) -> Craft b -> Craft (Watched, Maybe a, b)
+watch getter action = do
+  !beforeMB <- getter
+  !result   <- action
+  !afterMB  <- getter
+  let (w, x) = case (beforeMB, afterMB) of
+                 (Nothing,     Nothing)    -> (Unchanged, Nothing)
+                 (Just y,      Nothing)    -> (Removed,   Just y)
+                 (Nothing,     Just y)     -> (Created,   Just y)
+                 (Just before, Just after) -> if before == after
+                                                then (Unchanged, Just after)
+                                                else (Updated,   Just after)
+  return (w, x, result)
+
+
+watch_ :: Eq a => Craft (Maybe a) -> Craft b -> Craft Watched
+watch_ getter action = do
+  (w, _, _) <- watch getter action
+  return w
 
 
 class Craftable a b | a -> b where
@@ -100,7 +122,7 @@ instance Destroyable a => Destroyable [a] where
   destroy xs = do
     rs <- mapM destroy xs
     return $ case catMaybes rs of
-               [] -> Nothing
+               []  -> Nothing
                rs' -> Just rs'
   watchDestroy xs = do
     (ws, rs) <- unzip <$> mapM watchDestroy xs
@@ -111,7 +133,7 @@ instance Destroyable a => Destroyable [a] where
             else
               Updated
     let res = case catMaybes rs of
-                [] -> Nothing
+                []  -> Nothing
                 rs' -> Just rs'
     return (w, res)
 

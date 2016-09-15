@@ -1,12 +1,12 @@
 module Craft.SSH.PublicKey where
 
-import Control.Lens
-import Text.Megaparsec
-import Text.Megaparsec.String
+import           Control.Lens
+import           Text.Megaparsec
+import           Text.Megaparsec.String
 
-import Craft
-import Craft.SSH
-import Craft.Internal.Helpers.Parsing
+import           Craft
+import           Craft.Internal.Helpers.Parsing
+import           Craft.SSH
 
 
 data PublicKey

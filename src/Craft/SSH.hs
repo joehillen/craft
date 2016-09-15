@@ -1,7 +1,7 @@
 module Craft.SSH where
 
 import           Control.Lens
-import           Data.Char (toLower)
+import           Data.Char              (toLower)
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 

@@ -2,7 +2,7 @@ module Craft.SSHSpec (spec) where
 
 import           Test.Hspec
 import           Test.Hspec.Megaparsec
-import qualified Text.Megaparsec as MP
+import qualified Text.Megaparsec       as MP
 
 import           Craft.SSH
 

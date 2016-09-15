@@ -4,10 +4,7 @@ import           Control.Lens
 import           Data.ByteString (ByteString)
 
 import           Craft
--- import qualified Craft.File as File
--- import qualified Craft.Directory as Directory
-import qualified Craft.Upstart as Upstart
-
+import qualified Craft.Upstart   as Upstart
 
 
 data Service
