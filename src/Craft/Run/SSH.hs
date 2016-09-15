@@ -155,12 +155,17 @@ runSSHSession session =
                   ++ [ src , (session ^. sessionEnv . connStr) ++ ":" ++ fromAbsFile dest ])
         in execProc_ (showProc p) p
   }
+ where
+  craftEnvOverride :: CraftEnv
+  craftEnvOverride =
+    craftEnv noPackageManager
+    & craftExecEnv .~ Map.empty
+    & craftExecCWD .~ $(mkAbsDir "/")
 
-craftEnvOverride :: CraftEnv
-craftEnvOverride =
-  craftEnv noPackageManager
-  & craftExecEnv .~ Map.empty
-  & craftExecCWD .~ $(mkAbsDir "/")
+
+runCraftSSH :: SSHEnv -> CraftEnv -> Craft a -> LoggingT IO a
+runCraftSSH env ce configs =
+  withSession env $ \session -> runCraft (runSSHSession session) ce configs
 
 
 sshProc :: Session -> CraftEnv -> Command -> Args
