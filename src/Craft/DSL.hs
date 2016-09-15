@@ -100,6 +100,10 @@ withEnv :: ExecEnv -> Craft a -> Craft a
 withEnv env = local (\r -> r & craftExecEnv .~ env)
 
 
+withCWD :: Directory -> Craft a -> Craft a
+withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. directoryPath)
+
+
 -- TESTME
 withEnvVar :: String -> String -> Craft a -> Craft a
 withEnvVar name val go = do

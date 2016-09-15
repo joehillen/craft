@@ -1,8 +1,10 @@
 module Craft
-( module Craft
-, asks
-, ExitCode(..)
+( ExitCode(..)
 , module X
+-- Control.Monad.Reader
+, ask
+, asks
+, local
 -- Control.Lens
 , (&)
 , (.~)
@@ -15,7 +17,7 @@ module Craft
 where
 
 import           Control.Lens
-import           Control.Monad.Reader
+import           Control.Monad.Reader (ask, asks, local)
 
 -- |Re-exports
 import           Control.Monad.Catch  as X
@@ -23,7 +25,3 @@ import           System.Exit          (ExitCode (..))
 
 import           Craft.Craftable      as X
 import           Craft.Internal       as X
-
-
-withCWD :: Directory -> Craft a -> Craft a
-withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. directoryPath)
