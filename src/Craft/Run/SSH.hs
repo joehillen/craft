@@ -1,5 +1,6 @@
 module Craft.Run.SSH where
 
+import           Control.Concurrent        (threadDelay)
 import           Control.Exception.Lifted  (bracket)
 import           Control.Lens
 import           Control.Monad.Logger      (LoggingT)
@@ -15,6 +16,7 @@ import           System.Process            (ProcessHandle)
 import qualified System.Process            as Process
 import qualified System.Process.ByteString as Proc.BS
 import           System.Random             hiding (next)
+import           System.Timeout
 
 import           Craft.Helpers
 import           Craft.Run.Internal
@@ -96,13 +98,25 @@ newSession env = do
                     , Process.std_out = Process.NoStream
                     , Process.std_err = Process.NoStream
                     }
-  (_, _, _, ph) <- Process.createProcess masterProc
+  (_, _, _, !ph) <- Process.createProcess masterProc
+  void $ timeout 10000000 {- 10 seconds -} $
+    waitForControlPath controlPath
   return Session { _sessionEnv = env
                  , _sessionMasterProc = masterProc
                  , _sessionMasterProcHandle = ph
                  , _sessionControlPath = controlPath
                  , _sessionArgs = args
                  }
+
+
+waitForControlPath :: FilePath -> IO ()
+waitForControlPath controlPath = do
+  !exists <- doesFileExist controlPath
+  if exists
+    then return ()
+    else do
+      threadDelay 100000 -- 100ms
+      waitForControlPath controlPath
 
 
 closeSession :: Session -> IO ()
