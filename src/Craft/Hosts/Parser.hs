@@ -10,7 +10,7 @@ import           Text.Megaparsec
 import           Text.Megaparsec.String
 
 import           Craft.Hosts.Types
-import           Craft.Internal.Helpers.Parsing
+import           Craft.Internal.Helpers.Parsing (end)
 import           Craft.Types
 
 
@@ -23,39 +23,34 @@ parseHosts s = do
 
 parser :: Parser Hosts
 parser = do
-  rs <- parserLine `sepEndBy` eol
+  rs <- parserLine `sepEndBy` (many eol)
   return . Hosts $ catMaybes rs
 
 
 parserLine :: Parser (Maybe (IP, [Name]))
 parserLine = do
-  -- try (Just <$> ((,) <$> pure (IP "comment") <*> ((:[]) . Name <$> comment)))
+  -- skip comments
   try (comment >> return Nothing)
-  <|> try (end >> return Nothing)
+  -- skip blank lines even if they contain spaces
+  <|> try (skipMany white >> lookAhead eol >> return Nothing)
   <|> (Just <$> item)
 
 
 comment :: Parser String
 comment = do
+  skipMany white
   void $ char '#'
   manyTill anyChar end
 
 
 item :: Parser (IP, [Name])
 item = do
+  skipMany white
   ip <- try ipv4 <|> ipv6
   skipSome white
-  name <- hostname
-  skipMany white
-  as <- aliases
-  void $ optional comment
-  return (ip, name:as)
-
-
-aliases :: Parser [Name]
-aliases =
-  label "aliases" $
-    hostname `sepEndBy` many (oneOf [' ', '\t'])
+  names <- hostname `sepEndBy1` many white
+  void $ optional $ try comment
+  return (ip, names)
 
 
 num :: Parser String
@@ -82,7 +77,7 @@ dot = void $ char '.'
 
 ipv4 :: Parser IP
 ipv4 = label "ipv4 address" $ do
-  p1 <- nonzero
+  p1 <- num
   dot
   p2 <- num
   dot
@@ -97,5 +92,5 @@ ipv6 :: Parser IP
 ipv6 = IP <$> some (hexDigitChar <|> char ':') <?> "ipv6 address"
 
 
-white :: Parser ()
-white = void $ (char ' ' <?> "space character") <|> tab
+white :: Parser Char
+white = oneOf [' ', '\t']
