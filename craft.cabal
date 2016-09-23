@@ -136,12 +136,13 @@ test-suite craft-test
   type:                exitcode-stdio-1.0
   hs-source-dirs:      test
   main-is:             Spec.hs
-  other-modules:       Craft.File.ModeSpec
-                     , Craft.Config.ShellSpec
+  other-modules:       Craft.Config.ShellSpec
+                     , Craft.File.ModeSpec
+                     , Craft.Hosts.ParserSpec
                      , Craft.S3FileSpec
-                     , Craft.SSHSpec
-                     , Craft.SSH.PublicKeySpec
                      , Craft.SSH.AuthorizedKeySpec
+                     , Craft.SSH.PublicKeySpec
+                     , Craft.SSHSpec
   build-depends:       base
                      , craft
                      , hspec >= 1.3
