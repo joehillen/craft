@@ -71,7 +71,7 @@ readSourceFile name = do
   liftF $ ReadSourceFile ce fp id
 
 
-parseExecResult :: ExecResult -> Parsec String a -> String -> Craft a
+parseExecResult :: ExecResult -> Parser a -> String -> Craft a
 parseExecResult execr parser str =
   case parse parser (showProc $ execResultProc execr) str of
     Right x -> return x
@@ -88,7 +88,7 @@ parseExecResult execr parser str =
 
 
 -- | better than grep
-parseExecStdout :: Parsec StdOut a -> Command -> Args -> Craft a
+parseExecStdout :: Parser a -> Command -> Args -> Craft a
 parseExecStdout parser cmd args = do
   r <- exec cmd args
   s <- $stdoutOrError r

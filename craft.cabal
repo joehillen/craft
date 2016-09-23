@@ -48,6 +48,8 @@ library
                      , Craft.Helpers
                      , Craft.Hostname
                      , Craft.Hosts
+                     , Craft.Hosts.Parser
+                     , Craft.Hosts.Types
                      , Craft.Internal.Helpers
                      , Craft.Internal.Helpers.Parsing
                      , Craft.Internal.UserGroup
@@ -73,8 +75,6 @@ library
                      , Craft.Wget
 
   other-modules:       Craft.Internal
-                     , Craft.Hosts.Parser
-                     , Craft.Hosts.Types
                      , Craft.Directory.Parser
                      , Craft.Error
 
@@ -89,7 +89,7 @@ library
                      , TemplateHaskell
                      , TypeFamilies
 
-  build-depends:       base >= 4.8 && < 4.9
+  build-depends:       base >= 4.8
                      , aeson
                      , aeson-pretty
                      , ansi-terminal
@@ -146,6 +146,7 @@ test-suite craft-test
                      , craft
                      , hspec >= 1.3
                      , hspec-megaparsec
+                     , heredoc
                      , megaparsec
                      , QuickCheck
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -Werror

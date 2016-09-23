@@ -2,20 +2,21 @@ module Craft.Directory.Parser where
 
 -- |This file is just to keep Megaparsec from conflicting with other modules
 
-import           Control.Monad   (void)
+import           Control.Monad          (void)
 import           Text.Megaparsec
+import           Text.Megaparsec.String
 
 
-getFilesParser :: Parsec String [String]
+getFilesParser :: Parser [String]
 getFilesParser = stuff `sepBy` newline <* optional newline
  where
-  stuff :: Parsec String String
+  stuff :: Parser String
   stuff = do
     void $ optional $ string "." >> newline
     void $ optional $ string ".." >> newline
     line
-  line :: Parsec String String
-  line = many $ noneOf "\n"
+  line :: Parser String
+  line = many $ noneOf ("\n"::String)
 
 
 testGetFilesParser :: IO Bool

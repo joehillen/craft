@@ -4,7 +4,9 @@ module Craft.Hosts.Parser where
 
 import           Control.Monad                  (void)
 import           Data.List                      (intercalate)
+import           Data.Maybe                     (catMaybes)
 import           Text.Megaparsec
+-- import           Text.Megaparsec.Lexer
 import           Text.Megaparsec.String
 
 import           Craft.Hosts.Types
@@ -12,26 +14,31 @@ import           Craft.Internal.Helpers.Parsing
 import           Craft.Types
 
 
-parseLine :: Int -> String -> Craft (Maybe (IP, [Name]))
-parseLine ln s =
-  case runParser lineParser hostsfp s of
+parseHosts :: String -> Craft Hosts
+parseHosts s = do
+  case runParser parser hostsfp s of
     Right x  -> return x
     Left err -> $craftError $ show err
- where
-  lineParser :: Parser (Maybe (IP, [Name]))
-  lineParser = do
-    pos <- getPosition
-    setPosition $ pos {sourceLine = ln}
-    space
-    try (comment >> return Nothing) <|> try (Just <$> item)
-                                    <|> (end >> return Nothing)
 
 
-comment :: Parser ()
-comment = label "comment" $ do
+parser :: Parser Hosts
+parser = do
+  rs <- parserLine `sepEndBy` eol
+  return . Hosts $ catMaybes rs
+
+
+parserLine :: Parser (Maybe (IP, [Name]))
+parserLine = do
+  -- try (Just <$> ((,) <$> pure (IP "comment") <*> ((:[]) . Name <$> comment)))
+  try (comment >> return Nothing)
+  <|> try (end >> return Nothing)
+  <|> (Just <$> item)
+
+
+comment :: Parser String
+comment = do
   void $ char '#'
-  void $ manyTill (noneOf "\r\n") end
-  return ()
+  manyTill anyChar end
 
 
 item :: Parser (IP, [Name])
@@ -46,7 +53,9 @@ item = do
 
 
 aliases :: Parser [Name]
-aliases = label "aliases" $ hostname `sepEndBy` many white
+aliases =
+  label "aliases" $
+    hostname `sepEndBy` many (oneOf [' ', '\t'])
 
 
 num :: Parser String
@@ -62,8 +71,9 @@ nonzero = do
     else return (a:rest)
 
 
+-- TODO: check RFC
 hostname :: Parser Name
-hostname = Name <$> some (alphaNumChar <|> oneOf ".-")
+hostname = Name <$> some (alphaNumChar <|> oneOf ['.', '-'])
 
 
 dot :: Parser ()

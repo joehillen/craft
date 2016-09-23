@@ -4,6 +4,7 @@ import           Control.Lens                   hiding (noneOf)
 import           Data.Char                      (toLower)
 import           Data.Maybe                     (catMaybes)
 import           Text.Megaparsec
+import           Text.Megaparsec.String
 
 import           Craft                          hiding (try)
 import           Craft.Config
@@ -103,7 +104,7 @@ instance Show Section where
   show (Match match body)   = "Match " ++ match ++ "\n" ++ showBody body
 
 
-parseTitle :: Parsec String (String, String)
+parseTitle :: Parser (String, String)
 parseTitle = do
   space
   type' <- try (string' "host") <|> string' "match"
@@ -114,24 +115,24 @@ parseTitle = do
   return (type', name)
 
 
-parseBody :: Parsec String [(String, String)]
+parseBody :: Parser [(String, String)]
 parseBody = many bodyLine
 
 
-bodyLine :: Parsec String (String, String)
+bodyLine :: Parser (String, String)
 bodyLine = do
   notFollowedBy parseTitle
   space
   name <- someTill anyChar spaceChar
   notFollowedBy eol
   space
-  val <- between (char '"') (char '"') (many $ noneOf "\"")
+  val <- between (char '"') (char '"') (many $ noneOf ['\\', '"'])
          <|> someTill anyChar end
   void $ optional (space <|> void (many eol))
   return (name, trim val)
 
 
-parseSection :: Parsec String Section
+parseSection :: Parser Section
 parseSection = do
   title <- parseTitle
   body <- parseBody
@@ -141,6 +142,6 @@ parseSection = do
     _       -> error "Craft.Config.SSH.parse failed. This should be impossible."
 
 
-parser :: Parsec String Sections
+parser :: Parser Sections
 parser = some parseSection
 

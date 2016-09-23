@@ -1,3 +1,7 @@
+{-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 711
+{-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
+#endif
 module Craft.SSH.PrivateKey where
 
 import           Control.Lens

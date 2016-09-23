@@ -1,3 +1,7 @@
+{-# LANGUAGE CPP #-}
+#if __GLASGOW_HASKELL__ >= 711
+{-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
+#endif
 module Craft.S3File where
 
 import           Control.Lens            hiding (noneOf)
@@ -38,6 +42,7 @@ s3file fp source' =
   , _version = AnyVersion
   , _auth    = Nothing
   }
+
 
 
 url :: Getter S3File String
@@ -87,15 +92,15 @@ getS3Sum f = do
 
 httpHeaders :: Parser [(String, String)]
 httpHeaders = do
-  _ <- string "HTTP/1." >> oneOf "01" >> string " 200 OK" >> eol
+  _ <- string "HTTP/1." >> oneOf ['0', '1'] >> string " 200 OK" >> eol
   headers <- header `sepEndBy1` eol
   return headers
 
 
 header :: Parser (String, String)
 header = do
-  k <- noneOf ":\r\n" `someTill` string ": "
-  v <- many $ noneOf "\r\n"
+  k <- noneOf [':', '\r', '\n'] `someTill` string ": "
+  v <- many $ noneOf ['\r', '\n']
   return (k,v)
 
 

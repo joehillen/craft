@@ -7,7 +7,7 @@ module Craft.Hosts
 , Craft.Hosts.lookup
 , hostsfp
 , get
-, parse
+, parseHosts
 , showConfigs
 , toFile
 , fromFile
@@ -21,14 +21,12 @@ where
 
 
 import           Control.Lens          hiding (noneOf, set)
-import           Control.Monad         (zipWithM)
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.List             as L
-import           Data.Maybe            (catMaybes)
 
 import           Craft
 import qualified Craft.File            as File
-import           Craft.Hosts.Parser
+import           Craft.Hosts.Parser    (parseHosts)
 import           Craft.Hosts.Types
 
 
@@ -46,13 +44,7 @@ get =
     Nothing -> $craftError $ hostsfp ++ " not found!"
     Just f  -> case f ^. fileContent of
                  Nothing -> $craftError $ hostsfp ++ " not found!"
-                 Just bs -> parse $ B8.unpack bs
-
-
-parse :: String -> Craft Hosts
-parse s = do
-  r <- zipWithM parseLine [1..] $ lines s
-  return . Hosts $ catMaybes r
+                 Just bs -> parseHosts $ B8.unpack bs
 
 
 instance Craftable Hosts Hosts where
@@ -74,7 +66,7 @@ fromFile :: File -> Craft Hosts
 fromFile f =
   case f ^. fileContent of
     Nothing -> return $ Hosts []
-    Just c  -> parse $ B8.unpack c
+    Just c  -> parseHosts $ B8.unpack c
 
 
 insert :: IP -> Name -> Hosts -> Hosts

@@ -67,7 +67,7 @@ getent :: String -> String -> Craft ExecResult
 getent dbase key = exec "getent" [dbase, key]
 
 
-parseGetent :: Parsec String a -> String -> String -> String -> Craft a
+parseGetent :: Parser a -> String -> String -> String -> Craft a
 parseGetent parser dbase key input =
   case parse parser (unwords ["getent", dbase, key]) input of
     Left  err -> $craftError $ show err

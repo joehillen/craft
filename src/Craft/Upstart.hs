@@ -2,8 +2,9 @@ module Craft.Upstart where
 
 import           Craft
 
-import           Control.Lens    hiding (noneOf)
+import           Control.Lens           hiding (noneOf)
 import           Text.Megaparsec
+import           Text.Megaparsec.String
 
 type ServiceName = String
 
@@ -23,10 +24,10 @@ get sn =
     ExecSucc r -> Just . Service sn <$> parseExecResult (ExecSucc r) (statusParser sn) (r ^. stdout)
 
 
-statusParser :: String -> Parsec String String
+statusParser :: String -> Parser String
 statusParser sn = do
-  void $ string sn >> space >> some (noneOf "/") >> char '/'
-  some $ noneOf ","
+  void $ string sn >> space >> some (noneOf ['/']) >> char '/'
+  some $ noneOf [',']
 
 
 start :: Service -> Craft ()
