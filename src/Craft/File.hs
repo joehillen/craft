@@ -12,7 +12,6 @@ import           Control.Lens
 import           Data.ByteString (ByteString)
 import           Data.Maybe
 import           Formatting
-import           System.FilePath
 
 import qualified Craft.Group     as Group
 import           Craft.Internal
@@ -35,39 +34,34 @@ getGroup f =
     Just g -> return g
 
 
-name :: Getter File String
-name = filePath . to takeFileName
+-- TODO: name :: Lens' File (Path Rel FileP)
+name :: Getter File (Path Rel FileP)
+name = filePath . to filename
 
 
-fromSource :: FilePath -> FilePath -> Craft File
-fromSource sourcefp fp = do
-  c <- readSourceFile sourcefp
-  return $ file fp & fileContent ?~ c
-
-
-multiple :: [FilePath] -> Mode -> User -> Group -> Maybe ByteString -> [File]
+multiple :: [Path Abs FileP] -> Mode -> User -> Group -> Maybe ByteString -> [File]
 multiple paths mode' owner' group' content' = map go paths
  where
-  go path' = File path' mode' (owner' ^. uid) (group' ^. gid) content'
+  go path' = File path' mode' (owner'^.uid) (group'^.gid) content'
 
 
 setStats :: File -> Craft ()
 setStats f = do
-  let fp = f ^. path
-  setMode    (f ^. mode)    fp
-  setOwnerID (f ^. ownerID) fp
-  setGroupID (f ^. groupID) fp
+  let fp = f^.path
+  setMode    (f^.mode)    fp
+  setOwnerID (f^.ownerID) fp
+  setGroupID (f^.groupID) fp
 
 
-write :: FilePath -> ByteString -> Craft ()
+write :: Path Abs FileP -> ByteString -> Craft ()
 write = fileWrite
 
 
-exists :: FilePath -> Craft Bool
-exists fp = isExecSucc <$> exec "test" ["-f", fp]
+exists :: Path Abs FileP -> Craft Bool
+exists fp = isExecSucc <$> exec "test" ["-f", fromAbsFile fp]
 
 
-get :: FilePath -> Craft (Maybe File)
+get :: Path Abs FileP -> Craft (Maybe File)
 get fp =
   getStats fp >>= \case
     Nothing -> return Nothing
@@ -78,7 +72,7 @@ get fp =
                               & fileContent .~ Nothing
 
 
-getWithContent :: FilePath -> Craft (Maybe File)
+getWithContent :: Path Abs FileP -> Craft (Maybe File)
 getWithContent fp =
   get fp >>= \case
     Nothing -> return Nothing
@@ -87,13 +81,12 @@ getWithContent fp =
       return . Just $ f & fileContent ?~ content'
 
 
-md5sum :: FilePath -> Craft String
-md5sum "" = $craftError "md5sum on empty file path"
-md5sum fp = head . words <$> ($stdoutOrError =<< exec "md5sum" [fp])
+md5sum :: Path Abs FileP -> Craft String
+md5sum fp = head . words <$> ($stdoutOrError =<< exec "md5sum" [fromAbsFile fp])
 
 
 -- | A thin wrapper over the Unix find program.
-find :: FilePath -> Args -> Craft [File]
+find :: Path Abs Dir -> Args -> Craft [File]
 find dir args = do
-  s <- $stdoutOrError =<< exec "find" ([dir, "-type", "f"] ++ args)
-  catMaybes <$> (mapM get . filter (`notElem` [".", "..", ""]) $ lines s)
+  fs <- mapM parseAbsFile . lines =<< $stdoutOrError =<< exec "find" ([fromAbsDir dir, "-type", "f"] ++ args)
+  catMaybes <$> (mapM get fs)

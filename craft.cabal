@@ -6,11 +6,11 @@ name:                craft
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.1.0.0
--- synopsis:
--- description:
+version:             0.0.0.1
+synopsis:            A UNIX configuration management library in Haskell
+description:         A UNIX configuration management EDSL/library in Haskell
 license:             Apache-2.0
--- license-file:        LICENSE
+license-file:        LICENSE
 author:              Joe Hillenbrand
 maintainer:          joehillen@gmail.com
 -- copyright:
@@ -22,7 +22,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 library
-  ghc-options:         -Wall -Werror
+  ghc-options:         -Wall
   hs-source-dirs:      src
                      , src/Craft
   exposed-modules:     Craft
@@ -117,6 +117,8 @@ library
                      , memory
                      , monad-logger
                      , mtl
+                     , path
+                     , path-io
                      , process
                      , process-extras
                      , pureMD5
@@ -148,5 +150,5 @@ test-suite craft-test
                      , hspec-megaparsec
                      , megaparsec
                      , QuickCheck
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -Werror
+  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
   default-language:    Haskell2010

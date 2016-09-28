@@ -4,14 +4,12 @@ import           Control.Lens
 import           Control.Monad.Free
 import           Control.Monad.Logger   (logDebugNS)
 import           Control.Monad.Reader
-import           Data.ByteString        (ByteString)
 import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Char8  as B8
 import           Data.List              (intercalate)
 import           Data.List.Split        (splitOn)
 import qualified Data.Map.Strict        as Map
 import qualified Data.Text              as T
-import           System.FilePath        ((</>))
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 
@@ -28,47 +26,22 @@ exec cmd args = do
 
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
-  logDebugNS "exec_" $ T.unwords $ map T.pack (cmd:args)
   ce <- ask
   liftF $ Exec_ ce cmd args ()
 
 
-fileRead :: FilePath -> Craft BS.ByteString
-fileRead fp = do
-  ce <- ask
-  liftF $ FileRead ce fp id
+fileRead :: Path Abs FileP -> Craft BS.ByteString
+fileRead fp =
+  liftF $ FileRead fp id
 
 
-fileWrite :: FilePath -> BS.ByteString -> Craft ()
-fileWrite fp content = do
-  ce <- ask
-  liftF $ FileWrite ce fp content ()
+fileWrite :: Path Abs FileP -> BS.ByteString -> Craft ()
+fileWrite fp content =
+  liftF $ FileWrite fp content ()
 
 
-sourceFile :: FilePath -> FilePath -> Craft ()
-sourceFile name dest = do
-  ce <- ask
-  fp <- findSourceFile name
-  liftF $ SourceFile ce fp dest ()
-
-
-findSourceFile :: FilePath -> Craft FilePath
-findSourceFile name = do
-  ce <- ask
-  let fps = ce ^. craftSourcePaths
-  files <- liftF $ FindSourceFile ce name id
-  if null files then
-    $craftError $ "Source file `" ++ name ++ "` not found in file sources: "
-                   ++ show fps
-  else
-    return $ head files </> name
-
-
-readSourceFile :: FilePath -> Craft ByteString
-readSourceFile name = do
-  ce <- ask
-  fp <- findSourceFile name
-  liftF $ ReadSourceFile ce fp id
+sourceFile :: (IO FilePath) -> Path Abs FileP -> Craft ()
+sourceFile sourcer dest = liftF $ SourceFile sourcer dest ()
 
 
 parseExecResult :: ExecResult -> Parsec String a -> String -> Craft a
@@ -96,32 +69,39 @@ parseExecStdout parser cmd args = do
 
 
 -- XXX: What if the file doesn't exist?
-parseFile :: Parser a -> FilePath -> Craft a
+parseFile :: Parser a -> Path Abs FileP -> Craft a
 parseFile parser fp = do
   str <- B8.unpack <$> fileRead fp
-  case runParser parser fp str of
+  case runParser parser (show fp) str of
     Right x  -> return x
-    Left err -> $craftError $ "parseFile `"++fp++"` failed: "++show err
+    Left err -> $craftError $ "parseFile `"++show fp++"` failed: "++show err
 
 
-craftExecPath :: CraftEnv -> [FilePath]
-craftExecPath = maybe [] (splitOn ":") . Map.lookup "PATH" . view craftExecEnv
+craftExecPath :: CraftEnv -> Craft [Path Abs Dir]
+craftExecPath ce = do
+  let dps = maybe [] (splitOn ":") . Map.lookup "PATH" $ ce^.craftExecEnv
+  mapM parseAbsDir dps
 
 
 -- TESTME
-prependPath :: FilePath -> Craft a -> Craft a
+prependPath :: Path Abs Dir -> Craft a -> Craft a
 prependPath newpath go = do
-  execpath <- asks craftExecPath
+  ce <- ask
+  execpath <- craftExecPath ce
   withPath (newpath:execpath) go
 
 
 -- TESTME
-withPath :: [FilePath] -> Craft a -> Craft a
-withPath = withEnvVar "PATH" . intercalate ":"
+withPath :: [Path Abs Dir] -> Craft a -> Craft a
+withPath = withEnvVar "PATH" . intercalate ":" . map fromAbsDir
 
 
 withEnv :: ExecEnv -> Craft a -> Craft a
 withEnv env = local (\r -> r & craftExecEnv .~ env)
+
+
+withCWD :: Directory -> Craft a -> Craft a
+withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. directoryPath)
 
 
 -- TESTME
@@ -136,37 +116,37 @@ isExecSucc :: ExecResult -> Bool
 isExecSucc (ExecSucc _) = True
 isExecSucc (ExecFail _) = False
 
-setMode :: Mode -> FilePath -> Craft ()
-setMode m fp = exec_ "chmod" [toOctalString m, fp]
+setMode :: Mode -> Path b t -> Craft ()
+setMode m fp = exec_ "chmod" [toOctalString m, toFilePath fp]
 
-setOwnerID :: UserID -> FilePath -> Craft ()
-setOwnerID (UserID i) fp = exec_ "chown" [show i, fp]
+setOwnerID :: UserID -> Path b t -> Craft ()
+setOwnerID (UserID i) fp = exec_ "chown" [show i, toFilePath fp]
 
 
-setGroupID :: GroupID -> FilePath -> Craft ()
-setGroupID (GroupID i) fp = exec_ "chgrp" [show i, fp]
+setGroupID :: GroupID -> Path b t -> Craft ()
+setGroupID (GroupID i) fp = exec_ "chgrp" [show i, toFilePath fp]
 
 
 stat :: Command
 stat = "stat"
 
-getMode :: FilePath -> Craft Mode
-getMode fp = parseExecStdout modeParser stat ["-c", "%a", fp]
+getMode :: Path Abs t -> Craft Mode
+getMode fp = parseExecStdout modeParser stat ["-c", "%a", toFilePath fp]
 
 
-getOwnerID :: FilePath -> Craft UserID
-getOwnerID fp = UserID <$> parseExecStdout digitParser stat ["-c", "%u", fp]
+getOwnerID :: Path Abs t -> Craft UserID
+getOwnerID fp = UserID <$> parseExecStdout digitParser stat ["-c", "%u", toFilePath fp]
 
 
-getGroupID :: FilePath -> Craft GroupID
-getGroupID fp = GroupID <$> parseExecStdout digitParser stat ["-c", "%g", fp]
+getGroupID :: Path Abs t -> Craft GroupID
+getGroupID fp = GroupID <$> parseExecStdout digitParser stat ["-c", "%g", toFilePath fp]
 
 
-getStats :: FilePath -> Craft (Maybe (Mode, UserID, GroupID))
+getStats :: Path Abs t -> Craft (Maybe (Mode, UserID, GroupID))
 getStats fp =
-  exec stat ["-c", "%a:%u:%g", fp] >>= \case
+  exec stat ["-c", "%a:%u:%g", toFilePath fp] >>= \case
     ExecFail _ -> return Nothing
-    ExecSucc r -> Just <$> parseExecResult (ExecSucc r) statsParser (r ^. stdout)
+    ExecSucc r -> Just <$> parseExecResult (ExecSucc r) statsParser (r^.stdout)
 
 
 statsParser :: Parser (Mode, UserID, GroupID)

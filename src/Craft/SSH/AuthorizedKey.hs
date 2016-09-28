@@ -47,7 +47,7 @@ instance Destroyable AuthorizedKey where
 
 userFile :: User -> File
 userFile user =
-  file ((user^.to userDir.path)</>"authorized_keys")
+  file ((user^.to userDir.path) </> $(mkRelFile "authorized_keys"))
   & mode          .~ Mode RW O O
   & ownerAndGroup .~ user
 

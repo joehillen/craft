@@ -282,7 +282,7 @@ instance Craftable File File where
     -- FIXME: Don't use _Just
     let expectedMD5 = show . md5 . BL.fromStrict $ f ^. fileContent . _Just
     let err :: String -> Craft a
-        err str = $craftError $ "craft File `"++ fp ++"` failed! "++str
+        err str = $craftError $ "craft File `"++show fp++"` failed! "++str
     let verifyMode m =
           when (m /= f ^. mode) $
             err $ "Wrong Mode: " ++ show m ++ " Expected: " ++ show (f ^. mode)
@@ -296,7 +296,7 @@ instance Craftable File File where
     getStats fp >>= \case
       Nothing          -> do
         case f ^. fileContent of
-          Nothing -> exec_ "touch" [fp]
+          Nothing -> exec_ "touch" [fromAbsFile fp]
           Just c  -> File.write fp c
         File.setStats f
         when (isJust $ f  ^. fileContent) $ do
@@ -332,8 +332,8 @@ instance Craftable File File where
                 else err "Content Mismatch."
 
   craft f = do
-    let fp = f ^. path
-    exec_ "touch" ["-a", fp]
+    let fp = f^.path
+    exec_ "touch" ["-a", fromAbsFile fp]
     case f ^. fileContent of
       Nothing -> return ()
       Just c  -> do
@@ -343,7 +343,7 @@ instance Craftable File File where
           File.write fp c
           md5AfterWrite <- File.md5sum fp
           unless (expectedMD5 == md5AfterWrite) $
-            $craftError $ "craft File `" ++ fp ++ "` failed! Content Mismatch."
+            $craftError $ "craft File `"++show fp++"` failed! Content Mismatch."
     File.setStats f
     return f
 
@@ -357,10 +357,10 @@ instance Destroyable File where
         return (Removed, Just f')
 
   destroy_ f = do
-    let fp = f ^. path
-    exec_ "rm" ["-f", fp]
+    let fp = f^.path
+    exec_ "rm" ["-f", fromAbsFile fp]
     File.exists fp >>= flip when (
-      $craftError $ "destroy File `" ++ fp ++ "` failed! Found.")
+      $craftError $ "destroy File `"++show fp++"` failed! Found.")
 
 
 instance Craftable Directory Directory where
@@ -372,7 +372,7 @@ instance Craftable Directory Directory where
         error' :: String -> Craft a
         error' str = $craftError
            $ formatToString ("craft Directory `"%string%"` failed! "%string)
-                            dp str
+                            (show dp) str
         verifyMode m =
           when (m /= d ^. mode) $
             error' $ formatToString ("Wrong Mode: "%shown%" Expected: "%shown)
@@ -389,7 +389,7 @@ instance Craftable Directory Directory where
           verifyMode m >> verifyOwner o >> verifyGroup g
     getStats dp >>= \case
       Nothing -> do
-        exec_ "mkdir" ["-p", dp]
+        exec_ "mkdir" ["-p", fromAbsDir dp]
         setMode' >> setOwner' >> setGroup'
         getStats dp >>= \case
           Nothing -> error' "Not Found."

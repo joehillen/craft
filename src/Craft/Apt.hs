@@ -134,17 +134,17 @@ dpkgInstall f =
     exec_ "dpkg"
       [ "--force-overwrite"
       , "--force-confnew"
-      , "-i", f ^. path
+      , "-i", fromAbsFile $ f^.path
       ]
 
 
-dpkgDebBin :: FilePath
+dpkgDebBin :: String
 dpkgDebBin = "dpkg-deb"
 
 
 dpkgDebShow :: String -> File -> Craft String
 dpkgDebShow pattern f =
-  expectOutput dpkgDebBin [ "--show", "--showformat", pattern, f ^. path ]
+  expectOutput dpkgDebBin ["--show", "--showformat", pattern, fromAbsFile $ f^.path]
 
 
 dpkgDebVersion :: File -> Craft String

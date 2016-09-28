@@ -20,7 +20,7 @@ instance ConfigFormat ShellFormat where
      showkv :: (String, String) -> String
      showkv (k, v) = k++"="++v
   parseConfig fp s =
-    case runParser parser fp s of
+    case runParser parser (fromAbsFile fp) s of
       Left err   -> $craftError $ show err
       Right cfgs -> return cfgs
 
@@ -39,11 +39,11 @@ unset :: String -> ShellFormat -> ShellFormat
 unset k (ShellFormat cfgs) = ShellFormat $ filter ((/= k) . fst) cfgs
 
 
-get :: FilePath -> Craft (Maybe (Config ShellFormat))
+get :: Path Abs FileP -> Craft (Maybe (Config ShellFormat))
 get = Craft.Config.get
 
 
-config :: FilePath -> [(String, String)] -> Config ShellFormat
+config :: Path Abs FileP -> [(String, String)] -> Config ShellFormat
 config fp = Craft.Config.config fp . ShellFormat
 
 

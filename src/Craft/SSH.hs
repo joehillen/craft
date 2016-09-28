@@ -29,7 +29,7 @@ instance Show KeyType where
 
 userDir :: User -> Directory
 userDir user =
-  directory ((user^.userHome)</>".ssh")
+  directory ((user^.userHome) </> $(mkRelDir ".ssh"))
   & mode          .~ Mode RWX O O
   & ownerAndGroup .~ user
 

@@ -12,12 +12,14 @@ import qualified Craft.File      as File
 newtype PipPackage = PipPackage Package
   deriving (Eq, Show)
 
+pipfp :: Path Abs FileP
+pipfp = $(mkAbsFile "/usr/local/bin/pip")
 
 setup :: Craft ()
 setup = do
   craft_ $ map Craft.package ["libffi-dev", "libssl-dev", "python-dev"]
   let pippkg = Craft.package "python-pip"
-  File.exists "/usr/local/bin/pip" >>= flip unless (craft_ pippkg)
+  File.exists pipfp >>= flip unless (craft_ pippkg)
   craft_ $ map package ["pyopenssl", "ndg-httpsclient", "pyasn1"]
   craft_ $ latest "pip"
   destroy_ pippkg
@@ -35,7 +37,7 @@ latest pn = PipPackage $ Package pn Latest
 
 get :: PackageName -> Craft (Maybe PipPackage)
 get pn = do
-  r <- withPath ["/usr/local/bin", "/usr/bin"] $ exec "pip" ["show", pn]
+  r <- withPath [$(mkAbsDir "/usr/local/bin"), $(mkAbsDir "/usr/bin")] $ exec "pip" ["show", pn]
   case r of
     ExecFail _     -> return Nothing
     ExecSucc succr -> do
@@ -62,7 +64,7 @@ pipShowParser = many $ kv <* many eol
 
 
 pip :: [String] -> Craft ()
-pip args = withPath ["/usr/local/bin", "/usr/bin"] $ exec_ "pip" args
+pip args = withPath [$(mkAbsDir "/usr/local/bin"), $(mkAbsDir "/usr/bin")] $ exec_ "pip" args
 
 
 pkgArgs :: PipPackage -> [String]

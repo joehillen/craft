@@ -9,23 +9,22 @@ import qualified Craft.File   as File
 data SourcedFile
   = SourcedFile
     { _destination :: File
-    , _source      :: FilePath
+    , _sourcer     :: IO FilePath
     }
-  deriving (Eq, Show)
 
 makeLenses ''SourcedFile
 
 
-sourcedFile :: FilePath -> FilePath -> SourcedFile
-sourcedFile fp source' =
+sourcedFile :: (IO FilePath) -> Path Abs FileP -> SourcedFile
+sourcedFile sourcer' dest =
   SourcedFile
-  { _destination = Craft.file fp
-  , _source = source'
+  { _destination = Craft.file dest
+  , _sourcer = sourcer'
   }
 
 
 instance FileLike SourcedFile where
-  type FileLikePath SourcedFile = FilePath
+  type FileLikePath SourcedFile = Path Abs FileP
   path    = destination . filePath
   mode    = destination . fileMode
   ownerID = destination . fileOwnerID
@@ -35,7 +34,7 @@ instance FileLike SourcedFile where
 instance Craftable SourcedFile SourcedFile where
   craft sf = do
     let sf' = sf & destination . fileContent .~ Nothing
-    sourceFile (sf'^.source) (sf'^.path)
+    sourceFile (sf'^.sourcer) (sf'^.path)
     craft_ $ sf' ^. destination
     return sf'
 
@@ -45,7 +44,7 @@ instance Craftable SourcedFile SourcedFile where
     exists <- File.exists fp
     if exists then do
       oldsum <- File.md5sum fp
-      sourceFile (sf^.source) fp
+      sourceFile (sf^.sourcer) fp
       fw <- watchCraft_ $ sf' ^. destination
       newsum <- File.md5sum fp
       if oldsum /= newsum then
@@ -53,7 +52,7 @@ instance Craftable SourcedFile SourcedFile where
       else
         return (fw, sf')
     else do
-      sourceFile (sf^.source) fp
+      sourceFile (sf^.sourcer) fp
       craft_ $ sf' ^. destination
       return (Created, sf')
 

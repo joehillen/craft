@@ -47,7 +47,7 @@ data Repo
 makeLenses ''Repo
 
 
-repo :: URL -> Dir.Path -> Repo
+repo :: URL -> Path Abs Dir -> Repo
 repo url' dirpath =
   Repo
   { _gitUrl       = url'
@@ -57,7 +57,7 @@ repo url' dirpath =
   }
 
 
-gitBin :: FilePath
+gitBin :: String
 gitBin = "git"
 
 
@@ -102,7 +102,7 @@ getVersion :: Craft Version
 getVersion = Commit <$> parseExecStdout (some alphaNumChar) gitBin ["rev-parse", "HEAD"]
 
 
-get :: Dir.Path -> Craft (Maybe Repo)
+get :: Path Abs Dir -> Craft (Maybe Repo)
 get dp =
   Dir.get dp >>= \case
     Nothing -> return Nothing
@@ -142,11 +142,11 @@ instance Craftable Repo Repo where
     Dir.get dp >>= \case
       Nothing -> do
         case r ^. gitDepth of
-          Nothing -> git "clone" [r ^. gitUrl, dp]
-          Just d  -> git "clone" ["--depth", show d, r ^. gitUrl, dp]
+          Nothing -> git "clone" [r ^. gitUrl, fromAbsDir dp]
+          Just d  -> git "clone" ["--depth", show d, r ^. gitUrl, fromAbsDir dp]
         Dir.get dp >>= \case
           Nothing -> $craftError $ "craft Git.Repo `"++show r++"` failed! "
-                                ++ "Clone Failed. Directory `"++dp++"` not found."
+                                ++ "Clone Failed. Directory `"++show dp++"` not found."
           Just dir -> do
             craft_ $ r ^. gitDirectory
             withCWD dir $ do

@@ -29,7 +29,7 @@ makeLenses ''S3File
 -- TODO: instance FileLike S3File
 
 
-s3file :: FilePath -> String -> S3File
+s3file :: Path Abs FileP -> String -> S3File
 s3file fp source' =
   S3File
   { _file    = Craft.file fp
@@ -102,10 +102,10 @@ header = do
 instance Craftable S3File S3File where
   watchCraft s3f = do
     let s3f' = s3f & Craft.S3File.file . fileContent .~ Nothing
-    let fp = s3f' ^. Craft.S3File.file . path
+    let fp   = s3f' ^. Craft.S3File.file . path
     let downloadFile = do
           hdrs <- authHeaders "GET" s3f
-          exec_ "curl" $ hdrs ++ ["-XGET", "-s", "-L", "-o", fp, s3f' ^. url]
+          exec_ "curl" $ hdrs ++ ["-XGET", "-s", "-L", "-o", fromAbsFile fp, s3f'^.url]
     let verify expected = do
           md5chksum <- File.md5sum fp
           when (md5chksum /= expected) (

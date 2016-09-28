@@ -1,18 +1,16 @@
 module Craft.Daemontools where
 
-import           Craft
-import qualified Craft.Directory as Directory
-import qualified Craft.File      as File
-import qualified Craft.Upstart   as Upstart
-
 import           Control.Lens
 import           Data.ByteString (ByteString)
+
+import           Craft
+import qualified Craft.Upstart   as Upstart
 
 
 data Service
   = Service
     { _name     :: String
-    , _home     :: Directory.Path
+    , _home     :: Path Abs Dir
     , _env      :: [(String, String)]
     , _runFile  :: ByteString
     , _restarts :: Bool
@@ -24,14 +22,14 @@ makeLenses ''Service
 service :: String -> Service
 service name' =
   Service { _name     = name'
-          , _home     = "/etc/svc"
+          , _home     = $(mkAbsDir "/etc/svc")
           , _env      = []
           , _runFile  = ""
           , _restarts = True
           }
 
 
-setup :: Directory.Path -> Craft ()
+setup :: Path Abs Dir -> Craft ()
 setup home' = do
   craft_ $ map package [ "daemontools"
                        , "daemontools-run"
@@ -42,38 +40,45 @@ setup home' = do
     Just svscan -> Upstart.start svscan
 
 
-path :: Service -> Directory.Path
-path Service{..} = _home </> _name
+path :: Service -> Craft (Path Abs Dir)
+path Service{..} = do
+  sn <- parseRelDir _name
+  return $ _home </> sn
 
 
 restart :: Service -> Craft ()
-restart s = execRestart $ Craft.Daemontools.path s
+restart s = do
+  sp <- Craft.Daemontools.path s
+  execRestart sp
 
 
-execRestart :: Directory.Path -> Craft ()
-execRestart fp = exec_ "svc" ["-t", fp]
+execRestart :: Path Abs Dir -> Craft ()
+execRestart fp = exec_ "svc" ["-t", fromAbsDir fp]
 
 
-logRunDefault :: FilePath -> String
+logRunDefault :: Path Abs FileP -> String
 logRunDefault logdest =
-  "#!/bin/sh\nexec setuidgid nobody multilog t " ++ logdest ++ " s10000000 n10\n"
+  "#!/bin/sh\nexec setuidgid nobody multilog t "++fromAbsFile logdest++" s10000000 n10\n"
 
 
-envFile :: Directory.Path -> (String, String) -> File
-envFile envDir (varname, varval) =
-  file (envDir </> varname) & mode       .~ Mode RW O O
-                            & strContent .~ varval
+envFile :: Path Abs Dir -> (String, String) -> Craft File
+envFile envDir (varname, varval) = do
+  fn <- parseRelFile varname
+  return $ file (envDir</>fn)
+           & mode       .~ Mode RW O O
+           & strContent .~ varval
 
 
+{-
 getEnv :: Service -> Craft [(String, String)]
 getEnv svc = do
-  fs <- Directory.getFiles (Craft.Daemontools.path svc)
+  sp <- Craft.Daemontools.path svc
+  fs <- Directory.getFiles sp
   return $ map go fs
  where
   go f = (f ^. File.name, f ^. strContent)
 
 
-{-
 instance Craftable Service where
   checker svc = File.get (path svc </> "run") >>= \case
     Nothing -> return Nothing

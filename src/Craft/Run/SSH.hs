@@ -11,7 +11,7 @@ import           Data.List                 (intersperse)
 import qualified Data.Map.Strict           as Map
 import           Data.Maybe                (fromMaybe)
 import           Data.String.Utils         (replace)
-import           System.Directory
+import           Path.IO
 import           System.Process            (ProcessHandle)
 import qualified System.Process            as Process
 import qualified System.Process.ByteString as Proc.BS
@@ -23,16 +23,15 @@ import           Craft.Run.Internal
 import           Craft.Types
 
 
-data SSHEnv
-  = SSHEnv
-    { _sshKey         :: FilePath
-    , _sshAddr        :: String
-    , _sshPort        :: Int
-    , _sshUser        :: String
-    , _sshSudo        :: Bool
-    , _sshControlPath :: Maybe FilePath
-    , _sshOptions     :: [String]
-    }
+data SSHEnv = SSHEnv
+  { _sshKey         :: Path Abs FileP
+  , _sshAddr        :: String
+  , _sshPort        :: Int
+  , _sshUser        :: String
+  , _sshSudo        :: Bool
+  , _sshControlPath :: Maybe (Path Rel FileP)
+  , _sshOptions     :: [String]
+  }
 makeLenses ''SSHEnv
 
 
@@ -40,7 +39,7 @@ connStr :: Optic' (->) (Const String) SSHEnv String
 connStr = to (\env -> concat [env ^. sshUser, "@", env ^. sshAddr])
 
 
-sshEnv :: String -> FilePath -> SSHEnv
+sshEnv :: String -> Path Abs FileP -> SSHEnv
 sshEnv addr key =
   SSHEnv
   { _sshAddr        = addr
@@ -65,7 +64,7 @@ data Session
  = Session
    { _sessionMasterProcHandle :: ProcessHandle
    , _sessionMasterProc       :: Process.CreateProcess
-   , _sessionControlPath      :: FilePath
+   , _sessionControlPath      :: Path Rel FileP
    , _sessionEnv              :: SSHEnv
    , _sessionArgs             :: Args
    }
@@ -79,14 +78,13 @@ prependEachWith flag opts = flag:(intersperse flag opts)
 
 newSession :: SSHEnv -> IO Session
 newSession env = do
-  defaultControlPath <- (".craft-ssh-session-" ++) . show . abs
-                        <$> (randomIO :: IO Int)
-  let controlPath = fromMaybe defaultControlPath $ env ^. sshControlPath
-  let args =    [ "-p", show $ env ^. sshPort ] -- port
-             ++ [ "-i", env ^. sshKey ] -- private key
+  defaultControlPath <- parseRelFile =<< ((".craft-ssh-session-"++) . show . abs <$> (randomIO :: IO Int))
+  let controlPath = fromMaybe defaultControlPath (env^.sshControlPath)
+  let args =    [ "-p", show $ env^.sshPort ] -- port
+             ++ [ "-i", fromAbsFile $ env^.sshKey ] -- private key
              ++ prependEachWith "-o"
                   ((env ^. sshOptions)
-                   ++ [ "ControlPath=" ++ controlPath
+                   ++ [ "ControlPath=" ++ (fromRelFile controlPath)
                       , "BatchMode=yes" -- never prompt for a password
                       ])
   let masterProc = (Process.proc "ssh"
@@ -109,7 +107,7 @@ newSession env = do
                  }
 
 
-waitForControlPath :: FilePath -> IO ()
+waitForControlPath :: Path a FileP -> IO ()
 waitForControlPath controlPath = do
   !exists <- doesFileExist controlPath
   if exists
@@ -132,57 +130,56 @@ withSession env =
           (Trans.lift . closeSession)
 
 
-runCraftSSHSession :: Session -> CraftEnv -> Craft a -> LoggingT IO a
-runCraftSSHSession session ce = interpretCraft ce $ runSSHFree session
+runSSHSession :: Session -> CraftRunner
+runSSHSession session =
+  CraftRunner
+  { runExec =
+      \ce command args ->
+        execProc $ sshProc session ce command args
+  , runExec_ =
+      \ce command args ->
+        let p = sshProc session ce command args
+        in execProc_ (unwords (command:args)) p
+  , runFileRead =
+      \fp -> do
+        let p = sshProc session craftEnvOverride "cat" [fromAbsFile fp]
+        (ec, content, stderr') <-
+          Trans.lift $ Proc.BS.readCreateProcessWithExitCode p ""
+        unless (isSuccessCode ec) $
+          $craftError $ "Failed to read file '"++ fromAbsFile fp ++"': " ++ B8.unpack stderr'
+        return content
+  , runFileWrite =
+      \fp content -> do
+        let p = sshProc session craftEnvOverride "tee" [fromAbsFile fp]
+        (ec, _, stderr') <-
+          Trans.lift $ Proc.BS.readCreateProcessWithExitCode p content
+        unless (isSuccessCode ec) $
+          $craftError $ "Failed to write file '" ++ fromAbsFile fp ++ "': " ++ B8.unpack stderr'
+  , runSourceFile =
+      \src dest ->
+        let p = Process.proc "rsync"
+                  (   [ "--quiet" -- suppress non-error messages
+                      , "--checksum" -- skip based on checksum, not mod-time & size
+                      , "--compress" -- compress file data during the transfer
+                        -- specify the remote shell to use
+                      , "--rsh=ssh " ++ unwords (session ^. sessionArgs)]
+                  ++ (if session ^. sessionEnv . sshSudo
+                          then ["--super", "--rsync-path=sudo rsync"]
+                          else [])
+                  ++ [ src , (session ^. sessionEnv . connStr) ++ ":" ++ fromAbsFile dest ])
+        in execProc_ (showProc p) p
+  }
+ where
+  craftEnvOverride :: CraftEnv
+  craftEnvOverride =
+    craftEnv noPackageManager
+    & craftExecEnv .~ Map.empty
+    & craftExecCWD .~ $(mkAbsDir "/")
 
 
--- | runCraftSSH
 runCraftSSH :: SSHEnv -> CraftEnv -> Craft a -> LoggingT IO a
-runCraftSSH env ce prog =
-  withSession env $ \session -> runCraftSSHSession session ce prog
-
-
-runSSHFree :: Session -> CraftDSL (LoggingT IO a) -> LoggingT IO a
-runSSHFree session (Exec ce command args next) = do
-  let p = sshProc session ce command args
-  execProc p next
-runSSHFree session (Exec_ ce command args next) = do
-  let p = sshProc session ce command args
-  execProc_ (unwords (command:args)) p next
-runSSHFree session (FileRead ce fp next) = do
-  let ceOverride = ce & craftExecEnv .~ Map.empty
-                      & craftExecCWD .~ "/"
-      p = sshProc session ceOverride "cat" [fp]
-  (ec, content, stderr') <-
-    Trans.lift $ Proc.BS.readCreateProcessWithExitCode p ""
-  unless (isSuccessCode ec) $
-    $craftError $ "Failed to read file '"++ fp ++"': " ++ B8.unpack stderr'
-  next content
-runSSHFree session (FileWrite ce fp content next) = do
-  let ceOverride = ce & craftExecEnv .~ Map.empty
-                      & craftExecCWD .~ "/"
-      p = sshProc session ceOverride "tee" [fp]
-  (ec, _, stderr') <-
-    Trans.lift $ Proc.BS.readCreateProcessWithExitCode p content
-  unless (isSuccessCode ec) $
-    $craftError $ "Failed to write file '" ++ fp ++ "': " ++ B8.unpack stderr'
-  next
-runSSHFree session (SourceFile _ src dest next) = do
-  let p = Process.proc "rsync"
-            (   [ "--quiet" -- suppress non-error messages
-                , "--checksum" -- skip based on checksum, not mod-time & size
-                , "--compress" -- compress file data during the transfer
-                  -- specify the remote shell to use
-                , "--rsh=ssh " ++ unwords (session ^. sessionArgs)]
-             ++ (if session ^. sessionEnv . sshSudo
-                     then ["--super", "--rsync-path=sudo rsync"]
-                     else [])
-             ++ [ src , (session ^. sessionEnv . connStr) ++ ":" ++ dest ])
-  execProc_ (showProc p) p next
-runSSHFree _ (FindSourceFile ce name next) =
-  Trans.lift (findSourceFileIO ce name) >>= next
-runSSHFree _ (ReadSourceFile _ fp next) =
-  Trans.lift (readSourceFileIO fp) >>= next
+runCraftSSH env ce configs =
+  withSession env $ \session -> runCraft (runSSHSession session) ce configs
 
 
 sshProc :: Session -> CraftEnv -> Command -> Args
@@ -214,7 +211,7 @@ sshProc session ce command args =
   execEnvArgs = map (escape specialChars) . renderEnv $ ce ^. craftExecEnv
 
   cdArgs :: [String]
-  cdArgs = ["cd", ce ^. craftExecCWD, ";"]
+  cdArgs = ["cd", (fromAbsDir $ ce^.craftExecCWD), ";"]
 
   escape :: [String] -> String -> String
   escape = recur backslash

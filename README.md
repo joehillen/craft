@@ -26,29 +26,20 @@ vagrant up
 
 In order of priority:
 
- * Replace FilePath with [path](https://hackage.haskell.org/package/path)
- * Use Text
  * Use logger that supports callstacks
- * Separate logger for DSL operations
- * take CraftEnv out of runners
-   - make a new runner: runCraft :: CraftEnv PackageManager -> Craft a -> CraftDSL (LoggingT IO a)
-   - rename:
-     - runCraftLocal -> runLocal
-     - runCraftSSH   -> runSSH
- * Replace use of "error" with proper exception types.
+ * Use Text
  * Craftable User User
+ * Replace use of "error" with proper exception types.
  * Remove Exec_
  * Exec as User
  * Send stdin to Exec
  * use `data-default`
  * distinguish CraftEnv from EnvVars
    - maybe rename it to CraftSettings
- * Figure out how to use a ReaderT on top of Craft
- * Refactor file content sourcing (pluggable sourcers: `cp`, `rsync`, `S3`, `http`, etc)
-   - Maybe use Inject for Free, i.e. "Data Types A La Carte"
+ * Figure out how to use a ReaderT on top of Craft and document it.
  * grep
+ * Separate logger for DSL operations
  * Escaping Exec args, i.e. spaces, quotes, pipes, etc
- * Export the most common smart-constructors, e.g. `file`, `directory`, `user`, etc
  * Define `Gettable` with functional dependencies or type-families
  * Improve `/etc/hosts` parser (very slow)
  * microlenses?
@@ -68,7 +59,7 @@ In order of priority:
  * Static link
  * Master/Agent runner
  * Replace facter with something type-safe (lpuppet?)
- * Task-oriented abstraction like fabric, capistrano, ansible-playbook, etc
+ * Task-oriented abstraction a la fabric, capistrano, ansible-playbook, etc
  * Exec Pipes
  * Implement ssh client library in pure Haskell
 
@@ -82,9 +73,8 @@ I plan to convert Craft to a Free Monad with a DSL of:
 ```haskell
 execute        :: Env -> Path -> Command -> Args -> Craft (ExitCode, String, String)
 execute_       :: Env -> Path -> Command -> Args -> Craft ()
-readFile       :: FilePath -> Craft ByteString
-writeFile      :: FilePath -> ByteString -> Craft ()
-readSourceFile :: FilePath -> Craft ByteString
+readFile       :: Path Abs FileP -> Craft ByteString
+writeFile      :: Path Abs FileP -> ByteString -> Craft ()
 ```
 
 This won't allow for the complete freedom I had originally envisioned,

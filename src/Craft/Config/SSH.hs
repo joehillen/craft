@@ -46,11 +46,11 @@ instance ConfigFormat SSHConfig where
   parseConfig = sshConfigParse
 
 
-userPath :: UserConfig -> FilePath
-userPath uc = userDir (uc ^. user) ^. path </> "config"
+userPath :: UserConfig -> Path Abs FileP
+userPath uc = (userDir (uc ^. user) ^. path) </> $(mkRelFile "config")
 
 
-get :: FilePath -> Craft (Maybe (Config SSHConfig))
+get :: Path Abs FileP -> Craft (Maybe (Config SSHConfig))
 get = Craft.Config.get
 
 
@@ -83,9 +83,9 @@ instance Craftable UserConfig UserConfig where
     return (w, cfg)
 
 
-sshConfigParse :: FilePath -> String -> Craft SSHConfig
+sshConfigParse :: Path Abs FileP -> String -> Craft SSHConfig
 sshConfigParse fp s =
-  case runParser parser fp s of
+  case runParser parser (show fp) s of
     Left err   -> $craftError $ show err
     Right secs -> return $ SSHConfig secs
 

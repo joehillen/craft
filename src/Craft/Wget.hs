@@ -9,30 +9,31 @@ import qualified Craft.Checksum as Checksum
 import qualified Craft.File     as File
 
 data Wget = Wget
-            { _url    :: String
-            , _dest   :: File
-            , _chksum :: Maybe Checksum
-            , _args   :: Args -- ^Additional arguments to add to the wget command,
-                              -- such as timeouts.
-            }
+  { _url    :: String
+  , _dest   :: File
+  , _chksum :: Maybe Checksum
+  , _args   :: Args -- ^Additional arguments to add to the wget command, such as timeouts.
+  }
+  deriving (Show, Eq)
 makeLenses ''Wget
 
 
-wget :: String -> FilePath -> Wget
+wget :: String -> Path Abs FileP -> Wget
 wget url' destfp =
-  Wget { _url    = url'
-       , _dest   = file destfp
-       , _chksum = Nothing
-       , _args   = []
-       }
+  Wget
+  { _url    = url'
+  , _dest   = file destfp
+  , _chksum = Nothing
+  , _args   = []
+  }
 
 
 instance Craftable Wget Wget where
   watchCraft wg = do
     let destf  = wg ^. dest & fileContent .~ Nothing
     let destfp = wg ^. dest . path
-    let mismatchError actual = "Checksum Mismatch for `"<>wg ^. url<>"`. "
-                            <> "Expected `"<>show (wg ^. chksum)<>"` "
+    let mismatchError actual = "Checksum Mismatch for `"<>wg^.url<>"`. "
+                            <> "Expected `"<>show (wg^.chksum)<>"` "
                             <> "Got `"<>show actual<>"`"
     let check = Checksum.check destf
     let watchDest = do
@@ -66,5 +67,4 @@ instance Craftable Wget Wget where
 
 
 run :: Wget -> Craft ()
-run wg = exec_ "wget" $ (wg ^. args)
-                     ++ ["-O", wg ^. dest . path, wg ^. url]
+run wg = exec_ "wget" $ (wg^.args) ++ ["-O", (fromAbsFile $ wg^.dest.path), wg^.url]

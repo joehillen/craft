@@ -17,7 +17,7 @@ makeLenses ''PPA
 
 findPPAFiles :: PPA -> Craft [File]
 findPPAFiles (PPA url) = do
-  fs <- File.find "/etc/apt/sources.list.d" ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
+  fs <- File.find $(mkAbsDir "/etc/apt/sources.list.d") ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
   let nonEmpty = (> 0) . length . view (fileContent . _Just . unpackedChars)
   return $ filter nonEmpty fs
 
