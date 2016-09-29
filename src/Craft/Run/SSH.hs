@@ -15,6 +15,8 @@ import           Path.IO
 import           System.Process            (ProcessHandle)
 import qualified System.Process            as Process
 import qualified System.Process.ByteString as Proc.BS
+import Formatting
+import Formatting.ShortFormatters
 import           System.Random             hiding (next)
 import           System.Timeout
 
@@ -35,8 +37,8 @@ data SSHEnv = SSHEnv
 makeLenses ''SSHEnv
 
 
-connStr :: Optic' (->) (Const String) SSHEnv String
-connStr = to (\env -> concat [env ^. sshUser, "@", env ^. sshAddr])
+connectionString :: Optic' (->) (Const String) SSHEnv String
+connectionString = to (\env -> concat [env ^. sshUser, "@", env ^. sshAddr])
 
 
 sshEnv :: String -> Path Abs FileP -> SSHEnv
@@ -78,7 +80,13 @@ prependEachWith flag opts = flag:(intersperse flag opts)
 
 newSession :: SSHEnv -> IO Session
 newSession env = do
-  defaultControlPath <- parseRelFile =<< ((".craft-ssh-session-"++) . show . abs <$> (randomIO :: IO Int))
+  randint <- abs <$> (randomIO :: IO Int)
+  let defaultControlPathFN =
+        formatToString (".craft-ssh-session-"%s%":"%d%"-"%d)
+          (env^.connectionString)
+          (env^.sshPort)
+          randint
+  defaultControlPath <- parseRelFile defaultControlPathFN
   let controlPath = fromMaybe defaultControlPath (env^.sshControlPath)
   let args =    [ "-p", show $ env^.sshPort ] -- port
              ++ [ "-i", fromAbsFile $ env^.sshKey ] -- private key
@@ -91,7 +99,7 @@ newSession env = do
                       (args
                        ++ (prependEachWith "-o" [ "ControlMaster=yes"
                                                 , "ControlPersist=yes" ])
-                       ++ [env ^. connStr]))
+                       ++ [env ^. connectionString]))
                     { Process.std_in  = Process.NoStream
                     , Process.std_out = Process.NoStream
                     , Process.std_err = Process.NoStream
@@ -166,7 +174,7 @@ runSSHSession session =
                   ++ (if session ^. sessionEnv . sshSudo
                           then ["--super", "--rsync-path=sudo rsync"]
                           else [])
-                  ++ [ src , (session ^. sessionEnv . connStr) ++ ":" ++ fromAbsFile dest ])
+                  ++ [ src , (session ^. sessionEnv . connectionString) ++ ":" ++ fromAbsFile dest ])
         in execProc_ (showProc p) p
   }
  where
@@ -189,7 +197,7 @@ sshProc session ce command args =
                     ++ (prependEachWith "-o" [ "ControlMaster=auto"
                                              , "ControlPersist=no"
                                              ])
-                    ++ [ session ^. sessionEnv . connStr
+                    ++ [ session ^. sessionEnv . connectionString
                        , fullExecStr
                        ]
  where
@@ -216,10 +224,10 @@ sshProc session ce command args =
   escape :: [String] -> String -> String
   escape = recur backslash
 
-  recur _ []     s = s
-  recur f (a:as) s = recur f as $ f a s
+  recur _   []     str = str
+  recur fun (a:as) str = recur fun as $ fun a str
 
-  backslash x = replace x ('\\':x)
+  backslash char' = replace char' ('\\':char')
 
 
 renderEnv :: ExecEnv -> [String]
