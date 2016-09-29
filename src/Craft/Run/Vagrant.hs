@@ -50,8 +50,7 @@ runCraftVagrant settings env configs = do
   withSession
     (sshEnv addr key
      & sshUser .~ user
-     & sshPort .~ port
-     & sshSudo .~ True)
+     & sshPort .~ port)
     $ \session ->
         runCraft
           (runSSHSession session)

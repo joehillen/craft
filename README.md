@@ -31,17 +31,15 @@ In order of priority:
  * Craftable User User
  * Replace use of "error" with proper exception types.
  * Remove Exec_
- * Exec as User
  * Send stdin to Exec
  * use `data-default`
  * distinguish CraftEnv from EnvVars
    - maybe rename it to CraftSettings
  * Figure out how to use a ReaderT on top of Craft and document it.
  * grep
- * Separate logger for DSL operations
+ * Separate logger for DSL operations?
  * Escaping Exec args, i.e. spaces, quotes, pipes, etc
  * Define `Gettable` with functional dependencies or type-families
- * Improve `/etc/hosts` parser (very slow)
  * microlenses?
  * Break up craft into multiple packages
  * Tests
@@ -56,7 +54,6 @@ In order of priority:
    - Examples
    - Haskell for DevOps
    - Craft for Haskellers
- * Static link
  * Master/Agent runner
  * Replace facter with something type-safe (lpuppet?)
  * Task-oriented abstraction a la fabric, capistrano, ansible-playbook, etc

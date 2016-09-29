@@ -30,7 +30,6 @@ data SSHEnv = SSHEnv
   , _sshAddr        :: String
   , _sshPort        :: Int
   , _sshUser        :: String
-  , _sshSudo        :: Bool
   , _sshControlPath :: Maybe (Path Rel FileP)
   , _sshOptions     :: [String]
   }
@@ -48,7 +47,6 @@ sshEnv addr key =
   , _sshPort        = 22
   , _sshKey         = key
   , _sshUser        = "root"
-  , _sshSudo        = True
   , _sshControlPath = Nothing
   , _sshOptions     = sshDefaultOptions
   }
@@ -166,15 +164,15 @@ runSSHSession session =
   , runSourceFile =
       \src dest ->
         let p = Process.proc "rsync"
-                  (   [ "--quiet" -- suppress non-error messages
-                      , "--checksum" -- skip based on checksum, not mod-time & size
-                      , "--compress" -- compress file data during the transfer
-                        -- specify the remote shell to use
-                      , "--rsh=ssh " ++ unwords (session ^. sessionArgs)]
-                  ++ (if session ^. sessionEnv . sshSudo
-                          then ["--super", "--rsync-path=sudo rsync"]
-                          else [])
-                  ++ [ src , (session ^. sessionEnv . connectionString) ++ ":" ++ fromAbsFile dest ])
+                  ([ "--quiet" -- suppress non-error messages
+                   , "--checksum" -- skip based on checksum, not mod-time & size
+                   , "--compress" -- compress file data during the transfer
+                   -- specify the remote shell to use
+                   , "--rsh=ssh " ++ unwords (session ^. sessionArgs)
+                   , "--super"
+                   , "--rsync-path=sudo rsync"
+                   ]
+                   ++ [ src , (session ^. sessionEnv . connectionString) ++ ":" ++ fromAbsFile dest ])
         in execProc_ (showProc p) p
   }
  where
@@ -205,9 +203,9 @@ sshProc session ce command args =
   fullExecStr = unwords (sudoArgs ++ ["sh", "-c", "'", shellStr, "'"])
 
   sudoArgs :: [String]
-  sudoArgs = if session ^. sessionEnv . sshSudo
-              then ["sudo", "-n", "-H"]
-              else []
+  sudoArgs =
+    let UserID uid' = ce^.craftExecUserID in
+    ["sudo", "-u", "\\#"++(show uid'), "-n", "-H"]
 
   shellStr :: String
   shellStr = unwords (cdArgs ++ execEnvArgs ++ (command : map (escape specialChars) args))

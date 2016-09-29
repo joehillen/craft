@@ -24,10 +24,18 @@ exec cmd args = do
   liftF $ Exec ce cmd args id
 
 
+execAs :: User -> Command -> Args -> Craft ExecResult
+execAs user cmd args = withUser user $ exec cmd args
+
+
 exec_ :: Command -> Args -> Craft ()
 exec_ cmd args = do
   ce <- ask
   liftF $ Exec_ ce cmd args ()
+
+
+execAs_ :: User -> Command -> Args -> Craft ExecResult
+execAs_ user cmd args = withUser user $ exec cmd args
 
 
 fileRead :: Path Abs FileP -> Craft BS.ByteString
@@ -68,7 +76,7 @@ parseExecStdout parser cmd args = do
   parseExecResult r parser s
 
 
--- XXX: What if the file doesn't exist?
+-- TODO: XXX: What if the file doesn't exist?
 parseFile :: Parser a -> Path Abs FileP -> Craft a
 parseFile parser fp = do
   str <- B8.unpack <$> fileRead fp
@@ -83,7 +91,7 @@ craftExecPath ce = do
   mapM parseAbsDir dps
 
 
--- TESTME
+-- TODO: TESTME
 prependPath :: Path Abs Dir -> Craft a -> Craft a
 prependPath newpath go = do
   ce <- ask
@@ -91,7 +99,7 @@ prependPath newpath go = do
   withPath (newpath:execpath) go
 
 
--- TESTME
+-- TODO: TESTME
 withPath :: [Path Abs Dir] -> Craft a -> Craft a
 withPath = withEnvVar "PATH" . intercalate ":" . map fromAbsDir
 
@@ -104,12 +112,16 @@ withCWD :: Directory -> Craft a -> Craft a
 withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. directoryPath)
 
 
--- TESTME
+-- TODO: TESTME
 withEnvVar :: String -> String -> Craft a -> Craft a
 withEnvVar name val go = do
   ce <- ask
   let env = Map.insert name val $ ce ^. craftExecEnv
   withEnv env go
+
+
+withUser :: User -> Craft a -> Craft a
+withUser user = local (\r -> r & craftExecUserID .~ user^.uid)
 
 
 isExecSucc :: ExecResult -> Bool

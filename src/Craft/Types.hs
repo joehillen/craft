@@ -50,6 +50,7 @@ data CraftEnv
     { _craftPackageManager :: PackageManager
     , _craftExecEnv        :: ExecEnv
     , _craftExecCWD        :: Path Abs Dir
+    , _craftExecUserID     :: UserID
     }
 
 
@@ -59,6 +60,7 @@ craftEnv pm =
   { _craftPackageManager = pm
   , _craftExecEnv        = Map.fromList [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
   , _craftExecCWD        = $(mkAbsDir "/")
+  , _craftExecUserID     = UserID 0
   }
 
 
