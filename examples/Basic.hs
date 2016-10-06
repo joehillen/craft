@@ -1,23 +1,23 @@
-{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE RankNTypes      #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 module Main where
 
 import           Control.Monad
-import           Control.Monad.Logger (runStdoutLoggingT)
+import           Control.Monad.Logger    (runStdoutLoggingT)
 
 import           Craft
-import           Craft.Apt (apt)
-import qualified Craft.Apt as Apt
-import qualified Craft.File as File
-import           Craft.Hostname (Hostname(..))
-import qualified Craft.Pip as Pip
+import           Craft.Apt               (apt)
+import qualified Craft.Apt               as Apt
+import qualified Craft.File              as File
+import           Craft.Hostname          (Hostname (..))
+import qualified Craft.Pip               as Pip
 import           Craft.Run.Vagrant
 import           Craft.SSH
-import           Craft.SSH.PublicKey
 import           Craft.SSH.AuthorizedKey
-import qualified Craft.User as User
+import           Craft.SSH.PublicKey
+import qualified Craft.User              as User
 
 
 main :: IO ()
