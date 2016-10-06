@@ -1,15 +1,17 @@
 module Craft.Run.Vagrant where
 
 import           Control.Lens
-import           Control.Monad.Logger (LoggingT)
-import qualified Control.Monad.Trans  as Trans
-import qualified Data.Map.Strict      as Map
-import           Data.Maybe           (fromMaybe)
+import           Control.Monad.IO.Class (liftIO)
+import           Control.Monad.Logger   (LoggingT)
+import qualified Control.Monad.Trans    as Trans
+import qualified Data.Map.Strict        as Map
+import           Data.Maybe             (fromMaybe)
 import qualified System.Directory
 import qualified System.Environment
+import           System.Posix.User      (getRealUserID)
 
 import           Craft
-import           Craft.Config.SSH     (SSHConfig (..), cfgLookup, parser)
+import           Craft.Config.SSH       (SSHConfig (..), cfgLookup, parser)
 
 
 data VagrantSettings
@@ -29,6 +31,7 @@ vagrantSettings =
 
 runCraftVagrant :: VagrantSettings -> CraftEnv -> Craft a -> LoggingT IO a
 runCraftVagrant settings env configs = do
+  uid' <- liftIO getRealUserID
   let box = vagrantBox settings
   sysEnv <- Trans.lift System.Environment.getEnvironment
   cwd <- parseAbsDir =<< Trans.lift System.Directory.getCurrentDirectory
@@ -38,7 +41,8 @@ runCraftVagrant settings env configs = do
       runLocal
       (craftEnv (env ^. craftPackageManager)
        & craftExecEnv .~ Map.fromList sysEnv
-       & craftExecCWD .~ cwd)
+       & craftExecCWD .~ cwd
+       & craftExecUserID .~ UserID (fromIntegral uid'))
       $ do
         when (vagrantUp settings) $ exec_ "vagrant" ["up", box]
         SSHConfig <$> parseExecStdout parser "vagrant" ["ssh-config", box]
