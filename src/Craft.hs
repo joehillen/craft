@@ -7,6 +7,7 @@ module Craft
 , local
 -- Control.Lens
 , (&)
+, (<&>)
 , (.~)
 , (^.)
 , (%~)
