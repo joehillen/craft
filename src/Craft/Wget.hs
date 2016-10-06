@@ -28,6 +28,14 @@ wget url' destfp =
   }
 
 
+instance FileLike Wget where
+  type FileLikePath Wget = Path Abs FileP
+  path = dest . filePath
+  mode = dest . fileMode
+  ownerID = dest . fileOwnerID
+  groupID = dest . fileGroupID
+
+
 instance Craftable Wget Wget where
   watchCraft wg = do
     let destf  = wg ^. dest & fileContent .~ Nothing
