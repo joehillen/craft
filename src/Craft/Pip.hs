@@ -1,12 +1,13 @@
 module Craft.Pip where
 
-import           Formatting      hiding (char)
-import qualified Formatting      as F
+import           Formatting             hiding (char)
+import qualified Formatting             as F
 import           Text.Megaparsec
+import           Text.Megaparsec.String
 
-import           Craft           hiding (latest, package)
+import           Craft                  hiding (latest, package)
 import qualified Craft
-import qualified Craft.File      as File
+import qualified Craft.File             as File
 
 
 newtype PipPackage = PipPackage Package
@@ -52,14 +53,14 @@ get pn = do
 
 
 -- TESTME
-pipShowParser :: Parsec String [(String, String)]
+pipShowParser :: Parser [(String, String)]
 pipShowParser = many $ kv <* many eol
  where
-  kv :: Parsec String (String, String)
+  kv :: Parser (String, String)
   kv = do
-    key <- some $ noneOf ":"
+    key <- some $ noneOf [':']
     char ':' >> space
-    value <- many $ noneOf "\n"
+    value <- many $ noneOf ['\n']
     return (key, value)
 
 

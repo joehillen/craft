@@ -3,6 +3,7 @@ module Craft.Config.Shell where
 import           Control.Lens                   hiding (noneOf, set)
 import           Data.Maybe                     (catMaybes)
 import           Text.Megaparsec                hiding (parse)
+import           Text.Megaparsec.String
 
 import           Craft                          hiding (try)
 import           Craft.Config
@@ -59,29 +60,30 @@ empty = ShellFormat []
 
 
 -- TESTME
-parser :: Parsec String ShellFormat
+parser :: Parser ShellFormat
 parser = do
   items <- line `sepEndBy` eol
   return . ShellFormat $ catMaybes items
 
 
-line :: Parsec String (Maybe (String, String))
+line :: Parser (Maybe (String, String))
 line =  do
   try (comment >> return Nothing)
   <|> try (space >> end >> return Nothing)
   <|> (Just <$> item)
 
 
-comment :: Parsec String ()
+comment :: Parser ()
 comment = space >> char '#' >> manyTill anyChar end >> return ()
 
 
-item :: Parsec String (String, String)
+item :: Parser (String, String)
 item = do
   space
-  name <- some $ noneOf " ="
+  name <- some $ noneOf [' ', '=']
   void $ char '='
   -- TODO: quoted values
-  value <- try (someTill (noneOf " \r\n#") (lookAhead (oneOf " \r\n#")) <* manyTill anyChar end)
-        <|> (many (oneOf " \t") >> manyTill anyChar end >> return "")
+  let endChars = [' ', '\r', '\n', '#']
+  value <- try (someTill (noneOf endChars) (lookAhead (oneOf endChars)) <* manyTill anyChar end)
+        <|> (many (oneOf [' ', '\t']) >> manyTill anyChar end >> return "")
   return (name, value)

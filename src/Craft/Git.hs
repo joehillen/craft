@@ -95,7 +95,7 @@ repoURLParser = some $ do
   return ((remote, direction), url')
  where
   word :: Parser String
-  word = some (noneOf " \t") <* some (spaceChar <|> tab)
+  word = some (noneOf [' ', '\t']) <* some (spaceChar <|> tab)
 
 
 getVersion :: Craft Version
