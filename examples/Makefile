@@ -12,4 +12,5 @@ test: basic
 clean:
 	rm -f *.o
 	rm -f *.hi
+	rm -f *.dyn*
 	rm -f basic
