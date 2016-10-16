@@ -108,8 +108,12 @@ withEnv :: ExecEnv -> Craft a -> Craft a
 withEnv env = local (\r -> r & craftExecEnv .~ env)
 
 
-withCWD :: Directory -> Craft a -> Craft a
-withCWD dir = local (\r -> r & craftExecCWD .~ dir ^. directoryPath)
+withCWD :: Path Abs Dir -> Craft a -> Craft a
+withCWD dir = local (\r -> r & craftExecCWD .~ dir)
+
+
+inDirectory :: Directory -> Craft a -> Craft a
+inDirectory dir = withCWD $ dir^.directoryPath
 
 
 -- TODO: TESTME
