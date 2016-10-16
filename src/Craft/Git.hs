@@ -106,7 +106,7 @@ get :: Path Abs Dir -> Craft (Maybe Repo)
 get dp =
   Dir.get dp >>= \case
     Nothing -> return Nothing
-    Just dir -> withCWD dir $ do
+    Just dir -> inDirectory dir $ do
       !url'     <- getURL
       !version' <- getVersion
       return . Just
@@ -149,13 +149,13 @@ instance Craftable Repo Repo where
                                 ++ "Clone Failed. Directory `"++show dp++"` not found."
           Just dir -> do
             craft_ $ r ^. gitDirectory
-            withCWD dir $ do
+            inDirectory dir $ do
               ver' <- checkoutCommit
               return (Created, r & gitVersion .~ ver' )
 
       Just dir -> do
         craft_ $ r ^. gitDirectory
-        withCWD dir $ do
+        inDirectory dir $ do
           !beforeVersion <- getVersion
           ver' <- checkoutCommit
           case ver of
