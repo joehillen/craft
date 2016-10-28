@@ -50,8 +50,8 @@ data Result
 -- Otherwise 'Matched' is returned.
 check :: File -> Checksum -> Craft Result
 check f chksum = exec (command chksum) [fromAbsFile $ f^.path] >>= \case
-  ExecFail r -> return $ Failed r
-  ExecSucc r -> return $
+  Failure r -> return $ Failed r
+  Success r -> return $
     let mk = case chksum of
                CRC    _ -> CRC
                MD5    _ -> MD5

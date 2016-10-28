@@ -54,13 +54,13 @@ sourceFile sourcer dest = liftF $ SourceFile sourcer dest ()
 
 parseExecResult :: ExecResult -> Parser a -> String -> Craft a
 parseExecResult execr parser str =
-  case parse parser (showProc $ execResultProc execr) str of
+  case parse parser (showProcess $ execResultProcess execr) str of
     Right x -> return x
     Left err -> $craftError $
       unlines
       [ "parseExecResult error:"
       , "<<<< process >>>>"
-      , showProc $ execResultProc execr
+      , showProcess $ execResultProcess execr
       , "<<<< output >>>>"
       , str
       , "<<<< parse error >>>>"
@@ -128,10 +128,6 @@ withUser :: User -> Craft a -> Craft a
 withUser user = local (\r -> r & craftExecUserID .~ user^.uid)
 
 
-isExecSucc :: ExecResult -> Bool
-isExecSucc (ExecSucc _) = True
-isExecSucc (ExecFail _) = False
-
 setMode :: Mode -> Path b t -> Craft ()
 setMode m fp = exec_ "chmod" [toOctalString m, toFilePath fp]
 
@@ -161,8 +157,8 @@ getGroupID fp = GroupID <$> parseExecStdout digitParser stat ["-c", "%g", toFile
 getStats :: Path Abs t -> Craft (Maybe (Mode, UserID, GroupID))
 getStats fp =
   exec stat ["-c", "%a:%u:%g", toFilePath fp] >>= \case
-    ExecFail _ -> return Nothing
-    ExecSucc r -> Just <$> parseExecResult (ExecSucc r) statsParser (r^.stdout)
+    Failure _ -> return Nothing
+    Success r -> Just <$> parseExecResult (Success r) statsParser (r^.stdout)
 
 
 statsParser :: Parser (Mode, UserID, GroupID)

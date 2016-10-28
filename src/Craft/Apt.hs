@@ -66,8 +66,8 @@ dpkgQueryPackage = dpkgQueryShow "${Package}"
 getAptPackage :: PackageName -> Craft (Maybe Package)
 getAptPackage pn =
   dpkgQueryStatus pn >>= \case
-    ExecFail _ -> return Nothing
-    ExecSucc _ -> Just <$> do
+    Failure _ -> return Nothing
+    Success _ -> Just <$> do
       r <- dpkgQueryVersion pn
       return $ Package pn (Version r)
 

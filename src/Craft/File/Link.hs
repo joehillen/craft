@@ -27,14 +27,14 @@ link = Link
 
 
 exists :: Path Abs FileP -> Craft Bool
-exists lp = isExecSucc <$> exec "test" ["-L", fromAbsFile lp]
+exists lp = isSuccess <$> exec "test" ["-L", fromAbsFile lp]
 
 
 readlink :: LinkPath -> Craft (Maybe TargetPath)
 readlink (LinkPath lp) =
   exec "readlink" [fromAbsFile lp] >>= \case
-    ExecFail _ -> return Nothing
-    ExecSucc r -> return . Just . TargetPath . trimTrailing $ r^.stdout
+    Failure _ -> return Nothing
+    Success r -> return . Just . TargetPath . trimTrailing $ r^.stdout
 
 
 create :: Link -> Craft ()

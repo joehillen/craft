@@ -58,7 +58,7 @@ write = fileWrite
 
 
 exists :: Path Abs FileP -> Craft Bool
-exists fp = isExecSucc <$> exec "test" ["-f", fromAbsFile fp]
+exists fp = isSuccess <$> exec "test" ["-f", fromAbsFile fp]
 
 
 get :: Path Abs FileP -> Craft (Maybe File)

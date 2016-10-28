@@ -21,41 +21,44 @@ isSuccessCode ExitSuccess     = True
 isSuccessCode (ExitFailure _) = False
 
 
-execProc :: CreateProcess -> LoggingT IO ExecResult
-execProc p = do
-  logDebugNS "exec|process" $ T.pack $ showProc p
+runCreateProcess :: CreateProcess -> LoggingT IO ExecResult
+runCreateProcess p = do
+  logDebugNS "exec|process" $ T.pack $ showProcess p
   (exit', stdoutRaw, stderrRaw) <- Trans.lift $ SPLL.readCreateProcessWithExitCode p "" {- stdin -}
   let stdout' = trimNL stdoutRaw
   let stderr' = trimNL stderrRaw
   return $ case exit' of
-    ExitSuccess      -> ExecSucc $ SuccResult stdout' stderr' p
-    ExitFailure code -> ExecFail $ FailResult code stdout' stderr' p
+    ExitSuccess      -> Success $ SuccResult stdout' stderr' p
+    ExitFailure code -> Failure $ FailResult code stdout' stderr' p
 
 
-execProc_ :: String -> CreateProcess -> LoggingT IO ()
-execProc_ src p = do
-  let p' = p { std_in  = CreatePipe
-             , std_out = CreatePipe
-             , std_err = CreatePipe
-             }
-  logDebugNS "exec_|process" $ T.pack $ showProc p
-
+runCreateProcess_ :: String -> CreateProcess -> LoggingT IO ()
+runCreateProcess_ src p = do
+  let p' =
+        p
+        { std_in  = CreatePipe
+        , std_out = CreatePipe
+        , std_err = CreatePipe
+        }
+  logDebugNS "exec_|process" $ T.pack $ showProcess p
   logger <- askLoggerIO
   let src' = "exec_|" <> T.pack src
       srcOut = src' <> "|stdout"
       srcErr = src' <> "|stderr"
-
-  (ec, _, _) <- Trans.lift $ sourceProcessWithStreams
-                               p'
-                               (CL.sourceNull)
-                               (pipeConsumer logger srcOut)
-                               (pipeConsumer logger srcErr)
+  (ec, _, _) <-
+    Trans.lift $
+      sourceProcessWithStreams
+        p'
+        (CL.sourceNull)
+        (pipeConsumer logger srcOut)
+        (pipeConsumer logger srcErr)
   case ec of
-    ExitFailure n -> $craftError $ "exec_ `" ++ src ++ "` failed with code: " ++ show n
+    ExitFailure n -> $craftError $ "exec_ `"++src++"` failed with code: "++show n
     ExitSuccess   -> return ()
  where
-   pipeConsumer logger s = decodeUtf8C =$= CT.lines =$ awaitForever (\txt ->
-     (`runLoggingT` logger) (logDebugNS s txt))
+   pipeConsumer logger s =
+     decodeUtf8C =$= CT.lines =$ awaitForever (\txt ->
+       (`runLoggingT` logger) (logDebugNS s txt))
 
 
 -- | Remove a single trailing newline character from the end of the String

@@ -17,11 +17,11 @@ runNspawn dir =
   { runExec =
       \ce command args ->
         let p = nspawnProc dir ce command args
-        in execProc p
+        in runCreateProcess p
   , runExec_ =
       \ce command args ->
         let p = nspawnProc dir ce command args
-        in execProc_ (showProc p) p
+        in runCreateProcess_ (showProcess p) p
   , runFileRead =
       \fp -> do
         fp' <- stripDir $(mkAbsDir "/") fp
@@ -40,7 +40,7 @@ runNspawn dir =
                 , create_group  = True
                 , delegate_ctlc = False
                 }
-        execProc_ (showProc p) p
+        runCreateProcess_ (showProcess p) p
   }
 
 

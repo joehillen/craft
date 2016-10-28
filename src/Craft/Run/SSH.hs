@@ -63,7 +63,7 @@ sshDefaultOptions =
 data Session
  = Session
    { _sessionMasterProcHandle :: ProcessHandle
-   , _sessionMasterProc       :: Process.CreateProcess
+   , _sessionMasterProcess    :: Process.CreateProcess
    , _sessionControlPath      :: Path Rel FileP
    , _sessionEnv              :: SSHEnv
    , _sessionArgs             :: Args
@@ -105,12 +105,14 @@ newSession env = do
   (_, _, _, !ph) <- Process.createProcess masterProc
   void $ timeout 10000000 {- 10 seconds -} $
     waitForControlPath controlPath
-  return Session { _sessionEnv = env
-                 , _sessionMasterProc = masterProc
-                 , _sessionMasterProcHandle = ph
-                 , _sessionControlPath = controlPath
-                 , _sessionArgs = args
-                 }
+  return
+    Session
+    { _sessionEnv              = env
+    , _sessionMasterProcess    = masterProc
+    , _sessionMasterProcHandle = ph
+    , _sessionControlPath      = controlPath
+    , _sessionArgs             = args
+    }
 
 
 waitForControlPath :: Path a FileP -> IO ()
@@ -141,11 +143,11 @@ runSSHSession session =
   CraftRunner
   { runExec =
       \ce command args ->
-        execProc $ sshProc session ce command args
+        runCreateProcess $ sshProc session ce command args
   , runExec_ =
       \ce command args ->
         let p = sshProc session ce command args
-        in execProc_ (unwords (command:args)) p
+        in runCreateProcess_ (unwords (command:args)) p
   , runFileRead =
       \fp -> do
         let p = sshProc session craftEnvOverride "cat" [fromAbsFile fp]
@@ -173,7 +175,7 @@ runSSHSession session =
                    , "--rsync-path=sudo rsync"
                    ]
                    ++ [ src , (session ^. sessionEnv . connectionString) ++ ":" ++ fromAbsFile dest ])
-        in execProc_ (showProc p) p
+        in runCreateProcess_ (showProcess p) p
   }
  where
   craftEnvOverride :: CraftEnv

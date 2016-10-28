@@ -40,8 +40,8 @@ get :: PackageName -> Craft (Maybe PipPackage)
 get pn = do
   r <- withPath [$(mkAbsDir "/usr/local/bin"), $(mkAbsDir "/usr/bin")] $ exec "pip" ["show", pn]
   case r of
-    ExecFail _     -> return Nothing
-    ExecSucc succr -> do
+    Failure _     -> return Nothing
+    Success succr -> do
       results <- parseExecResult r pipShowParser (succr ^. stdout)
       if null results then
         return Nothing

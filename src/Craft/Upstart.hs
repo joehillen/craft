@@ -20,8 +20,8 @@ makeLenses ''Service
 get :: ServiceName -> Craft (Maybe Service)
 get sn =
   exec "/sbin/status" [sn] >>= \case
-    ExecFail _ -> return Nothing
-    ExecSucc r -> Just . Service sn <$> parseExecResult (ExecSucc r) (statusParser sn) (r ^. stdout)
+    Failure _ -> return Nothing
+    Success r -> Just . Service sn <$> parseExecResult (Success r) (statusParser sn) (r ^. stdout)
 
 
 statusParser :: String -> Parser String

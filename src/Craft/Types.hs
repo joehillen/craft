@@ -116,29 +116,29 @@ type Command = String
 
 data SuccResult
   = SuccResult
-    { _stdout   :: StdOut
-    , _stderr   :: StdErr
-    , _succProc :: CreateProcess
+    { _stdout      :: StdOut
+    , _stderr      :: StdErr
+    , _succProcess :: CreateProcess
     }
 
 
 data FailResult
   = FailResult
-    { _exitcode   :: Int
-    , _failStdout :: StdOut
-    , _failStderr :: StdErr
-    , _failProc   :: CreateProcess
+    { _exitcode    :: Int
+    , _failStdout  :: StdOut
+    , _failStderr  :: StdErr
+    , _failProcess :: CreateProcess
     }
 
 
 data ExecResult
-  = ExecFail FailResult
-  | ExecSucc SuccResult
+  = Failure FailResult
+  | Success SuccResult
 
 
 isSuccess :: ExecResult -> Bool
-isSuccess (ExecSucc _) = True
-isSuccess (ExecFail _) = False
+isSuccess (Success _) = True
+isSuccess (Failure _) = False
 
 
 isFailure :: ExecResult -> Bool
@@ -148,8 +148,8 @@ isFailure = not . isSuccess
 errorOnFail :: Q Exp
 errorOnFail = [|
   \case
-    ExecSucc r -> return r
-    ExecFail r -> $craftError $ show r|]
+    Success r -> return r
+    Failure r -> $craftError $ show r|]
 
 
 -- | Try to get STDOUT from a process.
@@ -157,8 +157,8 @@ errorOnFail = [|
 stdoutOrError :: Q Exp
 stdoutOrError = [|
   \case
-    ExecSucc r -> return $ _stdout r
-    ExecFail r -> $craftError $ show r|]
+    Success r -> return $ _stdout r
+    Failure r -> $craftError $ show r|]
 
 
 type ExecEnv = Map String String
@@ -307,37 +307,38 @@ makeLenses ''File
 makeLenses ''Directory
 
 
-
 strContent :: Lens' File String
-strContent = lens (view $ fileContent . _Just . unpackedChars)
-                  (\f s -> f & fileContent .~ Just (B8.pack s))
+strContent =
+  lens
+    (view $ fileContent . _Just . unpackedChars)
+    (\f s -> f & fileContent .~ Just (B8.pack s))
+
 
 instance Eq File where
-  (==) a b = (a ^. filePath == b ^. filePath)
-          && (a ^. fileMode == b ^. fileMode)
-          && (a ^. fileOwnerID == b ^. fileOwnerID)
-          && (a ^. fileGroupID == b ^. fileGroupID)
-          && (  isNothing (a ^. fileContent)
-             || isNothing (b ^. fileContent)
-             || (a ^. fileContent == b ^. fileContent))
+  (==) a b =
+    (a ^. filePath == b ^. filePath)
+    && (a ^. fileMode == b ^. fileMode)
+    && (a ^. fileOwnerID == b ^. fileOwnerID)
+    && (a ^. fileGroupID == b ^. fileGroupID)
+    && (  isNothing (a ^. fileContent)
+      || isNothing (b ^. fileContent)
+      || (a ^. fileContent == b ^. fileContent))
 
 
 instance Show File where
-  show f = "File { _filePath = " ++ show (f ^. filePath) ++
-                ", _fileMode = " ++ show (f ^. fileMode) ++
-                ", _fileOwnerID = " ++ show (f ^. fileOwnerID) ++
-                ", _fileGroupID = " ++ show (f ^. fileGroupID) ++
-                ", _fileContent = " ++ showContent (f ^. fileContent) ++
-               " }"
-    where
-      maxlen = 30
-      showContent Nothing = "Nothing"
-      showContent (Just c)
-        | BS.length c > maxlen = "Just " ++ show (BS.take maxlen c) ++ "..."
-        | otherwise            = "Just " ++ show c
-
-
-
+  show f =
+    "File { _filePath = " ++ show (f ^. filePath) ++
+    ", _fileMode = " ++ show (f ^. fileMode) ++
+    ", _fileOwnerID = " ++ show (f ^. fileOwnerID) ++
+    ", _fileGroupID = " ++ show (f ^. fileGroupID) ++
+    ", _fileContent = " ++ showContent (f ^. fileContent) ++
+    " }"
+   where
+    maxlen = 30
+    showContent Nothing = "Nothing"
+    showContent (Just c)
+      | BS.length c > maxlen = "Just " ++ show (BS.take maxlen c) ++ "..."
+      | otherwise            = "Just " ++ show c
 
 
 instance FileLike File where
@@ -386,45 +387,52 @@ makeLenses ''User
 makeLenses ''Group
 
 
-
-
 owner :: FileLike a => Setter a a () User
-owner = sets (\functor filelike -> doit filelike (functor ()))
- where doit filelike o = filelike & ownerID .~ (o ^. uid)
+owner =
+  sets (\functor filelike -> doit filelike (functor ()))
+ where
+   doit filelike o = filelike & ownerID .~ (o ^. uid)
 
 
 group :: FileLike a => Setter a a () Group
-group = sets (\functor filelike -> doit filelike (functor ()))
- where doit filelike g = filelike & groupID .~ (g ^. gid)
+group =
+  sets (\functor filelike -> doit filelike (functor ()))
+ where
+   doit filelike g = filelike & groupID .~ (g ^. gid)
 
 
 ownerAndGroup :: FileLike a => Setter a a () User
-ownerAndGroup = sets (\functor filelike -> doit filelike (functor ()))
- where doit filelike u = filelike & owner .~ u
-                                  & group .~ (u ^. userGroup)
+ownerAndGroup =
+  sets (\functor filelike -> doit filelike (functor ()))
+ where
+  doit filelike u =
+    filelike
+    & owner .~ u
+    & group .~ (u ^. userGroup)
 
 
-execResultProc :: ExecResult -> CreateProcess
-execResultProc (ExecFail failr) = failr ^. failProc
-execResultProc (ExecSucc succr) = succr ^. succProc
+execResultProcess :: ExecResult -> CreateProcess
+execResultProcess (Failure r) = r^.failProcess
+execResultProcess (Success r) = r^.succProcess
 
 
 instance Show FailResult where
-  show r = unlines
-           [ "exec failed!"
-           , "<<<< process >>>>"
-           , showProc (r ^. failProc)
-           , "<<<< exit code >>>>"
-           , show (r ^. exitcode)
-           , "<<<< stdout >>>>"
-           , r ^. failStdout
-           , "<<<< stderr >>>>"
-           , r ^. failStderr
-           ]
+  show r =
+    unlines
+    [ "exec failed!"
+    , "<<<< process >>>>"
+    , showProcess $ r^.failProcess
+    , "<<<< exit code >>>>"
+    , show $ r^.exitcode
+    , "<<<< stdout >>>>"
+    , r^.failStdout
+    , "<<<< stderr >>>>"
+    , r^.failStderr
+    ]
 
 
-showProc :: CreateProcess -> String
-showProc p =
+showProcess :: CreateProcess -> String
+showProcess p =
   case cmdspec p of
     ShellCommand s     -> s
     RawCommand fp args -> unwords [fp, unwords args]
@@ -443,11 +451,13 @@ instance Ord Version where
 
 
 compareVersions :: String -> String -> Ordering
-compareVersions a b = compare (ver a) (ver b)
+compareVersions a b =
+  compare (ver a) (ver b)
  where
-  ver x = case parseV (T.pack x) of
-            Left err -> error $ "Failed to parse version '" ++ x ++ "': " ++ show err
-            Right v  -> v
+  ver x =
+    case parseV (T.pack x) of
+      Left err -> error $ "Failed to parse version '" ++ x ++ "': " ++ show err
+      Right v  -> v
 
 
 package :: PackageName -> Package

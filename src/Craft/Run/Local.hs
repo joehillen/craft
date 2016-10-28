@@ -16,12 +16,12 @@ runLocal =
   CraftRunner
   { runExec =
       \ce command args ->
-      let p = localProc ce command args
-      in execProc p
+        let p = localProc ce command args
+        in runCreateProcess p
   , runExec_ =
       \ce command args ->
-      let p = localProc ce command args
-      in execProc_ (showProc p) p
+        let p = localProc ce command args
+        in runCreateProcess_ (showProcess p) p
   , runFileRead =
       Trans.lift . BS.readFile . fromAbsFile
   , runFileWrite =
@@ -36,7 +36,7 @@ runLocal =
                 , create_group  = True
                 , delegate_ctlc = False
                 }
-        in execProc_ (showProc p) p
+        in runCreateProcess_ (showProcess p) p
   }
 
 

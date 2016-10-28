@@ -107,8 +107,8 @@ getUID :: UserName -> Craft (Maybe UserID)
 getUID (UserName "root") = return . Just $ UserID 0
 getUID (UserName un) =
   exec "id" ["--user", un] >>= \case
-    ExecSucc r -> return . Just . UserID . read $ r ^. stdout
-    ExecFail _ -> return Nothing
+    Success r -> return . Just . UserID . read $ r ^. stdout
+    Failure _ -> return Nothing
 
 
 setUID :: UserName -> UserID -> Craft ()

@@ -74,8 +74,8 @@ get sn = do
   exists <- File.exists sp
   if exists then do
     status' <- exec (fromAbsFile sp) ["status"]>>= \case
-                 (ExecFail _) -> return Stopped
-                 (ExecSucc _) -> return Running
+                 (Failure _) -> return Stopped
+                 (Success _) -> return Running
     return . Just $ Service { _serviceName   = sn
                             , _serviceStatus = status'
                             , _serviceAtBoot = Nothing
@@ -88,8 +88,8 @@ status :: Service -> Craft Status
 status svc = do
   sp <- servicePath $ svc^.serviceName
   exec (fromAbsFile sp) ["status"] >>= \case
-    (ExecFail _) -> return Stopped
-    (ExecSucc _) -> return Running
+    (Failure _) -> return Stopped
+    (Success _) -> return Running
 
 
 run_ :: String -> Service -> Craft ()

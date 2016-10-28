@@ -49,7 +49,7 @@ multipleRootOwned paths m = map go paths
 
 
 exists :: Path Abs Dir -> Craft Bool
-exists p = isExecSucc <$> exec "test" ["-d", fromAbsDir p]
+exists p = isSuccess <$> exec "test" ["-d", fromAbsDir p]
 
 
 get :: Path Abs Dir -> Craft (Maybe Directory)

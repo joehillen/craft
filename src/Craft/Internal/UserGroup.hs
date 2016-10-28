@@ -38,8 +38,8 @@ shadowParser = do
 userFromStr :: String -> Craft (Maybe User)
 userFromStr nameOrIdStr =
   getent "passwd" nameOrIdStr >>= \case
-    ExecFail _ -> return Nothing
-    ExecSucc r -> do
+    Failure _ -> return Nothing
+    Success r -> do
       (nameS, uid', gid', comment', home', shell') <-
             parseGetent passwdParser "passwd" nameOrIdStr (r ^. stdout)
       home'' <- parseAbsDir home'
@@ -107,8 +107,8 @@ groupParser = do
 groupFromStr :: String -> Craft (Maybe Group)
 groupFromStr nameOrIdStr =
   getent "group" nameOrIdStr >>= \case
-    ExecFail _ -> return Nothing
-    ExecSucc r -> Just <$> parseGetent groupParser "group" nameOrIdStr (r ^. stdout)
+    Failure _ -> return Nothing
+    Success r -> Just <$> parseGetent groupParser "group" nameOrIdStr (r ^. stdout)
 
 
 groupFromID :: GroupID -> Craft (Maybe Group)
