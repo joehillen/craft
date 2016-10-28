@@ -63,3 +63,10 @@ getFiles :: Path Abs Dir -> Craft [File]
 getFiles dp = do
   fns <- mapM parseRelFile =<< parseExecStdout getFilesParser "ls" ["-a", "-1", fromAbsDir dp]
   catMaybes <$> mapM (File.get . (dp </>)) fns
+
+
+-- | A thin wrapper over the Unix find program.
+find :: Path Abs Dir -> Args -> Craft [Directory]
+find dir args = do
+  ds <- mapM parseAbsDir . drop 1 . lines =<< $stdoutOrError =<< exec "find" ([fromAbsDir dir] ++ args ++ ["-type", "d"])
+  catMaybes <$> (mapM get ds)

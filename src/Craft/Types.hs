@@ -187,7 +187,6 @@ instance ToArg GroupID where
   toArg arg (GroupID n) = [arg, show n]
 
 
-
 class Eq (FileLikePath a) => FileLike a where
   type FileLikePath a :: *
   path    :: Lens' a (FileLikePath a)

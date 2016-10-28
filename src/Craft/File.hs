@@ -88,5 +88,5 @@ md5sum fp = head . words <$> ($stdoutOrError =<< exec "md5sum" [fromAbsFile fp])
 -- | A thin wrapper over the Unix find program.
 find :: Path Abs Dir -> Args -> Craft [File]
 find dir args = do
-  fs <- mapM parseAbsFile . lines =<< $stdoutOrError =<< exec "find" ([fromAbsDir dir, "-type", "f"] ++ args)
+  fs <- mapM parseAbsFile . lines =<< $stdoutOrError =<< exec "find" ([fromAbsDir dir] ++ args ++ [ "-type", "f"])
   catMaybes <$> (mapM get fs)
