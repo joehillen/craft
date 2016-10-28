@@ -75,4 +75,7 @@ instance Craftable Wget Wget where
 
 
 run :: Wget -> Craft ()
-run wg = exec_ "wget" $ (wg^.args) ++ ["-O", (fromAbsFile $ wg^.dest.path), wg^.url]
+run wg =
+  (exec_ "wget" $ (wg^.args) ++ ["-O", (fromAbsFile $ wg^.dest.path), wg^.url])
+  `onException`
+    (destroy_ $ wg^.dest.path)
