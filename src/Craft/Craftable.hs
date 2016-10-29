@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE UndecidableInstances   #-}
@@ -9,6 +10,7 @@ import qualified Data.ByteString.Lazy     as BL
 import           Data.List                (intercalate)
 import           Data.Maybe               (catMaybes, isJust)
 import           Formatting               hiding (char)
+import qualified Path
 
 import           Craft.DSL
 import qualified Craft.File               as File
@@ -348,19 +350,36 @@ instance Craftable File File where
     return f
 
 
+instance Craftable (Path Abs Path.File) File where
+  watchCraft fp = watchCraft $ file fp
+  watchCraft_ fp = watchCraft_ $ file fp
+  craft fp = craft $ file fp
+  craft_ fp = craft_ $ file fp
+
+
+instance Destroyable (Path Abs Path.File) where
+  watchDestroy fp =
+    File.exists fp >>= \case
+      False -> return (Unchanged, Nothing)
+      True  -> do
+        destroy_ fp
+        return (Removed, Just fp)
+
+  destroy_ fp = do
+    exec_ "rm" ["-f", fromAbsFile fp]
+    File.exists fp >>= flip when (
+      $craftError $ "destroy File `"++show fp++"` failed! Found.")
+
+
 instance Destroyable File where
   watchDestroy f =
-    File.get (f ^. path) >>= \case
+    File.get (f^.path) >>= \case
       Nothing -> return (Unchanged, Nothing)
       Just f' -> do
         destroy_ f
         return (Removed, Just f')
 
-  destroy_ f = do
-    let fp = f^.path
-    exec_ "rm" ["-f", fromAbsFile fp]
-    File.exists fp >>= flip when (
-      $craftError $ "destroy File `"++show fp++"` failed! Found.")
+  destroy_ f = destroy_ $ f^.path
 
 
 instance Craftable Directory Directory where
@@ -406,3 +425,9 @@ instance Craftable Directory Directory where
           getStats dp >>= \case
             Nothing -> error' "Not Found."
             Just stats' -> verifyStats stats' >> return (Updated, d)
+
+instance Craftable (Path Abs Dir) Directory where
+  watchCraft dp = watchCraft $ directory dp
+  watchCraft_ dp = watchCraft_ $ directory dp
+  craft dp = craft $ directory dp
+  craft_ dp = craft_ $ directory dp
