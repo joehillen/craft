@@ -16,6 +16,7 @@ module Craft.Hosts
 , deleteName
 , delete
 , set
+, setHost
 )
 where
 
@@ -97,6 +98,10 @@ delete ip name = fixUp . hostsMap f
 
 set :: Name -> IP -> Hosts -> Hosts
 set name ip hosts = fixUp . insert ip name $ deleteName name hosts
+
+
+setHost :: Name -> IP -> Craft ()
+setHost name ip = craft_ =<< (set name ip <$> get)
 
 ----------------------------------------
 --   ____       _            _        --
