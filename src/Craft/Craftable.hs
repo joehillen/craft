@@ -216,19 +216,21 @@ instance Craftable Package Package where
             get >>= \case
               Nothing          -> $craftError notFound                           -- Not found. Where did it go?
               Just upgradedPkg ->
-                return $ if upgradedPkg ^. pkgVersion > installedPkg ^. pkgVersion -- If the package version increased,
-                          then (Updated, upgradedPkg)                            -- Then the package was upgraded
-                          else (Unchanged, upgradedPkg)                          -- Else it was already the latest.
+                return $
+                  if upgradedPkg^.pkgVersion /= installedPkg^.pkgVersion         -- If the package version increased,
+                  then (Updated, upgradedPkg)                                    -- Then the package was upgraded
+                  else (Unchanged, upgradedPkg)                                  -- Else it was already the latest.
           Version _  ->                                                          -- Expecting a specific version
             if version == installedVersion                                       -- Is the correct version installed?
-             then return (Unchanged, installedPkg)
-             else do
-               upgrade                                                           -- Try upgrading to the correct version.
-               get >>= \case
-                 Nothing          -> $craftError notFound                        -- Where did it go?
-                 Just upgradedPkg -> if version == upgradedPkg ^. pkgVersion     -- Is the correct version installed?
-                                      then return (Updated, upgradedPkg)
-                                      else $craftError $ wrongVersion (upgradedPkg ^. pkgVersion)
+            then return (Unchanged, installedPkg)
+            else do
+              upgrade                                                           -- Try upgrading to the correct version.
+              get >>= \case
+                Nothing          -> $craftError notFound                        -- Where did it go?
+                Just upgradedPkg ->
+                  if version == upgradedPkg ^. pkgVersion                        -- Is the correct version installed?
+                  then return (Updated, upgradedPkg)
+                  else $craftError $ wrongVersion (upgradedPkg ^. pkgVersion)
 
 
 instance Destroyable Package where
