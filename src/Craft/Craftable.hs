@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances      #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE MultiParamTypeClasses  #-}
 {-# LANGUAGE UndecidableInstances   #-}
@@ -9,6 +9,7 @@ import           Control.Monad.Reader     (ask)
 import qualified Data.ByteString.Lazy     as BL
 import           Data.List                (intercalate)
 import           Data.Maybe               (catMaybes, isJust)
+-- import           Data.Monoid
 import           Formatting               hiding (char)
 import qualified Path
 
@@ -27,8 +28,25 @@ data Watched
   | Updated
   | Removed
   deriving (Eq, Show)
-
 makePrisms ''Watched
+
+{-----------------------------------
+-- This instance might be unsound.
+--- What to do about `mappend Created Removed`?
+instance Monoid Watched where
+  mempty = Unchanged
+  mappend a         Unchanged = a
+  mappend Unchanged a         = a
+  mappend Created   Removed   = Updated???
+  mappend Removed   Created   = Updated???
+  mappend Created   Updated   = Created
+  mappend Updated   Created   = Created
+  mappend Updated   Removed   = Removed
+  mappend Removed   Updated   = Removed
+  mappend a b | a == b        = a
+              | otherwise     = error "Impossible!"
+-----------------------------------}
+
 
 changed :: Watched -> Bool
 changed = not . unchanged
