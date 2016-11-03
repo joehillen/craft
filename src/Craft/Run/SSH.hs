@@ -11,12 +11,13 @@ import           Data.List                 (intersperse)
 import qualified Data.Map.Strict           as Map
 import           Data.Maybe                (fromMaybe)
 import           Data.String.Utils         (replace)
+import           Formatting
+import           Formatting.ShortFormatters
+import qualified Path
 import           Path.IO
 import           System.Process            (ProcessHandle)
 import qualified System.Process            as Process
 import qualified System.Process.ByteString as Proc.BS
-import Formatting
-import Formatting.ShortFormatters
 import           System.Random             hiding (next)
 import           System.Timeout
 
@@ -26,11 +27,11 @@ import           Craft.Types
 
 
 data SSHEnv = SSHEnv
-  { _sshKey         :: Path Abs FileP
+  { _sshKey         :: AbsFilePath
   , _sshAddr        :: String
   , _sshPort        :: Int
   , _sshUser        :: String
-  , _sshControlPath :: Maybe (Path Rel FileP)
+  , _sshControlPath :: Maybe RelFilePath
   , _sshOptions     :: [String]
   }
 makeLenses ''SSHEnv
@@ -40,7 +41,7 @@ connectionString :: Optic' (->) (Const String) SSHEnv String
 connectionString = to (\env -> concat [env ^. sshUser, "@", env ^. sshAddr])
 
 
-sshEnv :: String -> Path Abs FileP -> SSHEnv
+sshEnv :: String -> AbsFilePath -> SSHEnv
 sshEnv addr key =
   SSHEnv
   { _sshAddr        = addr
@@ -64,7 +65,7 @@ data Session
  = Session
    { _sessionMasterProcHandle :: ProcessHandle
    , _sessionMasterProcess    :: Process.CreateProcess
-   , _sessionControlPath      :: Path Rel FileP
+   , _sessionControlPath      :: RelFilePath
    , _sessionEnv              :: SSHEnv
    , _sessionArgs             :: Args
    }
@@ -115,7 +116,7 @@ newSession env = do
     }
 
 
-waitForControlPath :: Path a FileP -> IO ()
+waitForControlPath :: Path a Path.File -> IO ()
 waitForControlPath controlPath = do
   !exists <- doesFileExist controlPath
   if exists

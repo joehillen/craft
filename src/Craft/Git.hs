@@ -47,7 +47,7 @@ data Repo
 makeLenses ''Repo
 
 
-repo :: URL -> Path Abs Dir -> Repo
+repo :: URL -> AbsDirPath -> Repo
 repo url' dirpath =
   Repo
   { _gitUrl       = url'
@@ -102,19 +102,21 @@ getVersion :: Craft Version
 getVersion = Commit <$> parseExecStdout (some alphaNumChar) gitBin ["rev-parse", "HEAD"]
 
 
-get :: Path Abs Dir -> Craft (Maybe Repo)
+get :: AbsDirPath -> Craft (Maybe Repo)
 get dp =
   Dir.get dp >>= \case
     Nothing -> return Nothing
-    Just dir -> inDirectory dir $ do
-      !url'     <- getURL
-      !version' <- getVersion
-      return . Just
-             $ Repo { _gitDirectory = dir
-                    , _gitUrl       = url'
-                    , _gitVersion   = version'
-                    , _gitDepth     = Nothing
-                    }
+    Just dir ->
+      inDirectory dir $ do
+        !url'     <- getURL
+        !version' <- getVersion
+        return $
+          Just $ Repo
+          { _gitDirectory = dir
+          , _gitUrl       = url'
+          , _gitVersion   = version'
+          , _gitDepth     = Nothing
+          }
 
 
 instance Craftable Repo Repo where

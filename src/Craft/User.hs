@@ -40,7 +40,7 @@ data UserOptions =
   , _optGroups     :: [GroupName]
   -- ^ Other groups
 
-  , _optHome       :: Path Abs Dir
+  , _optHome       :: AbsDirPath
 
   , _optCreateHome :: Bool
   -- ^ Create the user's home directory when creating user
@@ -57,7 +57,7 @@ data UserOptions =
   --, _optLocked     :: Bool
   -- Lock the user's account
 
-  , _optShell      :: Maybe (Path Abs FileP)
+  , _optShell      :: Maybe AbsFilePath
   -- User's shell
 
   , _optSystem     :: Bool
@@ -115,7 +115,7 @@ setUID :: UserName -> UserID -> Craft ()
 setUID un uid' = userMod un ["--uid", show uid']
 
 
-setShell :: UserName -> Path Abs FileP -> Craft ()
+setShell :: UserName -> AbsFilePath -> Craft ()
 setShell un shell' = userMod un ["--shell", fromAbsFile shell']
 
 
@@ -135,7 +135,7 @@ setGroups _  []  = return ()
 setGroups un gns = userMod un ["--groups", intercalate "," $ map show gns]
 
 
-setHome :: UserName -> Path Abs Dir -> Craft ()
+setHome :: UserName -> AbsDirPath -> Craft ()
 setHome un homepath = userMod un ["--home", fromAbsDir homepath]
 
 

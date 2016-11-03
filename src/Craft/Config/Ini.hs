@@ -25,7 +25,7 @@ iniFormat ini = IniFormat (Ini (HM.fromList $ fmap (fmap HM.fromList) ini))
                           (WriteIniSettings EqualsKeySeparator)
 
 
-config :: Path Abs FileP -> IniFormat -> Config IniFormat
+config :: AbsFilePath -> IniFormat -> Config IniFormat
 config = Craft.Config.config
 
 
@@ -40,7 +40,7 @@ instance ConfigFormat IniFormat where
                            }
 
 
-get :: Path Abs FileP -> Craft (Maybe (Config IniFormat))
+get :: AbsFilePath -> Craft (Maybe (Config IniFormat))
 get = Craft.Config.get
 
 

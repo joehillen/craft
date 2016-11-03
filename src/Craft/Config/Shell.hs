@@ -40,11 +40,11 @@ unset :: String -> ShellFormat -> ShellFormat
 unset k (ShellFormat cfgs) = ShellFormat $ filter ((/= k) . fst) cfgs
 
 
-get :: Path Abs FileP -> Craft (Maybe (Config ShellFormat))
+get :: AbsFilePath -> Craft (Maybe (Config ShellFormat))
 get = Craft.Config.get
 
 
-config :: Path Abs FileP -> [(String, String)] -> Config ShellFormat
+config :: AbsFilePath -> [(String, String)] -> Config ShellFormat
 config fp = Craft.Config.config fp . ShellFormat
 
 

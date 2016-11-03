@@ -68,10 +68,10 @@ In order of priority:
 I plan to convert Craft to a Free Monad with a DSL of:
 
 ```haskell
-execute        :: Env -> Path -> Command -> Args -> Craft (ExitCode, String, String)
-execute_       :: Env -> Path -> Command -> Args -> Craft ()
-readFile       :: Path Abs FileP -> Craft ByteString
-writeFile      :: Path Abs FileP -> ByteString -> Craft ()
+execute        :: Env -> Command -> Args -> Craft (ExitCode, String, String)
+execute_       :: Env -> Command -> Args -> Craft ()
+readFile       :: AbsFilePath -> Craft ByteString
+writeFile      :: AbsFilePath -> ByteString -> Craft ()
 ```
 
 This won't allow for the complete freedom I had originally envisioned,

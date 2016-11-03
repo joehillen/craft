@@ -34,12 +34,12 @@ getGroup f =
     Just g -> return g
 
 
--- TODO: name :: Lens' File (Path Rel FileP)
-name :: Getter File (Path Rel FileP)
+-- TODO: name :: Lens' File RelFilePath
+name :: Getter File RelFilePath
 name = filePath . to filename
 
 
-multiple :: [Path Abs FileP] -> Mode -> User -> Group -> Maybe ByteString -> [File]
+multiple :: [AbsFilePath] -> Mode -> User -> Group -> Maybe ByteString -> [File]
 multiple paths mode' owner' group' content' = map go paths
  where
   go path' = File path' mode' (owner'^.uid) (group'^.gid) content'
@@ -53,26 +53,28 @@ setStats f = do
   setGroupID (f^.groupID) fp
 
 
-write :: Path Abs FileP -> ByteString -> Craft ()
+write :: AbsFilePath -> ByteString -> Craft ()
 write = fileWrite
 
 
-exists :: Path Abs FileP -> Craft Bool
+exists :: AbsFilePath -> Craft Bool
 exists fp = isSuccess <$> exec "test" ["-f", fromAbsFile fp]
 
 
-get :: Path Abs FileP -> Craft (Maybe File)
-get fp =
-  getStats fp >>= \case
-    Nothing -> return Nothing
-    Just (m, o, g) -> do
-      return . Just $ file fp & mode    .~ m
-                              & ownerID .~ o
-                              & groupID .~ g
-                              & fileContent .~ Nothing
+get :: AbsFilePath -> Craft (Maybe File)
+get fp = do
+  r <- getStats fp
+  return $ do
+    (m, o, g) <- r
+    return $
+      file fp
+      & mode    .~ m
+      & ownerID .~ o
+      & groupID .~ g
+      & fileContent .~ Nothing
 
 
-getWithContent :: Path Abs FileP -> Craft (Maybe File)
+getWithContent :: AbsFilePath -> Craft (Maybe File)
 getWithContent fp =
   get fp >>= \case
     Nothing -> return Nothing
@@ -81,12 +83,12 @@ getWithContent fp =
       return . Just $ f & fileContent ?~ content'
 
 
-md5sum :: Path Abs FileP -> Craft String
+md5sum :: AbsFilePath -> Craft String
 md5sum fp = head . words <$> ($stdoutOrError =<< exec "md5sum" [fromAbsFile fp])
 
 
 -- | A thin wrapper over the Unix find program.
-find :: Path Abs Dir -> Args -> Craft [File]
+find :: AbsDirPath -> Args -> Craft [File]
 find dir args = do
   fs <- mapM parseAbsFile . lines =<< $stdoutOrError =<< exec "find" ([fromAbsDir dir] ++ args ++ [ "-type", "f"])
   catMaybes <$> (mapM get fs)

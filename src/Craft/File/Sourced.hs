@@ -15,7 +15,7 @@ data SourcedFile
 makeLenses ''SourcedFile
 
 
-sourcedFile :: (IO FilePath) -> Path Abs FileP -> SourcedFile
+sourcedFile :: (IO FilePath) -> AbsFilePath -> SourcedFile
 sourcedFile sourcer' dest =
   SourcedFile
   { _destination = Craft.file dest
@@ -24,7 +24,7 @@ sourcedFile sourcer' dest =
 
 
 instance FileLike SourcedFile where
-  type FileLikePath SourcedFile = Path Abs FileP
+  type FileLikePath SourcedFile = AbsFilePath
   path    = destination . filePath
   mode    = destination . fileMode
   ownerID = destination . fileOwnerID

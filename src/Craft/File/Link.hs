@@ -8,7 +8,7 @@ import           Craft
 newtype TargetPath = TargetPath FilePath
   deriving (Show, Eq)
 
-newtype LinkPath = LinkPath (Path Abs FileP)
+newtype LinkPath = LinkPath AbsFilePath
   deriving (Show, Eq)
 
 data Link
@@ -26,7 +26,7 @@ link :: TargetPath -> LinkPath -> Link
 link = Link
 
 
-exists :: Path Abs FileP -> Craft Bool
+exists :: AbsFilePath -> Craft Bool
 exists lp = isSuccess <$> exec "test" ["-L", fromAbsFile lp]
 
 

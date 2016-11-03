@@ -20,7 +20,7 @@ data PrivateKey
 makeLenses ''PrivateKey
 
 
-path :: PrivateKey -> Craft (Path Abs FileP)
+path :: PrivateKey -> Craft AbsFilePath
 path pk = do
   n <- parseRelFile $ pk^.name
   return $ (pk^.user.to userDir.Craft.path)</>n

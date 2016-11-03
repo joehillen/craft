@@ -18,7 +18,7 @@ data Wget = Wget
 makeLenses ''Wget
 
 
-wget :: String -> Path Abs FileP -> Wget
+wget :: String -> AbsFilePath -> Wget
 wget url' destfp =
   Wget
   { _url    = url'
@@ -29,7 +29,7 @@ wget url' destfp =
 
 
 instance FileLike Wget where
-  type FileLikePath Wget = Path Abs FileP
+  type FileLikePath Wget = AbsFilePath
   path = dest . filePath
   mode = dest . fileMode
   ownerID = dest . fileOwnerID

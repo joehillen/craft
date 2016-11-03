@@ -36,37 +36,38 @@ getGroup d =
     Just g -> return g
 
 
-multiple :: [Path Abs Dir] -> Mode -> User -> Group -> [Directory]
+multiple :: [AbsDirPath] -> Mode -> User -> Group -> [Directory]
 multiple paths mode' owner' group' = map go paths
  where
   go p = Directory p mode' (owner'^.uid) (group'^.gid)
 
 
-multipleRootOwned :: [Path Abs Dir] -> Mode -> [Directory]
+multipleRootOwned :: [AbsDirPath] -> Mode -> [Directory]
 multipleRootOwned paths m = map go paths
  where
   go p = directory p & mode .~ m
 
 
-exists :: Path Abs Dir -> Craft Bool
+exists :: AbsDirPath -> Craft Bool
 exists p = isSuccess <$> exec "test" ["-d", fromAbsDir p]
 
 
-get :: Path Abs Dir -> Craft (Maybe Directory)
-get dp =
-  getStats dp >>= \case
-    Nothing -> return Nothing
-    Just (m, o, g) -> return . Just $ Directory dp m o g
+get :: AbsDirPath -> Craft (Maybe Directory)
+get dp = do
+  s <- getStats dp
+  return $ do
+    (m, o, g) <- s
+    return $ Directory dp m o g
 
 
-getFiles :: Path Abs Dir -> Craft [File]
+getFiles :: AbsDirPath -> Craft [File]
 getFiles dp = do
   fns <- mapM parseRelFile =<< parseExecStdout getFilesParser "ls" ["-a", "-1", fromAbsDir dp]
   catMaybes <$> mapM (File.get . (dp </>)) fns
 
 
 -- | A thin wrapper over the Unix find program.
-find :: Path Abs Dir -> Args -> Craft [Directory]
+find :: AbsDirPath -> Args -> Craft [Directory]
 find dir args = do
   ds <- mapM parseAbsDir . drop 1 . lines =<< $stdoutOrError =<< exec "find" ([fromAbsDir dir] ++ args ++ ["-type", "d"])
   catMaybes <$> (mapM get ds)

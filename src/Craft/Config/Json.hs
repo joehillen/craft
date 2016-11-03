@@ -23,11 +23,11 @@ instance (FromJSON a, ToJSON a) => ConfigFormat (JsonFormat a) where
       Right x  -> return $ JsonFormat x
 
 
-get :: (FromJSON a, ToJSON a) => Path Abs FileP -> Craft (Maybe (Config (JsonFormat a)))
+get :: (FromJSON a, ToJSON a) => AbsFilePath -> Craft (Maybe (Config (JsonFormat a)))
 get = Craft.Config.get
 
 
-config :: (FromJSON a, ToJSON a) => Path Abs FileP -> a -> Config (JsonFormat a)
+config :: (FromJSON a, ToJSON a) => AbsFilePath -> a -> Config (JsonFormat a)
 config fp = Craft.Config.config fp . JsonFormat
 
 

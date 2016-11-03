@@ -25,5 +25,5 @@ data Hosts = Hosts { configs :: Configs }
              deriving (Eq, Show)
 
 
-hostsfp :: Path Abs FileP
+hostsfp :: AbsFilePath
 hostsfp = $(mkAbsFile "/etc/hosts")

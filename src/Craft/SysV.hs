@@ -62,7 +62,7 @@ service sn =
   }
 
 
-servicePath :: String -> Craft (Path Abs FileP)
+servicePath :: String -> Craft AbsFilePath
 servicePath sn = do
   fn <- parseRelFile sn
   return $ $(mkAbsDir "/etc/init.d")</>fn

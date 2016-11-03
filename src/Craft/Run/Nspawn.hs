@@ -11,7 +11,7 @@ import           Craft.Run.Internal
 import           Craft.Types
 
 
-runNspawn :: Path Abs Dir -> CraftRunner
+runNspawn :: AbsDirPath -> CraftRunner
 runNspawn dir =
   CraftRunner
   { runExec =
@@ -44,7 +44,7 @@ runNspawn dir =
   }
 
 
-nspawnProc :: Path Abs Dir -> CraftEnv -> Command -> Args -> CreateProcess
+nspawnProc :: AbsDirPath -> CraftEnv -> Command -> Args -> CreateProcess
 nspawnProc dir ce cmd args =
   let UserID uid' = ce^.craftExecUserID in
   (proc "systemd-nspawn" ("-D":(fromAbsDir dir):"-q":cmd:args))

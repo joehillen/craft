@@ -38,17 +38,17 @@ execAs_ :: User -> Command -> Args -> Craft ExecResult
 execAs_ user cmd args = withUser user $ exec cmd args
 
 
-fileRead :: Path Abs FileP -> Craft BS.ByteString
+fileRead :: AbsFilePath -> Craft BS.ByteString
 fileRead fp =
   liftF $ FileRead fp id
 
 
-fileWrite :: Path Abs FileP -> BS.ByteString -> Craft ()
+fileWrite :: AbsFilePath -> BS.ByteString -> Craft ()
 fileWrite fp content =
   liftF $ FileWrite fp content ()
 
 
-sourceFile :: (IO FilePath) -> Path Abs FileP -> Craft ()
+sourceFile :: (IO FilePath) -> AbsFilePath -> Craft ()
 sourceFile sourcer dest = liftF $ SourceFile sourcer dest ()
 
 
@@ -77,7 +77,7 @@ parseExecStdout parser cmd args = do
 
 
 -- TODO: XXX: What if the file doesn't exist?
-parseFile :: Parser a -> Path Abs FileP -> Craft a
+parseFile :: Parser a -> AbsFilePath -> Craft a
 parseFile parser fp = do
   str <- B8.unpack <$> fileRead fp
   case runParser parser (show fp) str of
@@ -85,14 +85,14 @@ parseFile parser fp = do
     Left err -> $craftError $ "parseFile `"++show fp++"` failed: "++show err
 
 
-craftExecPath :: CraftEnv -> Craft [Path Abs Dir]
+craftExecPath :: CraftEnv -> Craft [AbsDirPath]
 craftExecPath ce = do
   let dps = maybe [] (splitOn ":") . Map.lookup "PATH" $ ce^.craftExecEnv
   mapM parseAbsDir dps
 
 
 -- TODO: TESTME
-prependPath :: Path Abs Dir -> Craft a -> Craft a
+prependPath :: AbsDirPath -> Craft a -> Craft a
 prependPath newpath go = do
   ce <- ask
   execpath <- craftExecPath ce
@@ -100,7 +100,7 @@ prependPath newpath go = do
 
 
 -- TODO: TESTME
-withPath :: [Path Abs Dir] -> Craft a -> Craft a
+withPath :: [AbsDirPath] -> Craft a -> Craft a
 withPath = withEnvVar "PATH" . intercalate ":" . map fromAbsDir
 
 
@@ -108,7 +108,7 @@ withEnv :: ExecEnv -> Craft a -> Craft a
 withEnv env = local (\r -> r & craftExecEnv .~ env)
 
 
-withCWD :: Path Abs Dir -> Craft a -> Craft a
+withCWD :: AbsDirPath -> Craft a -> Craft a
 withCWD dir = local (\r -> r & craftExecCWD .~ dir)
 
 

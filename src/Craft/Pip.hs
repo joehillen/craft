@@ -13,7 +13,7 @@ import qualified Craft.File             as File
 newtype PipPackage = PipPackage Package
   deriving (Eq, Show)
 
-pipfp :: Path Abs FileP
+pipfp :: AbsFilePath
 pipfp = $(mkAbsFile "/usr/local/bin/pip")
 
 setup :: Craft ()

@@ -10,7 +10,7 @@ import qualified Craft.Upstart   as Upstart
 data Service
   = Service
     { _name     :: String
-    , _home     :: Path Abs Dir
+    , _home     :: AbsDirPath
     , _env      :: [(String, String)]
     , _runFile  :: ByteString
     , _restarts :: Bool
@@ -29,7 +29,7 @@ service name' =
           }
 
 
-setup :: Path Abs Dir -> Craft ()
+setup :: AbsDirPath -> Craft ()
 setup home' = do
   craft_ $ map package [ "daemontools"
                        , "daemontools-run"
@@ -40,7 +40,7 @@ setup home' = do
     Just svscan -> Upstart.start svscan
 
 
-path :: Service -> Craft (Path Abs Dir)
+path :: Service -> Craft AbsDirPath
 path Service{..} = do
   sn <- parseRelDir _name
   return $ _home </> sn
@@ -52,16 +52,16 @@ restart s = do
   execRestart sp
 
 
-execRestart :: Path Abs Dir -> Craft ()
+execRestart :: AbsDirPath -> Craft ()
 execRestart fp = exec_ "svc" ["-t", fromAbsDir fp]
 
 
-logRunDefault :: Path Abs FileP -> String
+logRunDefault :: AbsFilePath -> String
 logRunDefault logdest =
   "#!/bin/sh\nexec setuidgid nobody multilog t "++fromAbsFile logdest++" s10000000 n10\n"
 
 
-envFile :: Path Abs Dir -> (String, String) -> Craft File
+envFile :: AbsDirPath -> (String, String) -> Craft File
 envFile envDir (varname, varval) = do
   fn <- parseRelFile varname
   return $ file (envDir</>fn)

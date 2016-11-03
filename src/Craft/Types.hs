@@ -41,15 +41,18 @@ import           Craft.File.Mode
 import           Craft.Internal.Helpers
 
 
--- | FileP is an alias because 'Path.File' collides with 'Craft.File'.
--- The alias was not named FilePath because it would conflict with Prelude.
-type FileP = Path.File
+-- | Shortened aliases for Path types for convenience
+type AbsFilePath = Path Abs Path.File
+type RelFilePath = Path Rel Path.File
+type AbsDirPath  = Path Abs Dir
+type RelDirPath  = Path Rel Dir
+
 
 data CraftEnv
   = CraftEnv
     { _craftPackageManager :: PackageManager
     , _craftExecEnv        :: ExecEnv
-    , _craftExecCWD        :: Path Abs Dir
+    , _craftExecCWD        :: AbsDirPath
     , _craftExecUserID     :: UserID
     }
 
@@ -80,9 +83,9 @@ interpretCraft ce interpreter = iterT interpreter . flip runReaderT ce . unCraft
 data CraftRunner = CraftRunner
   { runExec       :: CraftEnv -> Command -> Args -> LoggingT IO ExecResult
   , runExec_      :: CraftEnv -> Command -> Args -> LoggingT IO ()
-  , runFileRead   :: Path Abs FileP -> LoggingT IO ByteString
-  , runFileWrite  :: Path Abs FileP -> ByteString -> LoggingT IO ()
-  , runSourceFile :: Prelude.FilePath -> Path Abs FileP -> LoggingT IO ()
+  , runFileRead   :: AbsFilePath -> LoggingT IO ByteString
+  , runFileWrite  :: AbsFilePath -> ByteString -> LoggingT IO ()
+  , runSourceFile :: Prelude.FilePath -> AbsFilePath -> LoggingT IO ()
   }
 
 
@@ -162,7 +165,7 @@ stdoutOrError = [|
 
 
 type ExecEnv = Map String String
-type CWD = Path Abs FileP
+type CWD = AbsFilePath
 type PackageName = String
 
 newtype UserName = UserName String
@@ -197,7 +200,7 @@ class Eq (FileLikePath a) => FileLike a where
 
 data File
   = File
-  { _filePath    :: Path Abs FileP
+  { _filePath    :: AbsFilePath
   , _fileMode    :: Mode
   , _fileOwnerID :: UserID
   , _fileGroupID :: GroupID
@@ -205,7 +208,7 @@ data File
   }
 
 
-file :: Path Abs FileP -> File
+file :: AbsFilePath -> File
 file fp =
   File
   { _filePath    = fp
@@ -219,7 +222,7 @@ file fp =
 
 data Directory
   = Directory
-  { _directoryPath    :: Path Abs Dir
+  { _directoryPath    :: AbsDirPath
   , _directoryMode    :: Mode
   , _directoryOwnerID :: UserID
   , _directoryGroupID :: GroupID
@@ -227,7 +230,7 @@ data Directory
   deriving (Show, Eq)
 
 
-directory :: Path Abs Dir -> Directory
+directory :: AbsDirPath -> Directory
 directory dp =
   Directory
   { _directoryPath    = dp
@@ -286,9 +289,9 @@ noPackageManager =
 data CraftDSL next
   = Exec  CraftEnv Command Args (ExecResult -> next)
   | Exec_ CraftEnv Command Args next
-  | FileRead (Path Abs FileP) (ByteString -> next)
-  | FileWrite (Path Abs FileP) ByteString next
-  | SourceFile (IO Prelude.FilePath) (Path Abs FileP) next
+  | FileRead AbsFilePath (ByteString -> next)
+  | FileWrite AbsFilePath ByteString next
+  | SourceFile (IO Prelude.FilePath) AbsFilePath next
  deriving Functor
 
 
@@ -341,7 +344,7 @@ instance Show File where
 
 
 instance FileLike File where
-  type FileLikePath File = Path Abs FileP
+  type FileLikePath File = AbsFilePath
   path = filePath
   mode = fileMode
   ownerID = fileOwnerID
@@ -349,7 +352,7 @@ instance FileLike File where
 
 
 instance FileLike Directory where
-  type FileLikePath Directory = Path Abs Dir
+  type FileLikePath Directory = AbsDirPath
   path = directoryPath
   mode = directoryMode
   ownerID = directoryOwnerID
@@ -363,11 +366,11 @@ data User
     , _userComment      :: String
     , _userGroup        :: Group
     , _userGroups       :: [GroupName]
-    , _userHome         :: Path Abs Dir
+    , _userHome         :: AbsDirPath
     , _userPasswordHash :: String
     --, _salt         :: String
     --, _locked       :: Bool
-    , _userShell        :: Path Abs FileP
+    , _userShell        :: AbsFilePath
     --, system       :: Bool
     }
  deriving (Eq, Show)

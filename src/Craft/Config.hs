@@ -14,7 +14,7 @@ data Config a
     }
 
 
-config :: ConfigFormat a => Path Abs FileP -> a -> Config a
+config :: ConfigFormat a => AbsFilePath -> a -> Config a
 config fp cfg =
   Config
   { _configFile = file fp & strContent .~ showConfig cfg
@@ -25,7 +25,7 @@ config fp cfg =
 class ConfigFormat a where
   showConfig :: a -> String
 
-  parseConfig :: Path Abs FileP -> String -> Craft a
+  parseConfig :: AbsFilePath -> String -> Craft a
 
   configFromFile :: File -> Craft (Config a)
   configFromFile f = do
@@ -48,7 +48,7 @@ makeLenses ''Config
 
 
 instance FileLike (Config a) where
-  type FileLikePath (Config a) = Path Abs FileP
+  type FileLikePath (Config a) = AbsFilePath
   path = configFile . filePath
   mode = configFile . fileMode
   ownerID = configFile . fileOwnerID
@@ -68,7 +68,8 @@ instance ConfigFormat a => Show (Config a) where
           ++ "}"
 
 
-get :: ConfigFormat a => Path Abs FileP -> Craft (Maybe (Config a))
-get fp = File.getWithContent fp >>= \case
-  Nothing -> return Nothing
-  Just f  -> Just <$> configFromFile f
+get :: ConfigFormat a => AbsFilePath -> Craft (Maybe (Config a))
+get fp =
+  File.getWithContent fp >>= \case
+    Nothing -> return Nothing
+    Just f  -> Just <$> configFromFile f

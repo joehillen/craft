@@ -14,7 +14,7 @@ data Hostname = Hostname String
 get :: Craft Hostname
 get = Hostname <$> ($stdoutOrError =<< exec "hostname" [])
 
-hostnamePath :: Path Abs FileP
+hostnamePath :: AbsFilePath
 hostnamePath = $(mkAbsFile "/etc/hostname")
 
 

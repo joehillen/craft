@@ -12,7 +12,7 @@ setup =
   craft_ $ package "nginx"
 
 
-baseDir, sitesDir :: Path Abs Dir
+baseDir, sitesDir :: AbsDirPath
 baseDir = $(mkAbsDir "/etc/nginx")
 sitesDir = baseDir </> $(mkRelDir "sites-enabled")
 
@@ -118,7 +118,7 @@ redirectWWWtoNoWWW servers =
         [ ("return", ["301", "http://" ++ s ^. serverNames . _head ++ "$uri"]) ]
 
 
-logs :: Path Abs Dir -> Path Rel FileP -> [Directive]
+logs :: AbsDirPath -> RelFilePath -> [Directive]
 logs logdir name =
   [ ("access_log", [ logprefix ++ ".access.log", "combined"])
   , ("error_log",  [ logprefix ++ ".error.log" ])

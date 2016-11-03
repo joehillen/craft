@@ -446,7 +446,7 @@ instance Craftable Directory Directory where
             Nothing -> error' "Not Found."
             Just stats' -> verifyStats stats' >> return (Updated, d)
 
-instance Craftable (Path Abs Dir) Directory where
+instance Craftable AbsDirPath Directory where
   watchCraft dp = watchCraft $ directory dp
   watchCraft_ dp = watchCraft_ $ directory dp
   craft dp = craft $ directory dp

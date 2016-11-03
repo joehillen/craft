@@ -31,14 +31,14 @@ data S3File
 makeLenses ''S3File
 
 instance FileLike S3File where
-  type FileLikePath S3File = Path Abs FileP
+  type FileLikePath S3File = AbsFilePath
   path = Craft.S3File.file . filePath
   mode = Craft.S3File.file . fileMode
   ownerID = Craft.S3File.file . fileOwnerID
   groupID = Craft.S3File.file . fileGroupID
 
 
-s3file :: Path Abs FileP -> String -> S3File
+s3file :: AbsFilePath -> String -> S3File
 s3file fp source' =
   S3File
   { _file    = Craft.file fp
