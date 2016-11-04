@@ -9,7 +9,6 @@ import qualified Data.ByteString.Char8  as B8
 import           Data.List              (intercalate)
 import           Data.List.Split        (splitOn)
 import qualified Data.Map.Strict        as Map
-import qualified Data.Text              as T
 import           Text.Megaparsec
 import           Text.Megaparsec.String
 
@@ -19,7 +18,6 @@ import           Craft.Types
 -- | Craft DSL
 exec :: Command -> Args -> Craft ExecResult
 exec cmd args = do
-  logDebugNS "exec" $ T.unwords $ map T.pack (cmd:args)
   ce <- ask
   liftF $ Exec ce cmd args id
 

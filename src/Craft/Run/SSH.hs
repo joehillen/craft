@@ -3,7 +3,7 @@ module Craft.Run.SSH where
 import           Control.Concurrent        (threadDelay)
 import           Control.Exception.Lifted  (bracket)
 import           Control.Lens
-import           Control.Monad.Logger      (LoggingT)
+import           Control.Monad.Logger      (LoggingT, logDebugNS)
 import           Control.Monad.Reader
 import qualified Control.Monad.Trans       as Trans
 import qualified Data.ByteString.Char8     as B8
@@ -11,6 +11,7 @@ import           Data.List                 (intersperse)
 import qualified Data.Map.Strict           as Map
 import           Data.Maybe                (fromMaybe)
 import           Data.String.Utils         (replace)
+import qualified Data.Text                 as T
 import           Formatting
 import           Formatting.ShortFormatters
 import qualified Path
@@ -144,14 +145,13 @@ runSSHSession session =
   CraftRunner
   { runExec =
       \ce command args ->
-        runCreateProcess $ sshProc session ce command args
+        runCreateProcess =<< sshProc session ce command args
   , runExec_ =
       \ce command args ->
-        let p = sshProc session ce command args
-        in runCreateProcess_ (unwords (command:args)) p
+        runCreateProcess_ (unwords (command:args)) =<< sshProc session ce command args
   , runFileRead =
       \fp -> do
-        let p = sshProc session craftEnvOverride "cat" [fromAbsFile fp]
+        p <- sshProc session craftEnvOverride "cat" [fromAbsFile fp]
         (ec, content, stderr') <-
           Trans.lift $ Proc.BS.readCreateProcessWithExitCode p ""
         unless (isSuccessCode ec) $
@@ -159,24 +159,27 @@ runSSHSession session =
         return content
   , runFileWrite =
       \fp content -> do
-        let p = sshProc session craftEnvOverride "tee" [fromAbsFile fp]
+        p <- sshProc session craftEnvOverride "tee" [fromAbsFile fp]
         (ec, _, stderr') <-
           Trans.lift $ Proc.BS.readCreateProcessWithExitCode p content
         unless (isSuccessCode ec) $
           $craftError $ "Failed to write file '" ++ fromAbsFile fp ++ "': " ++ B8.unpack stderr'
   , runSourceFile =
-      \src dest ->
-        let p = Process.proc "rsync"
-                  ([ "--quiet" -- suppress non-error messages
-                   , "--checksum" -- skip based on checksum, not mod-time & size
-                   , "--compress" -- compress file data during the transfer
-                   -- specify the remote shell to use
-                   , "--rsh=ssh " ++ unwords (session ^. sessionArgs)
-                   , "--super"
-                   , "--rsync-path=sudo rsync"
-                   ]
-                   ++ [ src , (session ^. sessionEnv . connectionString) ++ ":" ++ fromAbsFile dest ])
-        in runCreateProcess_ (showProcess p) p
+      \src dest -> do
+        let p =
+              Process.proc "rsync"
+                [ "--quiet" -- suppress non-error messages
+                , "--checksum" -- skip based on checksum, not mod-time & size
+                , "--compress" -- compress file data during the transfer
+                -- specify the remote shell to use
+                , "--rsh=ssh " ++ unwords (session ^. sessionArgs)
+                , "--super"
+                , "--rsync-path=sudo rsync"
+                , src
+                , (session^.sessionEnv.connectionString)++":"++fromAbsFile dest
+                ]
+        logDebugNS "ssh" $ T.pack $ showProcess p
+        runCreateProcess_ (showProcess p) p
   }
  where
   craftEnvOverride :: CraftEnv
@@ -192,15 +195,21 @@ runCraftSSH env ce configs =
 
 
 sshProc :: Session -> CraftEnv -> Command -> Args
-        -> Process.CreateProcess
-sshProc session ce command args =
-  Process.proc "ssh" $ session ^. sessionArgs
-                    ++ (prependEachWith "-o" [ "ControlMaster=auto"
-                                             , "ControlPersist=no"
-                                             ])
-                    ++ [ session ^. sessionEnv . connectionString
-                       , fullExecStr
-                       ]
+        -> LoggingT IO Process.CreateProcess
+sshProc session ce command args = do
+  let p =
+        Process.proc
+          "ssh"
+          $ (session^.sessionArgs)
+            ++ (prependEachWith "-o"
+                [ "ControlMaster=auto"
+                , "ControlPersist=no"
+                ])
+            ++ [ session ^. sessionEnv . connectionString
+               , fullExecStr
+               ]
+  logDebugNS "ssh" $ T.pack $ showProcess p
+  return p
  where
   fullExecStr :: String
   fullExecStr = unwords (sudoArgs ++ ["sh", "-c", "'", shellStr, "'"])

@@ -23,7 +23,6 @@ isSuccessCode (ExitFailure _) = False
 
 runCreateProcess :: CreateProcess -> LoggingT IO ExecResult
 runCreateProcess p = do
-  logDebugNS "exec|process" $ T.pack $ showProcess p
   (exit', stdoutRaw, stderrRaw) <- Trans.lift $ SPLL.readCreateProcessWithExitCode p "" {- stdin -}
   let stdout' = trimNL stdoutRaw
   let stderr' = trimNL stderrRaw
@@ -40,7 +39,6 @@ runCreateProcess_ src p = do
         , std_out = CreatePipe
         , std_err = CreatePipe
         }
-  logDebugNS "exec_|process" $ T.pack $ showProcess p
   logger <- askLoggerIO
   let src' = "exec_|" <> T.pack src
       srcOut = src' <> "|stdout"

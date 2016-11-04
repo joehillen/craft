@@ -14,7 +14,7 @@ where
 import           Control.Lens
 import           Control.Monad.Catch        (MonadCatch, MonadThrow)
 import           Control.Monad.IO.Class     (MonadIO)
-import           Control.Monad.Logger       (LoggingT, MonadLogger, logDebugN,
+import           Control.Monad.Logger       (LoggingT, MonadLogger, logDebugNS,
                                              monadLoggerLog)
 import           Control.Monad.Reader       (MonadReader, ReaderT, runReaderT)
 import qualified Control.Monad.Trans.Class  as Trans
@@ -94,20 +94,20 @@ runCraft runner ce dsl = do
   iterT interpreter $ flip runReaderT ce $ unCraft dsl
  where
    interpreter (Exec ce' cmd args next) = do
-     logDebugN $ sformat ("Exec "%string%" "%string) cmd (unwords args)
+     logDebugNS "Exec" $ sformat (string%" "%string) cmd (unwords args)
      (runExec runner) ce' cmd args >>= next
    interpreter (Exec_ ce' cmd args next) = do
-     logDebugN $ sformat ("Exec_ "%string%" "%string) cmd (unwords args)
+     logDebugNS "Exec_" $ sformat (string%" "%string) cmd (unwords args)
      (runExec_ runner) ce' cmd args >> next
    interpreter (FileRead fp next) = do
-     logDebugN $ sformat ("FileRead "%shown) fp
+     logDebugNS "FileRead" $ sformat shown fp
      (runFileRead runner) fp >>= next
    interpreter (FileWrite fp content next) = do
-     logDebugN $ sformat ("FileWrite "%shown) fp
+     logDebugNS "FileWrite" $ sformat string $ fromAbsFile fp
      (runFileWrite runner) fp content >> next
    interpreter (SourceFile sourcer dest next) = do
      src <- Trans.lift sourcer
-     logDebugN $ sformat ("SourceFile "%string%" "%shown) src dest
+     logDebugNS "SourceFile" $ sformat (string%" "%string) src $ fromAbsFile dest
      (runSourceFile runner) src dest >> next
 
 
