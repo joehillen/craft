@@ -55,6 +55,7 @@ data CraftEnv
     , _craftExecCWD        :: AbsDirPath
     , _craftExecUserID     :: UserID
     }
+  deriving Show
 
 
 craftEnv :: PackageManager -> CraftEnv
@@ -76,10 +77,6 @@ instance (MonadLogger m, Functor f) => MonadLogger (FreeT f m) where
   monadLoggerLog a b c d = Trans.lift $ monadLoggerLog a b c d
 
 
-interpretCraft :: CraftEnv -> (CraftDSL (LoggingT IO a) -> LoggingT IO a) -> Craft a -> LoggingT IO a
-interpretCraft ce interpreter = iterT interpreter . flip runReaderT ce . unCraft
-
-
 data CraftRunner = CraftRunner
   { runExec       :: CraftEnv -> Command -> Args -> LoggingT IO ExecResult
   , runExec_      :: CraftEnv -> Command -> Args -> LoggingT IO ()
@@ -90,25 +87,26 @@ data CraftRunner = CraftRunner
 
 
 runCraft :: CraftRunner -> CraftEnv -> Craft a -> LoggingT IO a
-runCraft runner ce dsl = do
-  iterT interpreter $ flip runReaderT ce $ unCraft dsl
- where
-   interpreter (Exec ce' cmd args next) = do
-     logDebugNS "Exec" $ sformat (string%" "%string) cmd (unwords args)
-     (runExec runner) ce' cmd args >>= next
-   interpreter (Exec_ ce' cmd args next) = do
-     logDebugNS "Exec_" $ sformat (string%" "%string) cmd (unwords args)
-     (runExec_ runner) ce' cmd args >> next
-   interpreter (FileRead fp next) = do
-     logDebugNS "FileRead" $ sformat shown fp
-     (runFileRead runner) fp >>= next
-   interpreter (FileWrite fp content next) = do
-     logDebugNS "FileWrite" $ sformat string $ fromAbsFile fp
-     (runFileWrite runner) fp content >> next
-   interpreter (SourceFile sourcer dest next) = do
-     src <- Trans.lift sourcer
-     logDebugNS "SourceFile" $ sformat (string%" "%string) src $ fromAbsFile dest
-     (runSourceFile runner) src dest >> next
+runCraft runner ce dsl =
+  iterT (interpreter runner) $ flip runReaderT ce $ unCraft dsl
+
+interpreter :: CraftRunner -> CraftDSL (LoggingT IO a) -> LoggingT IO a
+interpreter runner (Exec ce cmd args next) = do
+  logDebugNS "Exec" . T.unwords . map T.pack $ (show ce):cmd:args
+  (runExec runner) ce cmd args >>= next
+interpreter runner (Exec_ ce cmd args next) = do
+  logDebugNS "Exec_" . T.unwords . map T.pack $ (show ce):cmd:args
+  (runExec_ runner) ce cmd args >> next
+interpreter runner (FileRead fp next) = do
+  logDebugNS "FileRead" $ sformat shown fp
+  (runFileRead runner) fp >>= next
+interpreter runner (FileWrite fp content next) = do
+  logDebugNS "FileWrite" $ sformat string $ fromAbsFile fp
+  (runFileWrite runner) fp content >> next
+interpreter runner (SourceFile sourcer dest next) = do
+  src <- Trans.lift sourcer
+  logDebugNS "SourceFile" $ sformat (string%" "%string) src $ fromAbsFile dest
+  (runSourceFile runner) src dest >> next
 
 
 type StdOut  = String
@@ -268,18 +266,26 @@ data Package
 
 data PackageManager
  = PackageManager
-   { _pmGetter      :: PackageName -> Craft (Maybe Package)
+   { _pmName        :: String
+   , _pmGetter      :: PackageName -> Craft (Maybe Package)
    , _pmInstaller   :: Package     -> Craft ()
    , _pmUpgrader    :: Package     -> Craft ()
    , _pmUninstaller :: Package     -> Craft ()
    }
 
+instance Show PackageManager where
+  show pm = _pmName pm
+
 
 noPackageManager :: PackageManager
 noPackageManager =
-  let err _ = $craftError "No Package Manager" in
+  let name = "No Package Manager"
+      err :: forall a b. a -> Craft b
+      err _ = $craftError name
+  in
   PackageManager
-  { _pmGetter         = err
+  { _pmName           = name
+  , _pmGetter         = err
   , _pmInstaller      = err
   , _pmUpgrader       = err
   , _pmUninstaller    = err
@@ -287,7 +293,7 @@ noPackageManager =
 
 
 data CraftDSL next
-  = Exec  CraftEnv Command Args (ExecResult -> next)
+  = Exec CraftEnv Command Args (ExecResult -> next)
   | Exec_ CraftEnv Command Args next
   | FileRead AbsFilePath (ByteString -> next)
   | FileWrite AbsFilePath ByteString next

@@ -12,7 +12,8 @@ import qualified Craft.Package as Package
 apt :: PackageManager
 apt =
   PackageManager
-  { _pmGetter         = getAptPackage
+  { _pmName           = "apt"
+  , _pmGetter         = getAptPackage
   , _pmInstaller      = aptInstall
   , _pmUpgrader       = aptInstall
   , _pmUninstaller    = aptPurge

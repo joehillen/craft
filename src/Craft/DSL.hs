@@ -2,7 +2,6 @@ module Craft.DSL where
 
 import           Control.Lens
 import           Control.Monad.Free
-import           Control.Monad.Logger   (logDebugNS)
 import           Control.Monad.Reader
 import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Char8  as B8
