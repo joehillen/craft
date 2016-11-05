@@ -13,8 +13,9 @@ trim :: String -> String
 trim = f . f
    where f = reverse . dropWhile isSpace
 
-class ToArg a where
+class Show a => ToArg a where
   toArg :: String -> a -> [String]
+  toArg arg v = [arg, show v]
 
 instance ToArg String where
   toArg arg s
@@ -29,18 +30,12 @@ instance ToArg a => ToArg (Maybe a) where
   toArg _   Nothing  = []
   toArg arg (Just v) = toArg arg v
 
-instance ToArg Int where
-  toArg = showArg
-
 instance ToArg (Path b t) where
   toArg arg v = [arg, toFilePath v]
 
 toArgBool :: String -> String -> Bool -> [String]
 toArgBool a _ True  = [a]
 toArgBool _ b False = [b]
-
-showArg :: Show a => String -> a -> [String]
-showArg arg v = [arg, show v]
 
 toArgs :: ToArg a => String -> [a] -> [String]
 toArgs arg = Prelude.concatMap (toArg arg)
