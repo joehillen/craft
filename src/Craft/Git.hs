@@ -56,6 +56,13 @@ repo url' dirpath =
   , _gitDepth     = Nothing
   }
 
+instance FileLike Repo where
+  type FileLikePath Repo = AbsDirPath
+  path = gitDirectory.path
+  mode = gitDirectory.directoryMode
+  ownerID = gitDirectory.directoryOwnerID
+  groupID = gitDirectory.directoryGroupID
+
 
 gitBin :: String
 gitBin = "git"
