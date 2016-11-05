@@ -166,26 +166,33 @@ type ExecEnv = Map String String
 type CWD = AbsFilePath
 type PackageName = String
 
-newtype UserName = UserName String
+newtype UserName = UserName { _userNameString :: String }
                    deriving (Eq, Ord)
-newtype UserID = UserID Int
-                 deriving (Eq, Show, Ord)
-newtype GroupName = GroupName String
-                    deriving (Eq, Ord)
-newtype GroupID = GroupID Int
-                  deriving (Eq, Show, Ord)
-
-instance Show GroupName where
-  show (GroupName n) = n
 
 instance Show UserName where
   show (UserName n) = n
 
-instance ToArg UserID where
-  toArg arg (UserID n) = [arg, show n]
+newtype UserID = UserID { _userIDInt :: Int }
+                 deriving (Eq, Ord)
 
-instance ToArg GroupID where
-  toArg arg (GroupID n) = [arg, show n]
+instance Show UserID where
+  show (UserID n) = show n
+
+instance ToArg UserID
+
+newtype GroupName = GroupName { _groupNameString :: String }
+                    deriving (Eq, Ord)
+
+instance Show GroupName where
+  show (GroupName n) = n
+
+newtype GroupID = GroupID { _groupIDInt :: Int }
+                  deriving (Eq, Ord)
+
+instance Show GroupID where
+  show (GroupID n) = show n
+
+instance ToArg GroupID
 
 
 class Eq (FileLikePath a) => FileLike a where
@@ -313,6 +320,10 @@ makeLenses ''FailResult
 makeLenses ''SuccResult
 makeLenses ''File
 makeLenses ''Directory
+makeLenses ''UserName
+makeLenses ''UserID
+makeLenses ''GroupName
+makeLenses ''GroupID
 
 
 strContent :: Lens' File String
