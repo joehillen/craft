@@ -196,3 +196,27 @@ craftPackages packages = do
       (AnyVersion, _) -> False
       (Latest,     _) -> True
       (x,          y) -> x /= y
+
+
+craftUnattendedUpgrades :: Craft ()
+craftUnattendedUpgrades = do
+  craft_ $ package "unattended-upgrades"
+  craft_ $
+    file $(mkAbsFile "/etc/apt/apt.conf.d/20auto-upgrades")
+    & strContent .~ unlines
+      [ "APT::Periodic::Enable \"1\";"
+      , "APT::Periodic::Update-Package-Lists \"1\";"
+      , "APT::Periodic::Unattended-Upgrade \"1\";"
+      , "APT::Periodic::Download-Upgradeable-Packages \"1\";"
+      , "APT::Periodic::AutocleanInterval \"7\";"
+      ]
+  w <- watchCraft_ $
+    file $(mkAbsFile "/etc/apt/apt.conf.d/50unattended-upgrades")
+    & strContent .~ unlines
+      [ "Unattended-Upgrade::Origins-Pattern {"
+      , "  \"o=*\";"
+      , "};"
+      , "Unattended-Upgrade::Remove-Unused-Dependencies \"true\";"
+      ]
+  when (changed w) $
+    exec_ "unattended-upgrades" ["-v"]
