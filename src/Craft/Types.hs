@@ -50,11 +50,11 @@ type RelDirPath  = Path Rel Dir
 
 data CraftEnv
   = CraftEnv
-    { _craftPackageManager :: PackageManager
-    , _craftExecEnv        :: ExecEnv
-    , _craftExecCWD        :: AbsDirPath
-    , _craftExecUserID     :: UserID
-    }
+  { _craftPackageManager :: PackageManager
+  , _craftExecEnv        :: ExecEnv
+  , _craftExecCWD        :: AbsDirPath
+  , _craftExecUserID     :: UserID
+  }
   deriving Show
 
 
@@ -117,19 +117,19 @@ type Command = String
 
 data SuccResult
   = SuccResult
-    { _stdout      :: StdOut
-    , _stderr      :: StdErr
-    , _succProcess :: CreateProcess
-    }
+  { _stdout      :: StdOut
+  , _stderr      :: StdErr
+  , _succProcess :: CreateProcess
+  }
 
 
 data FailResult
   = FailResult
-    { _exitcode    :: Int
-    , _failStdout  :: StdOut
-    , _failStderr  :: StdErr
-    , _failProcess :: CreateProcess
-    }
+  { _exitcode    :: Int
+  , _failStdout  :: StdOut
+  , _failStderr  :: StdErr
+  , _failProcess :: CreateProcess
+  }
 
 
 data ExecResult
