@@ -42,7 +42,7 @@ runLocal =
 
 localProc :: CraftEnv -> Command -> Args -> CreateProcess
 localProc ce prog args =
-  let UserID uid' = ce^.craftExecUserID in
+  let UserID uid' = ce^.craftUserID in
   (proc prog args)
     { env           = Just . Map.toList $ ce^.craftExecEnv
     , cwd           = Just . fromAbsDir $ ce^.craftExecCWD

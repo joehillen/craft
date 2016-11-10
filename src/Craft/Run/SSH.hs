@@ -216,7 +216,7 @@ sshProc session ce command args = do
 
   sudoArgs :: [String]
   sudoArgs =
-    let UserID uid' = ce^.craftExecUserID in
+    let UserID uid' = ce^.craftUserID in
     ["sudo", "-u", "\\#"++(show uid'), "-n", "-H"]
 
   shellStr :: String

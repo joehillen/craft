@@ -53,7 +53,7 @@ data CraftEnv
   { _craftPackageManager :: PackageManager
   , _craftExecEnv        :: ExecEnv
   , _craftExecCWD        :: AbsDirPath
-  , _craftExecUserID     :: UserID
+  , _craftUserID         :: UserID
   }
   deriving Show
 
@@ -64,7 +64,7 @@ craftEnv pm =
   { _craftPackageManager = pm
   , _craftExecEnv        = Map.fromList [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
   , _craftExecCWD        = $(mkAbsDir "/")
-  , _craftExecUserID     = UserID 0
+  , _craftUserID         = rootUserID
   }
 
 
@@ -178,6 +178,9 @@ newtype UserID = UserID { _userIDInt :: Int }
 instance Show UserID where
   show (UserID n) = show n
 
+rootUserID :: UserID
+rootUserID = UserID 0
+
 instance ToArg UserID
 
 newtype GroupName = GroupName { _groupNameString :: String }
@@ -191,6 +194,9 @@ newtype GroupID = GroupID { _groupIDInt :: Int }
 
 instance Show GroupID where
   show (GroupID n) = show n
+
+rootGroupID :: GroupID
+rootGroupID = GroupID 0
 
 instance ToArg GroupID
 
@@ -218,8 +224,8 @@ file fp =
   File
   { _filePath    = fp
   , _fileMode    = Mode RW R R
-  , _fileOwnerID = UserID 0
-  , _fileGroupID = GroupID 0
+  , _fileOwnerID = rootUserID
+  , _fileGroupID = rootGroupID
   , _fileContent = Nothing
   }
 
@@ -240,8 +246,8 @@ directory dp =
   Directory
   { _directoryPath    = dp
   , _directoryMode    = Mode RWX RX RX
-  , _directoryOwnerID = UserID 0
-  , _directoryGroupID = GroupID 0
+  , _directoryOwnerID = rootUserID
+  , _directoryGroupID = rootGroupID
   }
 
 

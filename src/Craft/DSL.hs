@@ -122,7 +122,7 @@ withEnvVar name val go = do
 
 
 withUser :: User -> Craft a -> Craft a
-withUser user = local (\r -> r & craftExecUserID .~ user^.uid)
+withUser user = local (\r -> r & craftUserID .~ user^.uid)
 
 
 setMode :: Mode -> Path b t -> Craft ()

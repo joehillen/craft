@@ -5,13 +5,12 @@
 module Craft.Craftable where
 
 import           Control.Lens
-import           Control.Monad.Reader     (ask)
+import           Control.Monad.Reader     (ask, asks)
 import qualified Data.ByteString.Lazy     as BL
 import           Data.List                (intercalate)
 import           Data.Maybe               (catMaybes, isJust)
--- import           Data.Monoid
+import           Control.Monad            ((<=<))
 import           Formatting               hiding (char)
-import qualified Path
 
 import           Craft.DSL
 import qualified Craft.File               as File
@@ -366,25 +365,36 @@ instance Craftable File File where
     return f
 
 
-instance Craftable (Path Abs Path.File) File where
-  watchCraft fp = watchCraft $ file fp
-  watchCraft_ fp = watchCraft_ $ file fp
-  craft fp = craft $ file fp
-  craft_ fp = craft_ $ file fp
+instance Craftable AbsFilePath File where
+  watchCraft  = watchCraft  <=< mkFileFromPath
+  watchCraft_ = watchCraft_ <=< mkFileFromPath
+  craft       = craft       <=< mkFileFromPath
+  craft_      = craft_      <=< mkFileFromPath
 
 
-instance Destroyable (Path Abs Path.File) where
+mkFileFromPath :: AbsFilePath -> Craft File
+mkFileFromPath fp = do
+  userid <- asks _craftUserID
+  if userid == rootUserID
+  then return $ file fp
+  else do
+    Just user <- User.fromID userid
+    return $
+      file fp
+      & ownerAndGroup .~ user
+
+
+instance Destroyable AbsFilePath where
   watchDestroy fp =
     File.exists fp >>= \case
       False -> return (Unchanged, Nothing)
       True  -> do
         destroy_ fp
         return (Removed, Just fp)
-
   destroy_ fp = do
     exec_ "rm" ["-f", fromAbsFile fp]
-    File.exists fp >>= flip when (
-      $craftError $ "destroy File `"++show fp++"` failed! Found.")
+    whenM (File.exists fp) $
+      $craftError $ "destroy File `"++show fp++"` failed! Found."
 
 
 instance Destroyable File where
@@ -442,8 +452,21 @@ instance Craftable Directory Directory where
             Nothing -> error' "Not Found."
             Just stats' -> verifyStats stats' >> return (Updated, d)
 
+
 instance Craftable AbsDirPath Directory where
-  watchCraft dp = watchCraft $ directory dp
-  watchCraft_ dp = watchCraft_ $ directory dp
-  craft dp = craft $ directory dp
-  craft_ dp = craft_ $ directory dp
+  watchCraft  = watchCraft  <=< mkDirFromPath
+  watchCraft_ = watchCraft_ <=< mkDirFromPath
+  craft       = craft       <=< mkDirFromPath
+  craft_      = craft_      <=< mkDirFromPath
+
+
+mkDirFromPath :: AbsDirPath -> Craft Directory
+mkDirFromPath dp = do
+  userid <- asks _craftUserID
+  if userid == rootUserID
+  then return $ directory dp
+  else do
+    Just user <- User.fromID userid
+    return $
+      directory dp
+      & ownerAndGroup .~ user
