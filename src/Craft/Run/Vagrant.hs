@@ -41,8 +41,8 @@ runCraftVagrant settings env configs = do
       runLocal
       (craftEnv (env ^. craftPackageManager)
        & craftExecEnv .~ Map.fromList sysEnv
-       & craftExecCWD .~ cwd
-       & craftUserID .~ UserID (fromIntegral uid'))
+       & craftCWD     .~ cwd
+       & craftUserID  .~ UserID (fromIntegral uid'))
       $ do
         when (vagrantUp settings) $ exec_ "vagrant" ["up", box]
         SSHConfig <$> parseExecStdout parser "vagrant" ["ssh-config", box]

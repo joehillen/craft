@@ -52,7 +52,7 @@ data CraftEnv
   = CraftEnv
   { _craftPackageManager :: PackageManager
   , _craftExecEnv        :: ExecEnv
-  , _craftExecCWD        :: AbsDirPath
+  , _craftCWD            :: AbsDirPath
   , _craftUserID         :: UserID
   }
   deriving Show
@@ -63,7 +63,7 @@ craftEnv pm =
   CraftEnv
   { _craftPackageManager = pm
   , _craftExecEnv        = Map.fromList [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
-  , _craftExecCWD        = $(mkAbsDir "/")
+  , _craftCWD            = $(mkAbsDir "/")
   , _craftUserID         = rootUserID
   }
 

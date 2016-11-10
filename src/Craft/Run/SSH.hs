@@ -186,7 +186,7 @@ runSSHSession session =
   craftEnvOverride =
     craftEnv noPackageManager
     & craftExecEnv .~ Map.empty
-    & craftExecCWD .~ $(mkAbsDir "/")
+    & craftCWD     .~ $(mkAbsDir "/")
 
 
 runCraftSSH :: SSHEnv -> CraftEnv -> Craft a -> LoggingT IO a
@@ -229,7 +229,7 @@ sshProc session ce command args = do
   execEnvArgs = map (escape specialChars) . renderEnv $ ce ^. craftExecEnv
 
   cdArgs :: [String]
-  cdArgs = ["cd", (fromAbsDir $ ce^.craftExecCWD), ";"]
+  cdArgs = ["cd", (fromAbsDir $ ce^.craftCWD), ";"]
 
   escape :: [String] -> String -> String
   escape = recur backslash

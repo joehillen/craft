@@ -45,7 +45,7 @@ localProc ce prog args =
   let UserID uid' = ce^.craftUserID in
   (proc prog args)
     { env           = Just . Map.toList $ ce^.craftExecEnv
-    , cwd           = Just . fromAbsDir $ ce^.craftExecCWD
+    , cwd           = Just . fromAbsDir $ ce^.craftCWD
     , close_fds     = True
     , create_group  = True
     , delegate_ctlc = False
