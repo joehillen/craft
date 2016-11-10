@@ -5,11 +5,10 @@
 module Craft.Craftable where
 
 import           Control.Lens
-import           Control.Monad.Reader     (ask, asks)
+import           Control.Monad.Reader     (ask)
 import qualified Data.ByteString.Lazy     as BL
 import           Data.List                (intercalate)
 import           Data.Maybe               (catMaybes, isJust)
-import           Control.Monad            ((<=<))
 -- import           Formatting               hiding (char)
 
 import           Craft.DSL
@@ -377,20 +376,8 @@ instance Craftable File File where
 
 
 instance Craftable AbsFilePath File where
-  watchCraft = watchCraft  <=< mkFileFromPath
-  craft      = craft       <=< mkFileFromPath
-
-
-mkFileFromPath :: AbsFilePath -> Craft File
-mkFileFromPath fp = do
-  userid <- asks _craftUserID
-  if userid == rootUserID
-  then return $ file fp
-  else do
-    Just user <- User.fromID userid
-    return $
-      file fp
-      & ownerAndGroup .~ user
+  watchCraft = watchCraft . file
+  craft      = craft      . file
 
 
 instance Destroyable AbsFilePath where
@@ -445,14 +432,4 @@ instance Craftable Directory Directory where
 
 
 instance Craftable AbsDirPath Directory where
-  watchCraft dp = do
-    userid <- asks _craftUserID
-    if userid == rootUserID
-    then watchCraft $ directory dp
-    else do
-      Just user <- User.fromID userid
-      watchCraft $
-        directory dp
-        & ownerAndGroup .~ user
-
-
+  watchCraft = watchCraft . directory
