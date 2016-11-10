@@ -10,7 +10,7 @@ import qualified Data.ByteString.Lazy     as BL
 import           Data.List                (intercalate)
 import           Data.Maybe               (catMaybes, isJust)
 import           Control.Monad            ((<=<))
-import           Formatting               hiding (char)
+-- import           Formatting               hiding (char)
 
 import           Craft.DSL
 import qualified Craft.File               as File
@@ -91,14 +91,14 @@ watch_ getter action = do
 class Craftable a b | a -> b where
   watchCraft :: a -> Craft (Watched, b)
 
+  watchCraft_ :: a -> Craft Watched
+  watchCraft_ x = fst <$> watchCraft x
+
   craft :: a -> Craft b
   craft x = snd <$> watchCraft x
 
   craft_ :: a -> Craft ()
   craft_ = void . craft
-
-  watchCraft_ :: a -> Craft Watched
-  watchCraft_ x = fst <$> watchCraft x
 
   {-# MINIMAL watchCraft #-}
 
@@ -106,14 +106,14 @@ class Craftable a b | a -> b where
 class Destroyable a where
   watchDestroy :: a -> Craft (Watched, Maybe a)
 
+  watchDestroy_ :: a -> Craft Watched
+  watchDestroy_ x = fst <$> watchDestroy x
+
   destroy :: a -> Craft (Maybe a)
   destroy x = snd <$> watchDestroy x
 
   destroy_ :: a -> Craft ()
   destroy_ = void . destroy
-
-  watchDestroy_ :: a -> Craft Watched
-  watchDestroy_ x = fst <$> watchDestroy x
 
   {-# MINIMAL watchDestroy #-}
 
@@ -136,9 +136,10 @@ instance Destroyable a => Destroyable [a] where
   destroy_ = mapM_ destroy_
   destroy xs = do
     rs <- mapM destroy xs
-    return $ case catMaybes rs of
-               []  -> Nothing
-               rs' -> Just rs'
+    return $
+      case catMaybes rs of
+        []  -> Nothing
+        rs' -> Just rs'
   watchDestroy xs = do
     (ws, rs) <- unzip <$> mapM watchDestroy xs
     let w = if all (== Unchanged) ws then
@@ -293,6 +294,14 @@ instance Craftable Group Group where
     return (Unchanged, grp)
 
 
+runIfNotEq :: Eq a => a -> a -> (a -> Craft ()) -> Craft Bool
+runIfNotEq before expected f
+  | before /= expected = do
+      f expected
+      return True
+  | otherwise = return False
+
+
 instance Craftable File File where
   watchCraft f = do
     let fp = f ^. path
@@ -338,9 +347,11 @@ instance Craftable File File where
           Just c -> do
             actualMD5 <- File.md5sum fp
             if actualMD5 == expectedMD5
-            then return $ if all fst checks
-                          then (Unchanged, f)
-                          else (Updated, f)
+            then
+              return $
+                if all fst checks
+                then (Unchanged, f)
+                else (Updated, f)
             else do
               File.write fp c
               md5AfterWrite <- File.md5sum fp
@@ -351,7 +362,7 @@ instance Craftable File File where
   craft f = do
     let fp = f^.path
     exec_ "touch" ["-a", fromAbsFile fp]
-    case f ^. fileContent of
+    case f^.fileContent of
       Nothing -> return ()
       Just c  -> do
         let expectedMD5 = show . md5 $ BL.fromStrict c
@@ -366,10 +377,8 @@ instance Craftable File File where
 
 
 instance Craftable AbsFilePath File where
-  watchCraft  = watchCraft  <=< mkFileFromPath
-  watchCraft_ = watchCraft_ <=< mkFileFromPath
-  craft       = craft       <=< mkFileFromPath
-  craft_      = craft_      <=< mkFileFromPath
+  watchCraft = watchCraft  <=< mkFileFromPath
+  craft      = craft       <=< mkFileFromPath
 
 
 mkFileFromPath :: AbsFilePath -> Craft File
@@ -410,63 +419,40 @@ instance Destroyable File where
 
 instance Craftable Directory Directory where
   watchCraft d = do
-    let dp = d ^. path
-        setMode'  = setMode (d ^. mode) dp
-        setOwner' = setOwnerID (d ^. ownerID) dp
-        setGroup' = setGroupID (d ^. groupID) dp
-        error' :: String -> Craft a
-        error' str = $craftError
-           $ formatToString ("craft Directory `"%string%"` failed! "%string)
-                            (show dp) str
-        verifyMode m =
-          when (m /= d ^. mode) $
-            error' $ formatToString ("Wrong Mode: "%shown%" Expected: "%shown)
-                                    m (d ^. mode)
-        verifyOwner o =
-          when (o /= d ^. ownerID) $
-            error' $ formatToString ("Wrong Owner ID: "%shown%" Expected: "%shown)
-                                    o (d ^. ownerID)
-        verifyGroup g =
-          when (g /= d ^. groupID) $
-            error' $ formatToString ("Wrong Group ID: "%shown%" Expected: "%shown)
-                                    g (d ^. groupID)
-        verifyStats (m, o, g) =
-          verifyMode m >> verifyOwner o >> verifyGroup g
-    getStats dp >>= \case
-      Nothing -> do
+    let dp = d^.path
+    let failed = "craft Directory `"++fromAbsDir dp++"` failed!"
+    let notfound = failed++" Not Found."
+    (dirCreated, (modeBefore, ownerBefore, groupBefore)) <- getStats dp >>= \case
+      Nothing    -> do
         exec_ "mkdir" ["-p", fromAbsDir dp]
-        setMode' >> setOwner' >> setGroup'
         getStats dp >>= \case
-          Nothing -> error' "Not Found."
-          Just stats' -> verifyStats stats' >> return (Created, d)
-      Just (m', o', g') -> do
-        let checks = [ (d^.mode    == m', setMode')
-                     , (d^.ownerID == o', setOwner')
-                     , (d^.groupID == g', setGroup')
-                     ]
-        mapM_ (uncurry unless) checks
-        if all fst checks then
-          return (Unchanged, d)
-        else
-          getStats dp >>= \case
-            Nothing -> error' "Not Found."
-            Just stats' -> verifyStats stats' >> return (Updated, d)
+          Nothing    -> $craftError notfound
+          Just stats -> return (True, stats)
+      Just stats -> return (False, stats)
+    dirChanged <-
+      or <$> sequence
+        [ runIfNotEq modeBefore  (d^.mode)    (flip setMode dp)
+        , runIfNotEq ownerBefore (d^.ownerID) (flip setOwnerID dp)
+        , runIfNotEq groupBefore (d^.groupID) (flip setGroupID dp)
+        ]
+    return $
+      if dirCreated
+      then (Created, d)
+      else
+        if dirChanged
+        then (Updated, d)
+        else (Unchanged, d)
 
 
 instance Craftable AbsDirPath Directory where
-  watchCraft  = watchCraft  <=< mkDirFromPath
-  watchCraft_ = watchCraft_ <=< mkDirFromPath
-  craft       = craft       <=< mkDirFromPath
-  craft_      = craft_      <=< mkDirFromPath
+  watchCraft dp = do
+    userid <- asks _craftUserID
+    if userid == rootUserID
+    then watchCraft $ directory dp
+    else do
+      Just user <- User.fromID userid
+      watchCraft $
+        directory dp
+        & ownerAndGroup .~ user
 
 
-mkDirFromPath :: AbsDirPath -> Craft Directory
-mkDirFromPath dp = do
-  userid <- asks _craftUserID
-  if userid == rootUserID
-  then return $ directory dp
-  else do
-    Just user <- User.fromID userid
-    return $
-      directory dp
-      & ownerAndGroup .~ user
