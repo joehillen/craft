@@ -60,7 +60,7 @@ instance Craftable SourcedFile SourcedFile where
 instance Destroyable SourcedFile where
   watchDestroy sf = do
     (w, mbf) <- watchDestroy $ sf^.destination
-    let res = case mbf of
-                Nothing -> Nothing
-                Just f  -> Just $ sf & destination .~ f
+    let res = do
+          f <- mbf
+          return $ sf & destination .~ f
     return (w, res)

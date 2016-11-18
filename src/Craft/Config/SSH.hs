@@ -62,9 +62,7 @@ bodyLookup key body =
 
 cfgLookup :: String -> String -> SSHConfig -> Maybe String
 cfgLookup sectionName key (SSHConfig sections') =
-  case body of
-    Just b  -> bodyLookup key b
-    Nothing -> Nothing
+  bodyLookup key =<< body
  where
   body = maybeHead . catMaybes $ map f sections'
   f (Host name b) | name == sectionName = Just b
