@@ -3,4 +3,5 @@ packages:
 - '.'
 extra-deps:
 - process-1.4.2.0
+- log-base-0.7
 resolver: lts-6.20

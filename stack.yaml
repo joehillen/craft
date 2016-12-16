@@ -1,4 +1,6 @@
 flags: {}
 packages:
 - '.'
-resolver: lts-7.2
+extra-deps:
+- log-base-0.7
+resolver: lts-7.13

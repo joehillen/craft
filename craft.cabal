@@ -103,8 +103,9 @@ library
                      , derive
                      , directory
                      , exceptions
-                     , fast-logger
-                     , monad-logger
+                     , log-base
+                     , time
+                     , monad-control
                      , filepath
                      , formatting
                      , free
@@ -115,7 +116,6 @@ library
                      , megaparsec
                      , MissingH
                      , memory
-                     , monad-logger
                      , mtl
                      , path
                      , path-io

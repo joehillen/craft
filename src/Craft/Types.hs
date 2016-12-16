@@ -14,8 +14,6 @@ where
 import           Control.Lens
 import           Control.Monad.Catch        (MonadCatch, MonadThrow)
 import           Control.Monad.IO.Class     (MonadIO)
-import           Control.Monad.Logger       (LoggingT, MonadLogger, logDebugNS,
-                                             monadLoggerLog)
 import           Control.Monad.Reader       (MonadReader, ReaderT, runReaderT)
 import qualified Control.Monad.Trans.Class  as Trans
 import           Control.Monad.Trans.Free   (FreeT, MonadFree, iterT)
@@ -26,14 +24,18 @@ import           Data.ByteString.Lens       (unpackedChars)
 import           Data.Map.Strict            (Map)
 import qualified Data.Map.Strict            as Map
 import           Data.Maybe                 (isNothing)
+import           Data.Monoid                ((<>))
 import qualified Data.Text                  as T
+import           Data.Time                  (getCurrentTime)
 import           Data.Versions              (parseV)
 import           Formatting
 import           Language.Haskell.TH.Syntax (Exp, Q)
+import           Log
 import           Path                       hiding (File)
 import qualified Path
 import           Prelude                    hiding (FilePath)
 import qualified Prelude
+import           System.IO.Unsafe           (unsafePerformIO)
 import           System.Process
 
 import           Craft.Error
@@ -68,45 +70,51 @@ craftEnv pm =
   }
 
 
-newtype Craft a = Craft { unCraft :: ReaderT CraftEnv (FreeT CraftDSL (LoggingT IO)) a }
+newtype Craft a = Craft { unCraft :: ReaderT CraftEnv (FreeT CraftDSL (LogT IO)) a }
   deriving ( Functor, Monad, MonadIO, Applicative, MonadReader CraftEnv
-           , MonadFree CraftDSL, MonadThrow, MonadCatch, MonadLogger)
+           , MonadFree CraftDSL, MonadThrow, MonadCatch)
 
 
-instance (MonadLogger m, Functor f) => MonadLogger (FreeT f m) where
-  monadLoggerLog a b c d = Trans.lift $ monadLoggerLog a b c d
+instance MonadTime Craft where
+  currentTime = return $! unsafePerformIO getCurrentTime
+
+
+instance MonadLog Craft where
+  logMessage time level message = logMessage time level message
+  localData data_ m = localData data_ m
+  localDomain domain m = localDomain domain m
 
 
 data CraftRunner = CraftRunner
-  { runExec       :: CraftEnv -> Command -> Args -> LoggingT IO ExecResult
-  , runExec_      :: CraftEnv -> Command -> Args -> LoggingT IO ()
-  , runFileRead   :: AbsFilePath -> LoggingT IO ByteString
-  , runFileWrite  :: AbsFilePath -> ByteString -> LoggingT IO ()
-  , runSourceFile :: Prelude.FilePath -> AbsFilePath -> LoggingT IO ()
+  { runExec       :: CraftEnv -> Command -> Args -> LogT IO ExecResult
+  , runExec_      :: CraftEnv -> Command -> Args -> LogT IO ()
+  , runFileRead   :: AbsFilePath -> LogT IO ByteString
+  , runFileWrite  :: AbsFilePath -> ByteString -> LogT IO ()
+  , runSourceFile :: Prelude.FilePath -> AbsFilePath -> LogT IO ()
   }
 
 
-runCraft :: CraftRunner -> CraftEnv -> Craft a -> LoggingT IO a
-runCraft runner ce dsl =
-  iterT (interpreter runner) $ flip runReaderT ce $ unCraft dsl
+runCraft :: Logger -> CraftRunner -> CraftEnv -> Craft a -> LogT IO a
+runCraft logger runner ce dsl =
+  iterT (interpreter logger runner) $ flip runReaderT ce $ unCraft dsl
 
-interpreter :: CraftRunner -> CraftDSL (LoggingT IO a) -> LoggingT IO a
-interpreter runner (Exec ce cmd args next) = do
-  logDebugNS "Exec" . T.unwords . map T.pack $ (show ce):cmd:args
-  (runExec runner) ce cmd args >>= next
-interpreter runner (Exec_ ce cmd args next) = do
-  logDebugNS "Exec_" . T.unwords . map T.pack $ (show ce):cmd:args
-  (runExec_ runner) ce cmd args >> next
-interpreter runner (FileRead fp next) = do
-  logDebugNS "FileRead" $ sformat shown fp
-  (runFileRead runner) fp >>= next
-interpreter runner (FileWrite fp content next) = do
-  logDebugNS "FileWrite" $ sformat string $ fromAbsFile fp
-  (runFileWrite runner) fp content >> next
-interpreter runner (SourceFile sourcer dest next) = do
+interpreter :: Logger -> CraftRunner -> CraftDSL (LogT IO a) -> LogT IO a
+interpreter logger runner (Exec ce cmd args next) = do
+  logTrace_ $ "Exec: " <> (T.unwords . map T.pack $ (show ce):cmd:args)
+  (runExec logger runner) ce cmd args >>= next
+interpreter logger runner (Exec_ ce cmd args next) = do
+  logTrace_ $ "Exec_: " <> (T.unwords . map T.pack $ (show ce):cmd:args)
+  (runExec_ logger runner) ce cmd args >> next
+interpreter logger runner (FileRead fp next) = do
+  logTrace_ $ "FileRead: " <> sformat shown fp
+  (runFileRead logger runner) fp >>= next
+interpreter logger runner (FileWrite fp content next) = do
+  logTrace_ $ "FileWrite: " <> sformat string (fromAbsFile fp)
+  (runFileWrite logger runner) fp content >> next
+interpreter logger runner (SourceFile sourcer dest next) = do
   src <- Trans.lift sourcer
-  logDebugNS "SourceFile" $ sformat (string%" "%string) src $ fromAbsFile dest
-  (runSourceFile runner) src dest >> next
+  logTrace_ $ "SourceFile: " <> sformat (string%" "%string) src (fromAbsFile dest)
+  (runSourceFile logger runner) src dest >> next
 
 
 type StdOut  = String

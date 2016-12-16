@@ -1,14 +1,14 @@
 module Craft.Run.Internal where
 
 import           Conduit                 as C
-import           Control.Monad.Logger    (LoggingT, askLoggerIO, logDebugNS,
-                                          runLoggingT)
 import qualified Control.Monad.Trans     as Trans
 import qualified Data.Conduit.List       as CL
 import           Data.Conduit.Process    (sourceProcessWithStreams)
+import  Control.Monad.Reader
 import           Data.Conduit.Text       as CT
 import           Data.Monoid             ((<>))
 import qualified Data.Text               as T
+import           Log
 import           System.Exit
 import           System.Process
 import qualified System.Process.ListLike as SPLL
@@ -21,7 +21,7 @@ isSuccessCode ExitSuccess     = True
 isSuccessCode (ExitFailure _) = False
 
 
-runCreateProcess :: CreateProcess -> LoggingT IO ExecResult
+runCreateProcess :: CreateProcess -> LogT IO ExecResult
 runCreateProcess p = do
   (exit', stdoutRaw, stderrRaw) <- Trans.lift $ SPLL.readCreateProcessWithExitCode p "" {- stdin -}
   let stdout' = trimNL stdoutRaw
@@ -31,7 +31,7 @@ runCreateProcess p = do
     ExitFailure code -> Failure $ FailResult code stdout' stderr' p
 
 
-runCreateProcess_ :: String -> CreateProcess -> LoggingT IO ()
+runCreateProcess_ :: String -> CreateProcess -> LogT IO ()
 runCreateProcess_ src p = do
   let p' =
         p
@@ -39,7 +39,6 @@ runCreateProcess_ src p = do
         , std_out = CreatePipe
         , std_err = CreatePipe
         }
-  logger <- askLoggerIO
   let src' = "exec_|" <> T.pack src
       srcOut = src' <> "|stdout"
       srcErr = src' <> "|stderr"
@@ -56,7 +55,7 @@ runCreateProcess_ src p = do
  where
    pipeConsumer logger s =
      decodeUtf8C =$= CT.lines =$ awaitForever (\txt ->
-       (`runLoggingT` logger) (logDebugNS s txt))
+       (`runLogT` logger) (logDebugNS s txt))
 
 
 -- | Remove a single trailing newline character from the end of the String
