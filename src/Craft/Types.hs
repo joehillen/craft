@@ -8,6 +8,7 @@ module Craft.Types
 , module Craft.Error
 , module Craft.File.Mode
 , module Path
+, module Data.Versions
 )
 where
 
@@ -27,7 +28,7 @@ import           Data.Map.Strict            (Map)
 import qualified Data.Map.Strict            as Map
 import           Data.Maybe                 (isNothing)
 import qualified Data.Text                  as T
-import           Data.Versions              (parseV)
+import           Data.Versions
 import           Formatting
 import           Language.Haskell.TH.Syntax (Exp, Q)
 import           Path                       hiding (File)
@@ -251,8 +252,8 @@ directory dp =
   }
 
 
-data Version
-  = Version String
+data Version a
+  = Version a
   | AnyVersion
   | Latest
   deriving (Show)
@@ -260,7 +261,7 @@ data Version
 
 -- Note: This may or may not make sense.
 -- Open to suggestions if any of this seems incorrect.
-instance Eq Version where
+instance Eq a => Eq (Version a) where
   (==) AnyVersion  _           = True
   (==) _           AnyVersion  = True
   (==) Latest      Latest      = True
@@ -272,7 +273,7 @@ instance Eq Version where
 data Package
   = Package
     { _pkgName    :: PackageName
-    , _pkgVersion :: Version
+    , _pkgVersion :: Version String
     }
   deriving (Eq, Show)
 
@@ -463,7 +464,7 @@ showProcess p =
     RawCommand fp args -> unwords [fp, unwords args]
 
 
-instance Ord Version where
+instance Ord a => Ord (Version a) where
   compare AnyVersion  AnyVersion  = EQ
   compare AnyVersion  Latest      = LT
   compare AnyVersion  (Version _) = EQ
@@ -472,17 +473,7 @@ instance Ord Version where
   compare Latest      (Version _) = GT
   compare (Version _) AnyVersion  = EQ
   compare (Version _) Latest      = LT
-  compare (Version a) (Version b) = compareVersions a b
-
-
-compareVersions :: String -> String -> Ordering
-compareVersions a b =
-  compare (ver a) (ver b)
- where
-  ver x =
-    case parseV (T.pack x) of
-      Left err -> error $ "Failed to parse version '" ++ x ++ "': " ++ show err
-      Right v  -> v
+  compare (Version a) (Version b) = compare a b
 
 
 package :: PackageName -> Package

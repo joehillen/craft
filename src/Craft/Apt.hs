@@ -112,7 +112,7 @@ debName :: Lens' Deb String
 debName = debPkg . pkgName
 
 
-debVersion :: Lens' Deb Version
+debVersion :: Lens' Deb (Version a)
 debVersion = debPkg . pkgVersion
 
 
