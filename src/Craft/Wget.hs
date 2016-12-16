@@ -47,30 +47,27 @@ instance Craftable Wget Wget where
     let watchDest = do
           w <- watchCraft_ destf
           return (w, wg)
+
+    let freshDownload = do
+          run wg
+          case wg ^. chksum of
+            Nothing      -> watchDest
+            Just chksum' ->
+              check chksum' >>= \case
+                Checksum.Matched           -> watchDest
+                Checksum.Failed r          -> $craftError $ show r
+                Checksum.Mismatched actual -> $craftError $ mismatchError actual
     File.exists destfp >>= \case
       True ->
         case wg ^. chksum of
-          Nothing      -> watchDest
+          Nothing      -> freshDownload
           Just chksum' ->
             check chksum' >>= \case
               Checksum.Matched      -> watchDest
               Checksum.Failed r     -> $craftError $ show r
-              Checksum.Mismatched _ -> do
-                run wg -- Try redownloading the file if the checksum doesn't match.
-                check chksum' >>= \case
-                  Checksum.Matched           -> watchDest
-                  Checksum.Failed r          -> $craftError $ show r
-                  Checksum.Mismatched actual -> $craftError $ mismatchError actual
+              Checksum.Mismatched _ -> freshDownload
       False -> do
-        run wg
-        case wg ^. chksum of
-          Nothing      -> return ()
-          Just chksum' ->
-            check chksum' >>= \case
-              Checksum.Matched           -> return ()
-              Checksum.Failed r          -> $craftError $ show r
-              Checksum.Mismatched actual -> $craftError $ mismatchError actual
-        void watchDest
+        void freshDownload
         return (Created, wg)
 
 
