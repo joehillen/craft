@@ -122,12 +122,13 @@ instance Craftable a b => Craftable [a] [b] where
   craft = mapM craft
   watchCraft as = do
     (ws, bs) <- unzip <$> mapM watchCraft as
-    let w = if all (== Unchanged) ws then
-              Unchanged
-            else if all (== Created) ws then
-              Created
-            else
-              Updated
+    let w =
+          if all (== Unchanged) ws
+          then Unchanged
+          else
+            if all (== Created) ws
+            then Created
+            else Updated
     return (w, bs)
 
 
@@ -141,15 +142,17 @@ instance Destroyable a => Destroyable [a] where
         rs' -> Just rs'
   watchDestroy xs = do
     (ws, rs) <- unzip <$> mapM watchDestroy xs
-    let w = if all (== Unchanged) ws then
-              Unchanged
-            else if all (== Removed) ws then
-              Removed
-            else
-              Updated
-    let res = case catMaybes rs of
-                []  -> Nothing
-                rs' -> Just rs'
+    let w =
+          if all (== Unchanged) ws
+          then Unchanged
+          else
+            if all (== Removed) ws
+            then Removed
+            else Updated
+    let res =
+          case catMaybes rs of
+            []  -> Nothing
+            rs' -> Just rs'
     return (w, res)
 
 
