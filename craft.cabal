@@ -131,7 +131,6 @@ library
                      , transformers
                      , unix
                      , versions
-                     , wreq
                      , yaml
 
 test-suite craft-test
