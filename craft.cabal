@@ -67,6 +67,7 @@ library
                      , Craft.SSH.AuthorizedKey
                      , Craft.SSH.PrivateKey
                      , Craft.SSH.PublicKey
+                     , Craft.Systemd
                      , Craft.SysV
                      , Craft.Types
                      , Craft.Ubuntu
