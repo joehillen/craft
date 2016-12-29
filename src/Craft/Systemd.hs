@@ -70,3 +70,12 @@ service name content = do
     unit $
       file (systemDP</>fn)
       & strContent .~ renderUnit content
+
+
+timer :: String -> UnitFormat -> Craft Unit
+timer name content = do
+  fn <- parseRelFile $ name++".timer"
+  return $
+    unit $
+      file (systemDP</>fn)
+      & strContent .~ renderUnit content
