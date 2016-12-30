@@ -6,7 +6,8 @@ module Craft.S3File where
 
 import           Control.Lens            hiding (noneOf)
 import           Control.Monad.Logger    (logDebug)
-import           Crypto.Hash             (SHA1)
+import           Craft.Checksum
+import qualified Crypto.Hash             as Crypto
 import           Crypto.MAC.HMAC         (HMAC, hmac)
 import           Data.ByteArray.Encoding
 import qualified Data.ByteString.Char8   as B8
@@ -20,11 +21,11 @@ import qualified Craft.File              as File
 
 data S3File
   = S3File
-    { _file    :: File
-    , _source  :: String
-    , _domain  :: String
-    , _version :: Version
-    , _auth    :: Maybe (String, String) -- ^ (AWSAccessKeyId, AWSSecretAccessKey)
+    { _file      :: File
+    , _source      :: String
+    , _domain      :: String
+    , _fileVersion :: Version MD5
+    , _auth        :: Maybe (String, String) -- ^ (AWSAccessKeyId, AWSSecretAccessKey)
     }
     deriving (Eq, Show)
 
@@ -41,11 +42,11 @@ instance FileLike S3File where
 s3file :: AbsFilePath -> String -> S3File
 s3file fp source' =
   S3File
-  { _file    = Craft.file fp
-  , _domain  = "s3.amazonaws.com"
-  , _source  = source'
-  , _version = AnyVersion
-  , _auth    = Nothing
+  { _file      = Craft.file fp
+  , _domain    = "s3.amazonaws.com"
+  , _source    = source'
+  , _fileVersion = AnyVersion
+  , _auth      = Nothing
   }
 
 
@@ -75,7 +76,7 @@ authHeaders method s3f =
                 ++ date ++ "\n"
                 ++ canonicalizedAmzHeaders
                 ++ sourceUrl
-          sigHMAC :: HMAC SHA1
+          sigHMAC :: HMAC Crypto.SHA1
           sigHMAC = hmac (B8.pack awsSecretKey)
                          (B8.pack toSign)
           sig = B8.unpack $ convertToBase Base64 sigHMAC
@@ -88,11 +89,11 @@ authHeaders method s3f =
              ]
 
 
-getS3Sum :: S3File -> Craft (Maybe String)
+getS3Sum :: S3File -> Craft (Maybe MD5)
 getS3Sum f = do
   hdrs <- authHeaders "HEAD" f
   headers <- parseExecStdout httpHeaders "curl" (hdrs ++ ["-s", "-XHEAD", "-I", f ^. url])
-  return $ filter ('"' /=) <$> lookup "ETag" headers
+  return $ MD5 <$> filter ('"' /=) <$> lookup "ETag" headers
 
 
 httpHeaders :: Parser [(String, String)]
@@ -116,42 +117,43 @@ instance Craftable S3File S3File where
     let downloadFile = do
           hdrs <- authHeaders "GET" s3f
           exec_ "curl" $ hdrs ++ ["-XGET", "-s", "-L", "-o", fromAbsFile fp, s3f'^.url]
-    let verify expected = do
-          md5chksum <- File.md5sum fp
-          when (md5chksum /= expected) (
-            $craftError $ "verify S3File failed! Expected `" ++ expected ++ "` "
-                       ++ "Got `" ++ md5chksum ++ "` for " ++ show s3f')
-
+    let verify expected =
+          check (s3f'^.Craft.S3File.file) expected >>= \case
+            Matched -> return ()
+            ChecksumFailed r -> $craftError $ "Checksum failed: "++show r
+            Mismatched a -> $craftError $ "Wrong Version: "++show a++"Expected: "++show expected
     getS3Sum s3f' >>= \case
       Nothing -> $craftError $ "Failed to get chksum from S3 for: " ++ show s3f'
       Just etag -> do
         exists <- File.exists fp
-        w <- if exists then do
-                curSum <- File.md5sum fp
-                case s3f' ^. version of
-                  AnyVersion -> return Unchanged
-                  Latest
-                    | etag == curSum -> return Unchanged
-                    | otherwise -> do
-                        downloadFile
-                        verify etag
-                        return Updated
-                  Version verStr
-                    | curSum == verStr -> return Unchanged
-                    | verStr /= etag ->
-                        $craftError $
-                           "Cannot download specific file version from S3. "
-                           ++ "Found version " ++ etag ++ " for " ++ show s3f'
-                    | otherwise -> do
-                        downloadFile
-                        verify verStr
-                        return Updated
-              else do
-                downloadFile
-                case s3f' ^. version of
-                  Version verStr -> verify verStr
-                  _              -> verify etag
-                return Created
+        w <-
+          if exists
+          then do
+            curSum <- MD5 <$> File.md5sum fp
+            case s3f'^.fileVersion of
+              AnyVersion -> return Unchanged
+              Latest
+                | etag == curSum -> return Unchanged
+                | otherwise -> do
+                    downloadFile
+                    verify etag
+                    return Updated
+              ExactVersion md5sum
+                | curSum == md5sum -> return Unchanged
+                | md5sum /= etag ->
+                    $craftError $
+                       "Cannot download specific file version from S3. "
+                       ++ "Found version " ++ show etag ++ " for " ++ show s3f'
+                | otherwise -> do
+                    downloadFile
+                    verify md5sum
+                    return Updated
+          else do
+            downloadFile
+            case s3f'^.fileVersion of
+              ExactVersion ver -> verify ver
+              _                -> verify etag
+            return Created
 
         fw <- watchCraft_ $ s3f' ^. Craft.S3File.file
         if changed w then

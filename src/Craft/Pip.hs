@@ -1,6 +1,7 @@
 module Craft.Pip where
 
 import           Control.Lens           hiding (noneOf)
+import qualified Data.Text              as T
 import           Formatting             hiding (char)
 import qualified Formatting             as F
 import           Text.Megaparsec
@@ -8,8 +9,8 @@ import           Text.Megaparsec.String
 
 import           Craft                  hiding (latest, package)
 import qualified Craft
-import qualified Craft.File             as File
 import qualified Craft.Directory        as Dir
+import qualified Craft.File             as File
 
 
 newtype PipPackage = PipPackage Package
@@ -75,8 +76,9 @@ get pn = do
           case lookup "Version" results of
             Nothing      ->
               $craftError "`pip show` did not return a version"
-            Just version ->
-              return . Just . PipPackage $ Package pn $ Version version
+            Just v -> do
+              v' <- parseVersionString v
+              return . Just . PipPackage $ Package pn $ ExactVersion v'
 
 
 -- TESTME
@@ -100,7 +102,7 @@ pkgArgs (PipPackage (Package pn pv)) = go pv
  where
   go AnyVersion  = [pn]
   go Latest      = ["--upgrade", pn]
-  go (Version v) = ["--ignore-installed", pn ++ "==" ++ v]
+  go (ExactVersion v) = ["--ignore-installed", pn ++ "==" ++ (T.unpack $ prettyV v)]
 
 
 pipInstall :: PipPackage -> Craft ()
@@ -119,7 +121,7 @@ instance Craftable PipPackage PipPackage where
             Just ppkg'@(PipPackage pkg') -> do
               let newver = pkg' ^. pkgVersion
               case ver of
-                Version _ ->
+                ExactVersion _ ->
                   when (newver /= ver) $
                     $craftError
                       $ formatToString

@@ -28,7 +28,7 @@ import           Data.Map.Strict            (Map)
 import qualified Data.Map.Strict            as Map
 import           Data.Maybe                 (isNothing)
 import qualified Data.Text                  as T
-import           Data.Versions
+import           Data.Versions hiding (Version(..))
 import           Formatting
 import           Language.Haskell.TH.Syntax (Exp, Q)
 import           Path                       hiding (File)
@@ -253,7 +253,7 @@ directory dp =
 
 
 data Version a
-  = Version a
+  = ExactVersion a
   | AnyVersion
   | Latest
   deriving (Show)
@@ -265,15 +265,35 @@ instance Eq a => Eq (Version a) where
   (==) AnyVersion  _           = True
   (==) _           AnyVersion  = True
   (==) Latest      Latest      = True
-  (==) Latest      (Version _) = False
-  (==) (Version _) Latest      = False
-  (==) (Version a) (Version b) = a == b
+  (==) Latest      (ExactVersion _) = False
+  (==) (ExactVersion _) Latest      = False
+  (==) (ExactVersion a) (ExactVersion b) = a == b
+
+
+instance Ord a => Ord (Version a) where
+  compare AnyVersion  AnyVersion  = EQ
+  compare AnyVersion  Latest      = LT
+  compare AnyVersion  (ExactVersion _) = EQ
+  compare Latest      AnyVersion  = GT
+  compare Latest      Latest      = EQ
+  compare Latest      (ExactVersion _) = GT
+  compare (ExactVersion _) AnyVersion  = EQ
+  compare (ExactVersion _) Latest      = LT
+  compare (ExactVersion a) (ExactVersion b) = compare a b
+
+
+parseVersionString :: String -> Craft Versioning
+parseVersionString s =
+  either
+    (\x -> $craftError $ "Failed to parse version `"++s++"`: "++show x)
+    return
+    $ parseV $ T.pack s
 
 
 data Package
   = Package
     { _pkgName    :: PackageName
-    , _pkgVersion :: Version String
+    , _pkgVersion :: Version Versioning
     }
   deriving (Eq, Show)
 
@@ -462,18 +482,6 @@ showProcess p =
   case cmdspec p of
     ShellCommand s     -> s
     RawCommand fp args -> unwords [fp, unwords args]
-
-
-instance Ord a => Ord (Version a) where
-  compare AnyVersion  AnyVersion  = EQ
-  compare AnyVersion  Latest      = LT
-  compare AnyVersion  (Version _) = EQ
-  compare Latest      AnyVersion  = GT
-  compare Latest      Latest      = EQ
-  compare Latest      (Version _) = GT
-  compare (Version _) AnyVersion  = EQ
-  compare (Version _) Latest      = LT
-  compare (Version a) (Version b) = compare a b
 
 
 package :: PackageName -> Package

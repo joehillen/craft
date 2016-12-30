@@ -2,6 +2,7 @@ module Craft.Apt where
 
 import           Control.Lens
 import           Control.Monad
+import qualified Data.Text as T
 import           Formatting
 
 import           Craft
@@ -56,8 +57,8 @@ dpkgQueryShow :: String -> String -> Craft String
 dpkgQueryShow pattern n = expectOutput dpkgQueryBin [ "--show", "--showformat", pattern, n ]
 
 
-dpkgQueryVersion :: String -> Craft String
-dpkgQueryVersion = dpkgQueryShow "${Version}"
+dpkgQueryVersion :: String -> Craft Versioning
+dpkgQueryVersion = parseVersionString <=< dpkgQueryShow "${Version}"
 
 
 dpkgQueryPackage :: String -> Craft String
@@ -69,8 +70,8 @@ getAptPackage pn =
   dpkgQueryStatus pn >>= \case
     Failure _ -> return Nothing
     Success _ -> Just <$> do
-      r <- dpkgQueryVersion pn
-      return $ Package pn (Version r)
+      v <- dpkgQueryVersion pn
+      return $ Package pn (ExactVersion v)
 
 
 aptInstallArgs :: [String]
@@ -89,7 +90,7 @@ aptInstallMult pkgs = aptGet $ aptInstallArgs ++ map pkgArg pkgs
 pkgArg :: Package -> String
 pkgArg (Package pn AnyVersion)  = pn
 pkgArg (Package pn Latest)      = pn
-pkgArg (Package pn (Version v)) = pn ++ "=" ++ v
+pkgArg (Package pn (ExactVersion v)) = pn ++ "=" ++ (T.unpack $ prettyV v)
 
 
 aptRemove :: Package -> Craft ()
@@ -112,7 +113,7 @@ debName :: Lens' Deb String
 debName = debPkg . pkgName
 
 
-debVersion :: Lens' Deb (Version a)
+debVersion :: Lens' Deb (Version Versioning)
 debVersion = debPkg . pkgVersion
 
 
@@ -125,8 +126,8 @@ deb f = do
 packageFromDebFile :: File -> Craft Package
 packageFromDebFile f = do
   name    <- dpkgDebPackage f
-  version <- dpkgDebVersion f
-  return $ Package name (Version version)
+  v <- dpkgDebVersion f
+  return $ Package name (ExactVersion v)
 
 
 dpkgInstall :: File -> Craft ()
@@ -148,8 +149,8 @@ dpkgDebShow pattern f =
   expectOutput dpkgDebBin ["--show", "--showformat", pattern, fromAbsFile $ f^.path]
 
 
-dpkgDebVersion :: File -> Craft String
-dpkgDebVersion = dpkgDebShow "${Version}"
+dpkgDebVersion :: File -> Craft Versioning
+dpkgDebVersion = parseVersionString <=< dpkgDebShow "${Version}"
 
 
 dpkgDebPackage :: File -> Craft String

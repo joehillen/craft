@@ -11,7 +11,7 @@ import qualified Craft.File     as File
 data Wget = Wget
   { _url    :: String
   , _dest   :: File
-  , _chksum :: Maybe Checksum
+  , _chksum :: Version Checksum
   , _args   :: Args -- ^Additional arguments to add to the wget command, such as timeouts.
   }
   deriving (Show, Eq)
@@ -23,7 +23,7 @@ wget url' destfp =
   Wget
   { _url    = url'
   , _dest   = file destfp
-  , _chksum = Nothing
+  , _chksum = Latest
   , _args   = []
   }
 
@@ -40,35 +40,38 @@ instance Craftable Wget Wget where
   watchCraft wg = do
     let destf  = wg ^. dest & fileContent .~ Nothing
     let destfp = wg ^. dest . path
-    let mismatchError actual = "Checksum Mismatch for `"<>wg^.url<>"`. "
-                            <> "Expected `"<>show (wg^.chksum)<>"` "
-                            <> "Got `"<>show actual<>"`"
+    let mismatchError actual =
+             "Checksum Mismatch for `"<>wg^.url<>"`. "
+          <> "Expected `"<>show (wg^.chksum)<>"` "
+          <> "Got `"<>show actual<>"`"
     let check = Checksum.check destf
     let watchDest = do
           w <- watchCraft_ destf
           return (w, wg)
     File.exists destfp >>= \case
       True ->
-        case wg ^. chksum of
-          Nothing      -> watchDest
-          Just chksum' ->
+        case wg^.chksum of
+          AnyVersion  -> watchDest
+          Latest      -> watchDest
+          ExactVersion chksum' ->
             check chksum' >>= \case
-              Checksum.Matched      -> watchDest
-              Checksum.Failed r     -> $craftError $ show r
-              Checksum.Mismatched _ -> do
+              Checksum.Matched          -> watchDest
+              Checksum.ChecksumFailed r -> $craftError $ show r
+              Checksum.Mismatched _     -> do
                 run wg -- Try redownloading the file if the checksum doesn't match.
                 check chksum' >>= \case
                   Checksum.Matched           -> watchDest
-                  Checksum.Failed r          -> $craftError $ show r
+                  Checksum.ChecksumFailed r  -> $craftError $ show r
                   Checksum.Mismatched actual -> $craftError $ mismatchError actual
       False -> do
         run wg
         case wg ^. chksum of
-          Nothing      -> return ()
-          Just chksum' ->
+          AnyVersion   -> return ()
+          Latest       -> return ()
+          ExactVersion chksum' ->
             check chksum' >>= \case
               Checksum.Matched           -> return ()
-              Checksum.Failed r          -> $craftError $ show r
+              Checksum.ChecksumFailed r  -> $craftError $ show r
               Checksum.Mismatched actual -> $craftError $ mismatchError actual
         void watchDest
         return (Created, wg)

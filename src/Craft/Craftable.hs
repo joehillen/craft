@@ -182,13 +182,13 @@ instance Craftable Package Package where
     ce <- ask
     let pm       = ce ^. craftPackageManager
     let name     = pkg ^. pkgName
-    let version  = pkg ^. pkgVersion
+    let ver      = pkg ^. pkgVersion
     let get      = (pm ^. pmGetter) name
     let install  = (pm ^. pmInstaller) pkg
     let upgrade  = (pm ^. pmUpgrader) pkg
     let pkgError = "craft Package `" ++ name ++ "` failed! "
     let notFound = pkgError ++ "Not Found."
-    let wrongVersion got = pkgError ++ "Wrong Version: " ++ show got ++ " Excepted: " ++ show version
+    let wrongVersion got = pkgError ++ "Wrong Version: " ++ show got ++ " Excepted: " ++ show ver
     get >>= \case                                                                -- Is the package installed?
       Nothing           -> do                                                    -- It's not installed.
         install                                                                  -- Install it.
@@ -196,15 +196,16 @@ instance Craftable Package Package where
           Nothing           -> $craftError notFound                              -- Not Found. The install failed!
           Just installedPkg ->
             let ok = return (Created, installedPkg)
-            in case version of                                                   -- Make sure it's the right version
+            in case ver of                                                   -- Make sure it's the right version
                  AnyVersion -> ok
                  Latest     -> ok
-                 Version  _ -> if version == installedPkg ^. pkgVersion
-                                then ok
-                                else $craftError $ wrongVersion (installedPkg ^. pkgVersion)
+                 ExactVersion  _ ->
+                   if ver == installedPkg ^. pkgVersion
+                   then ok
+                   else $craftError $ wrongVersion (installedPkg ^. pkgVersion)
       Just installedPkg -> do                                                    -- Package was already installed.
         let installedVersion = installedPkg ^. pkgVersion
-        case version of
+        case ver of
           AnyVersion -> return (Unchanged, installedPkg)
           Latest     -> do                                                       -- Ensure it's the latest version.
             upgrade
@@ -215,15 +216,15 @@ instance Craftable Package Package where
                   if upgradedPkg^.pkgVersion /= installedPkg^.pkgVersion         -- If the package version increased,
                   then (Updated, upgradedPkg)                                    -- Then the package was upgraded
                   else (Unchanged, upgradedPkg)                                  -- Else it was already the latest.
-          Version _  ->                                                          -- Expecting a specific version
-            if version == installedVersion                                       -- Is the correct version installed?
+          ExactVersion _  ->                                                          -- Expecting a specific version
+            if ver == installedVersion                                       -- Is the correct version installed?
             then return (Unchanged, installedPkg)
             else do
               upgrade                                                           -- Try upgrading to the correct version.
               get >>= \case
                 Nothing          -> $craftError notFound                        -- Where did it go?
                 Just upgradedPkg ->
-                  if version == upgradedPkg ^. pkgVersion                        -- Is the correct version installed?
+                  if ver == upgradedPkg ^. pkgVersion                        -- Is the correct version installed?
                   then return (Updated, upgradedPkg)
                   else $craftError $ wrongVersion (upgradedPkg ^. pkgVersion)
 
