@@ -66,16 +66,18 @@ systemDP = $(mkAbsDir "/etc/systemd/system")
 service :: String -> UnitFormat -> Craft Unit
 service name content = do
   fn <- parseRelFile $ name++".service"
-  return $
-    unit $
-      file (systemDP</>fn)
-      & strContent .~ renderUnit content
+  return $ unit $ file (systemDP</>fn) & strContent .~ renderUnit content
 
 
 timer :: String -> UnitFormat -> Craft Unit
 timer name content = do
   fn <- parseRelFile $ name++".timer"
-  return $
-    unit $
-      file (systemDP</>fn)
-      & strContent .~ renderUnit content
+  return $ unit $ file (systemDP</>fn) & strContent .~ renderUnit content
+
+
+craftOneshot :: String -> UnitFormat -> Craft (Watched, File)
+craftOneshot name content = do
+  fn <- parseRelFile $ name++".service"
+  (w, f) <- watchCraft $ file (systemDP</>fn) & strContent .~ renderUnit content
+  when (changed w) $ systemctl "daemon-reload" []
+  return (w, f)
