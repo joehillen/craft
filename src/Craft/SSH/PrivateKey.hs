@@ -1,7 +1,3 @@
-{-# LANGUAGE CPP #-}
-#if __GLASGOW_HASKELL__ >= 711
-{-# OPTIONS_GHC -fno-warn-redundant-constraints #-}
-#endif
 module Craft.SSH.PrivateKey where
 
 import           Control.Lens
@@ -30,8 +26,10 @@ instance Craftable PrivateKey PrivateKey where
   watchCraft pk = do
     craft_ $ userDir $ pk^.user
     pkPath <- Craft.SSH.PrivateKey.path pk
-    w <- watchCraft_ $ file pkPath
-                       & mode          .~ Mode RW O O
-                       & ownerAndGroup .~ pk ^. user
-                       & strContent    .~ pk ^. content
+    w <-
+      watchCraft_ $
+        file pkPath
+        & mode          .~ Mode RW O O
+        & ownerAndGroup .~ pk ^. user
+        & strContent    .~ pk ^. content
     return (w, pk)
