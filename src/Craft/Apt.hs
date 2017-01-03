@@ -21,7 +21,9 @@ apt =
 
 
 aptGet :: [String] -> Craft ()
-aptGet args = exec_ "apt-get" $ ["-q", "-y"] ++ args
+aptGet args =
+  withEnvVar "DEBIAN_FRONTEND" "noninteractive" $
+    exec_ "apt-get" $ ["-q", "-y"] ++ args
 
 
 update :: Craft ()
@@ -47,13 +49,17 @@ dpkgQueryStatus pn = dpkgQuery ["-s", pn]
 expectOutput :: String -> [String] -> Craft String
 expectOutput cmd args = do
   r <- $stdoutOrError =<< exec cmd args
-  when (null r) $ $craftError $ formatToString ("'"%string%"' returned an empty result!")
-                                               (unwords $ cmd:args)
+  when (null r) $
+    $craftError $
+      formatToString
+        ("'"%string%"' returned an empty result!")
+        (unwords $ cmd:args)
   return r
 
 
 dpkgQueryShow :: String -> String -> Craft String
-dpkgQueryShow pattern n = expectOutput dpkgQueryBin [ "--show", "--showformat", pattern, n ]
+dpkgQueryShow pattern n =
+  expectOutput dpkgQueryBin [ "--show", "--showformat", pattern, n ]
 
 
 dpkgQueryVersion :: String -> Craft String
@@ -73,17 +79,20 @@ getAptPackage pn =
       return $ Package pn (Version r)
 
 
-aptInstallArgs :: [String]
-aptInstallArgs = ["-o", "DPkg::Options::=--force-confnew", "install"]
+aptInstallOptions :: [String]
+aptInstallOptions =
+  [ "-o", "DPkg::Options::=--force-confnew"
+  , "-o", "DPkg::Options::=--force-overwrite"
+  ]
 
 
 aptInstall :: Package -> Craft ()
-aptInstall pkg = aptGet $ aptInstallArgs ++ [pkgArg pkg]
+aptInstall pkg = aptGet $ aptInstallOptions ++ ["install", pkgArg pkg]
 
 
 aptInstallMult :: [Package] -> Craft ()
 aptInstallMult []   = return ()
-aptInstallMult pkgs = aptGet $ aptInstallArgs ++ map pkgArg pkgs
+aptInstallMult pkgs = aptGet $ aptInstallOptions ++ "install":map pkgArg pkgs
 
 
 pkgArg :: Package -> String
@@ -99,6 +108,14 @@ aptRemove Package{..} = aptGet ["remove", _pkgName]
 aptPurge :: Package -> Craft ()
 aptPurge Package{..} = aptGet ["remove", _pkgName, "--purge"]
 
+
+distUpgrade :: Craft ()
+distUpgrade = do
+  aptGet $ aptInstallOptions ++ ["dist-upgrade"]
+
+
+--------------------------------------------------------------------------------
+-- Deb
 
 data Deb = Deb
   { _debFile :: File
