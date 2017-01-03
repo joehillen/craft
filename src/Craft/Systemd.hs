@@ -1,32 +1,19 @@
 module Craft.Systemd where
 
-import Control.Lens
-import Craft
+import           Control.Lens
+import           Craft
+import           Data.ByteString (ByteString)
+import           Language.Haskell.TH
 
-data Unit
-  = Unit
-  { _unitFile       :: File
-  , _enabled        :: Bool
-  , _status         :: Status
-  , _reloadOnChange :: Bool
-  }
 
-unit :: File -> Unit
-unit f =
-  Unit
-  { _unitFile = f
-  , _enabled = True
-  , _status = Running
-  , _reloadOnChange = True
-  }
+systemdDP :: AbsDirPath
+systemdDP = $(mkAbsDir "/etc/systemd/system")
 
-type UnitFormat = [(String, [(String, String)])]
+--------------------------------------------------------------------------------
+-- Helpers
 
-data Status
-  = Running
-  | Stopped
-
-makeLenses ''Unit
+systemctl :: String -> Args -> Craft ()
+systemctl cmd args = exec_ "systemctl" $ cmd:args
 
 renderUnit :: UnitFormat -> String
 renderUnit = unlines . map renderSection
@@ -38,46 +25,139 @@ renderField :: (String, String) -> String
 renderField (k, v) = k++"="++v
 
 
-systemctl :: String -> Args -> Craft ()
-systemctl cmd args = exec_ "systemctl" $ cmd:args
+--------------------------------------------------------------------------------
+-- Types
+
+type UnitFormat = [(String, [(String, String)])]
+
+data Status
+  = Running
+  | Stopped
+
+
+--------------------------------------------------------------------------------
+-- Unit
+
+data Unit
+  = Unit
+  { _unitFile       :: File
+  }
+
+unit :: AbsFilePath -> UnitFormat -> Unit
+unit fp content =
+  Unit
+  { _unitFile = file fp & strContent .~ renderUnit content
+  }
+makeLenses ''Unit
+
+
+parseUnit :: ByteString -> UnitFormat
+parseUnit _s = error "Craft.Systemd.parseUnit not implemented!"
+
+
+unitContent :: Lens' Unit UnitFormat
+unitContent =
+  lens
+    (view $ unitFile . fileContent . _Just . to parseUnit)
+    (\u uf -> u & unitFile . strContent .~ renderUnit uf)
 
 
 instance Craftable Unit Unit where
   watchCraft u = do
     w <- watchCraft_ $ u^.unitFile
-    let name = fromRelFile $ filename $ u^.unitFile.path
     when (changed w) $ systemctl "daemon-reload" []
-    if u^.enabled
-      then systemctl "enable" [name]
-      else systemctl "disable" [name]
-    case u^.status of
-      Stopped -> systemctl "stop" [name]
-      Running -> do
-        if (u^.reloadOnChange && changed w)
-          then systemctl "reload-or-restart" [name]
-          else systemctl "start" [name]
     return (w, u)
 
+mkUnitPath :: FilePath -> Q Exp
+mkUnitPath s = [| systemdDP </> $(mkRelFile s) |]
 
-systemDP :: AbsDirPath
-systemDP = $(mkAbsDir "/etc/systemd/system")
+--------------------------------------------------------------------------------
+-- Service
+
+data Service
+  = Service
+  { _serviceUnit     :: Unit
+  , _enabled         :: Bool
+  , _status          :: Status
+  , _restartOnChange :: Bool
+  , _reloadOnChange  :: Bool
+  , _watches         :: [Watched]
+  }
+
+service :: AbsFilePath -> UnitFormat -> Service
+service fp content =
+  Service
+  { _serviceUnit = unit fp content
+  , _enabled         = True
+  , _status          = Running
+  , _restartOnChange = True
+  , _reloadOnChange  = True
+  , _watches         = []
+  }
+makeLenses ''Service
+
+mkServicePath :: FilePath -> Q Exp
+mkServicePath s = [| systemdDP </> $(mkRelFile (s++".service")) |]
+
+serviceFileName :: Lens' Service RelFilePath
+serviceFileName =
+  lens
+    (view $ serviceUnit.unitFile.path.to filename)
+    (\s fn -> s & serviceUnit.unitFile.path .~ ((s^.serviceUnit.unitFile.path.to parent)</>fn))
+
+serviceCommand :: String -> Service -> Craft ()
+serviceCommand cmd s = systemctl cmd [fromRelFile $ s^.serviceFileName]
+
+start :: Service -> Craft ()
+start = serviceCommand "start"
+
+restart :: Service -> Craft ()
+restart = serviceCommand "restart"
+
+stop :: Service -> Craft ()
+stop = serviceCommand "stop"
+
+enable :: Service -> Craft ()
+enable = serviceCommand "enable"
+
+disable :: Service -> Craft ()
+disable = serviceCommand "disable"
+
+reload :: Service -> Craft ()
+reload = serviceCommand "reload"
+
+reloadOrRestart :: Service -> Craft ()
+reloadOrRestart = serviceCommand "reload-or-restart"
+
+instance Craftable Service Service where
+  watchCraft s = do
+    !w <- watchCraft_ $ s^.serviceUnit
+    if s^.enabled
+      then enable s
+      else disable s
+    case s^.status of
+      Stopped -> stop s
+      Running -> do
+        when (w /= Created && any changed (w:s^.watches)) $
+          if s^.restartOnChange
+            then restart s
+            else
+              if s^.reloadOnChange
+                then reloadOrRestart s
+                else return ()
+        start s
+    return (w, s)
 
 
-service :: String -> UnitFormat -> Craft Unit
-service name content = do
-  fn <- parseRelFile $ name++".service"
-  return $ unit $ file (systemDP</>fn) & strContent .~ renderUnit content
+--------------------------------------------------------------------------------
+-- Timer
 
+mkTimerPaths :: FilePath -> Q Exp
+mkTimerPaths s = [| (mkUnitPath (s++".service"), mkUnitPath (s++".timer")) |]
 
-timer :: String -> UnitFormat -> Craft Unit
-timer name content = do
-  fn <- parseRelFile $ name++".timer"
-  return $ unit $ file (systemDP</>fn) & strContent .~ renderUnit content
-
-
-craftOneshot :: String -> UnitFormat -> Craft (Watched, File)
-craftOneshot name content = do
-  fn <- parseRelFile $ name++".service"
-  (w, f) <- watchCraft $ file (systemDP</>fn) & strContent .~ renderUnit content
-  when (changed w) $ systemctl "daemon-reload" []
-  return (w, f)
+craftTimer :: String -> UnitFormat -> UnitFormat -> Craft ()
+craftTimer name serviceContent timerContent = do
+  tn <- parseRelFile $ name++".timer"
+  sn <- parseRelFile $ name++".service"
+  craft_ $ unit (systemdDP</>sn) serviceContent
+  craft_ $ service (systemdDP</>tn) timerContent
