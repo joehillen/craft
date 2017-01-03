@@ -2,7 +2,8 @@ module Craft.Systemd where
 
 import           Control.Lens
 import           Craft
-import           Data.ByteString (ByteString)
+import           Data.ByteString     (ByteString)
+import           Data.List           (isSuffixOf)
 import           Language.Haskell.TH
 
 
@@ -97,7 +98,13 @@ service fp content =
 makeLenses ''Service
 
 mkServicePath :: FilePath -> Q Exp
-mkServicePath s = [| systemdDP </> $(mkRelFile (s++".service")) |]
+mkServicePath s =
+  let ext = ".service"
+      sn =
+        if ext `isSuffixOf` s
+          then s
+          else s++ext
+  in [| systemdDP </> $(mkRelFile sn) |]
 
 serviceFileName :: Lens' Service RelFilePath
 serviceFileName =
