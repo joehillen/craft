@@ -51,6 +51,13 @@ unit fp content =
   }
 makeLenses ''Unit
 
+instance FileLike Unit where
+  type FileLikePath Unit = AbsFilePath
+  path = unitFile.path
+  mode = unitFile.mode
+  ownerID = unitFile.fileOwnerID
+  groupID = unitFile.fileGroupID
+
 
 parseUnit :: ByteString -> UnitFormat
 parseUnit _s = error "Craft.Systemd.parseUnit not implemented!"
@@ -97,6 +104,13 @@ service fp content =
   }
 makeLenses ''Service
 
+instance FileLike Service where
+  type FileLikePath Service = AbsFilePath
+  path = serviceUnit.path
+  mode = serviceUnit.mode
+  ownerID = serviceUnit.ownerID
+  groupID = serviceUnit.groupID
+
 mkServicePath :: FilePath -> Q Exp
 mkServicePath s =
   let ext = ".service"
@@ -109,8 +123,8 @@ mkServicePath s =
 serviceFileName :: Lens' Service RelFilePath
 serviceFileName =
   lens
-    (view $ serviceUnit.unitFile.path.to filename)
-    (\s fn -> s & serviceUnit.unitFile.path .~ ((s^.serviceUnit.unitFile.path.to parent)</>fn))
+    (view $ path.to filename)
+    (\s fn -> s & path .~ ((s^.path.to parent)</>fn))
 
 serviceCommand :: String -> Service -> Craft ()
 serviceCommand cmd s = systemctl cmd [fromRelFile $ s^.serviceFileName]
