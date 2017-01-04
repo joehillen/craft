@@ -34,9 +34,8 @@ getGroup f =
     Just g -> return g
 
 
--- TODO: name :: Lens' File RelFilePath
-name :: Getter File RelFilePath
-name = filePath . to filename
+name :: Lens' File RelFilePath
+name = fileName
 
 
 multiple :: [AbsFilePath] -> Mode -> User -> Group -> Maybe ByteString -> [File]

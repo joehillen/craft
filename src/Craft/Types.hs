@@ -332,6 +332,12 @@ makeLenses ''GroupName
 makeLenses ''GroupID
 
 
+fileName :: Lens' File RelFilePath
+fileName =
+  lens
+    (view $ path.to filename)
+    (\s fn -> s & path .~ ((s^.path.to parent)</>fn))
+
 strContent :: Lens' File String
 strContent =
   lens
@@ -380,6 +386,13 @@ instance FileLike Directory where
   mode = directoryMode
   ownerID = directoryOwnerID
   groupID = directoryGroupID
+
+
+dirName :: Lens' Directory RelDirPath
+dirName =
+  lens
+    (view $ path.to dirname)
+    (\s fn -> s & path .~ ((s^.path.to parent)</>fn))
 
 
 data User

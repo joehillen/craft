@@ -70,7 +70,7 @@ makeLenses ''UserOptions
 -- Nothing means rely on the system's default behavior
 userOptions :: String -> Craft UserOptions
 userOptions n = do
-  dirName <- parseRelDir n
+  dn <- parseRelDir n
   return UserOptions
          { _optName       = n
          , _optUID        = Nothing
@@ -78,7 +78,7 @@ userOptions n = do
          , _optGroup      = Nothing
          , _optUserGroup  = True
          , _optGroups     = []
-         , _optHome       = $(mkAbsDir "/home")</>dirName
+         , _optHome       = $(mkAbsDir "/home")</>dn
          , _optCreateHome = True
          , _optPassword   = Nothing
          , _optSalt       = Nothing

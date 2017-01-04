@@ -121,10 +121,7 @@ mkServicePath s =
   in [| systemdDP </> $(mkRelFile sn) |]
 
 serviceFileName :: Lens' Service RelFilePath
-serviceFileName =
-  lens
-    (view $ path.to filename)
-    (\s fn -> s & path .~ ((s^.path.to parent)</>fn))
+serviceFileName = serviceUnit.unitFile.fileName
 
 serviceCommand :: String -> Service -> Craft ()
 serviceCommand cmd s = systemctl cmd [fromRelFile $ s^.serviceFileName]

@@ -20,6 +20,10 @@ import           Craft.Internal
 import qualified Craft.User             as User
 
 
+name :: Lens' Directory RelDirPath
+name = dirName
+
+
 getOwner :: Directory -> Craft User
 getOwner d =
   User.fromID (d ^. ownerID) >>= \case
