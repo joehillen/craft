@@ -22,44 +22,9 @@ vagrant up
 ./basic
 ```
 
-# TODO
+# TODOs
 
-In order of priority:
-
- * Use logger that supports callstacks
- * Use Text
- * Craftable User User
- * Replace use of "error" with proper exception types.
- * Remove Exec_
- * Send stdin to Exec
- * use `data-default`
- * distinguish CraftEnv from EnvVars
-   - maybe rename it to CraftSettings
- * Figure out how to use a ReaderT on top of Craft and document it.
- * grep
- * Separate logger for DSL operations?
- * Escaping Exec args, i.e. spaces, quotes, pipes, etc
- * Define `Gettable` with functional dependencies or type-families
- * microlenses?
- * Break up craft into multiple packages
- * Tests
-    - Quickcheck
-    - Unit Tests
-    - Integration Tests
- * Docs
-   - Haddock
-   - FAQ
-   - Getting Started Guide
-   - Tutorials
-   - Examples
-   - Haskell for DevOps
-   - Craft for Haskellers
- * Master/Agent runner
- * Replace facter with something type-safe (lpuppet?)
- * Task-oriented abstraction a la fabric, capistrano, ansible-playbook, etc
- * Exec Pipes
- * Implement ssh client library in pure Haskell
-
+See [TODOs.org](TODOs.org)
 
 # Notes
 

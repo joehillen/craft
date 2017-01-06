@@ -1,0 +1,35 @@
+In order of priority
+* TODO Use logger that supports callstacks
+  - https://hackage.haskell.org/packages/log
+* TODO Craftable User User
+* TODO Replace use of "error" with proper exception types and call stacks
+* TODO Remove Exec_
+** TODO Exec Pipes
+** TODO Send stdin to Exec
+** TODO grep
+* TODO Use Text?
+* TODO use `data-default`
+* TODO distinguish CraftEnv from EnvVars
+  - maybe rename it to CraftSettings
+* TODO Figure out how to use a ReaderT on top of Craft and document it.
+* TODO Separate logger for DSL operations?
+* TODO Escaping Exec args, i.e. spaces, quotes, pipes, etc
+* TODO Define `Gettable` with functional dependencies or type-families
+* TODO microlenses?
+* TODO Break up craft into multiple packages
+* TODO Tests
+  - Quickcheck
+  - Unit Tests
+  - Integration Tests
+* TODO Docs
+  - Haddock
+  - FAQ
+  - Getting Started Guide
+  - Tutorials
+  - Examples
+  - Haskell for DevOps
+  - Craft for Haskellers
+* TODO Master/Agent runner
+* TODO Replace facter with something type-safe (lpuppet?)
+* TODO Task-oriented abstraction a la fabric, capistrano, ansible-playbook, etc
+* TODO Implement ssh client library in pure Haskell
