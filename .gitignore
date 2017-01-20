@@ -2,6 +2,8 @@ TAGS
 *~
 *.o
 *.hi
+*.dyn_hi
+*.dyn_o
 dist/
 bin/
 .stack-work/
