@@ -12,6 +12,7 @@ module Craft.Types
 where
 
 import           Control.Lens
+import           Control.Monad              (unless)
 import           Control.Monad.Catch        (MonadCatch, MonadThrow)
 import           Control.Monad.IO.Class     (MonadIO)
 import           Control.Monad.Logger       (LoggingT, MonadLogger, logDebugNS,
@@ -34,6 +35,7 @@ import           Path                       hiding (File)
 import qualified Path
 import           Prelude                    hiding (FilePath)
 import qualified Prelude
+import           System.Directory           (doesFileExist)
 import           System.Process
 
 import           Craft.Error
@@ -106,6 +108,9 @@ interpreter runner (FileWrite fp content next) = do
 interpreter runner (SourceFile sourcer dest next) = do
   src <- Trans.lift sourcer
   logDebugNS "SourceFile" $ sformat (string%" "%string) src $ fromAbsFile dest
+  !exists <- Trans.lift $ doesFileExist src
+  unless exists $ do
+    error $ "Failed to source file! " ++ src ++ " does not exist!"
   (runSourceFile runner) src dest >> next
 
 
