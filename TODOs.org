@@ -1,12 +1,13 @@
 In order of priority
 * TODO Use logger that supports callstacks
   - https://hackage.haskell.org/packages/log
+* TODO Craftable Group Group
 * TODO Craftable User User
 * TODO Replace use of "error" with proper exception types and call stacks
 * TODO Remove Exec_
 ** TODO Exec Pipes
+*** TODO grep
 ** TODO Send stdin to Exec
-** TODO grep
 * TODO Use Text?
 * TODO use `data-default`
 * TODO distinguish CraftEnv from EnvVars

@@ -1,6 +1,0 @@
-flags: {}
-packages:
-- '.'
-extra-deps:
-- process-1.4.2.0
-resolver: lts-6.20
