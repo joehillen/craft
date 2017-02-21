@@ -12,11 +12,10 @@ where
 
 import           Data.Bits       ((.&.), (.|.))
 import           Data.Char       (digitToInt)
-import           Data.DeriveTH
 import           Data.List
 import           System.Posix    (FileMode)
 import qualified System.Posix
-import           Test.QuickCheck (Arbitrary, arbitrary, choose)
+import           Test.QuickCheck (Arbitrary, arbitrary, elements)
 
 
 toHuman :: Mode -> String
@@ -48,9 +47,15 @@ data ModeSet
  | RWXS
  deriving (Eq, Enum, Show)
 
+instance Arbitrary ModeSet where
+  arbitrary = elements [O .. RWXS]
+
 data Mode
   = Mode ModeSet ModeSet ModeSet
   deriving (Eq, Show)
+
+instance Arbitrary Mode where
+  arbitrary = Mode <$> arbitrary <*> arbitrary <*> arbitrary
 
 
 toOctalString :: Mode -> String
@@ -233,7 +238,3 @@ oFM RWS  = oR .|. oW .|.        oT
 oFM RXS  = oR .|.        oX .|. oT
 oFM WXS  =        oW .|. oX .|. oT
 oFM RWXS = oR .|. oW .|. oX .|. oT
-
-
-derive makeArbitrary ''ModeSet
-derive makeArbitrary ''Mode

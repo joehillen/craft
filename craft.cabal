@@ -101,7 +101,6 @@ library
                      , conduit-extra
                      , containers
                      , cryptonite
-                     , derive
                      , directory
                      , exceptions
                      , fast-logger
