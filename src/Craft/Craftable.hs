@@ -255,35 +255,29 @@ instance Craftable User User where
         useradd user
         userFromStr name >>= \case
           Nothing -> notFound
-          Just actualUser -> do
-            verify user actualUser
-            return (Created, actualUser)
+          Just actualUser -> return (Created, actualUser)
       Just existingUser -> do
-        res <- mapM (\(test', act) -> if test' user existingUser
-                                      then return True
-                                      else act >> return False)
-                 [ (test userName,            $notImplemented "set username")
-                 , (test uid,                 $notImplemented "set uid")
-                 , (test (userGroup . groupName), $notImplemented "set group")
-                 , (test userGroups,              $notImplemented "set groups")
-                 , (test userHome,                $notImplemented "set home")
-                 , (test userPasswordHash,        $notImplemented "set passwordHash")
-                 , (test userShell,               $notImplemented "set shell")
-                 ]
+        let guarded (test', act)
+              | test' user existingUser = return True
+              | otherwise               = act >> return False
+        let usermod flag value = exec_ "usermod" [flag, value, name]
+        let test l a b = a ^. l == b ^. l
+        res <-
+          mapM guarded
+            [ (test uid,                     usermod "-u" (show $ user^.uid))
+            , (test (userGroup . groupName), usermod "-g" (show $ user^.userGroup.groupName))
+            , (test userGroups,              usermod "-G" (intercalate "," (map show $ user^.userGroups)))
+            , (test userHome,                usermod "-d" (fromAbsDir (user^.userHome)))
+            , (test userComment,             usermod "-c" (user^.userComment))
+            , (test userPasswordHash,        usermod "-p" (user^.userPasswordHash))
+            , (test userShell,               usermod "-s" (fromAbsFile $ user^.userShell))
+            ]
         if and res
-        then return (Unchanged, existingUser)
-        else
-          userFromStr (show name) >>= \case
-            Nothing -> notFound
-            Just user'' -> do
-              verify user'' user
-              return (Updated, user'')
-
-   where
-    test :: Eq a => Lens' b a -> b -> b -> Bool
-    test l a b = a ^. l == b ^. l
-    verify :: User -> User -> Craft ()
-    verify _expectedUser _actualUser = $notImplemented "verify User"
+          then return (Unchanged, existingUser)
+          else
+            userFromStr (show name) >>= \case
+              Nothing -> notFound
+              Just user'' -> return (Updated, user'')
 
 
 instance Craftable Group Group where
