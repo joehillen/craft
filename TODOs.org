@@ -2,7 +2,7 @@ In order of priority
 * TODO Use logger that supports callstacks
   - https://hackage.haskell.org/packages/log
 * TODO Craftable Group Group
-* TODO Craftable User User
+* TODO replace process with typed-process
 * TODO Replace use of "error" with proper exception types and call stacks
 * TODO Remove Exec_
 ** TODO Exec Pipes
