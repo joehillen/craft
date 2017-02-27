@@ -23,7 +23,6 @@ import           Control.Monad.Trans.Free   (FreeT, MonadFree, iterT)
 import           Data.ByteString            (ByteString)
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Char8      as B8
-import           Data.ByteString.Lens       (unpackedChars)
 import           Data.Map.Strict            (Map)
 import qualified Data.Map.Strict            as Map
 import           Data.Maybe                 (isNothing)
@@ -343,11 +342,8 @@ fileName =
     (view $ path.to filename)
     (\s fn -> s & path .~ ((s^.path.to parent)</>fn))
 
-strContent :: Lens' File String
-strContent =
-  lens
-    (view $ fileContent . _Just . unpackedChars)
-    (\f s -> f & fileContent .~ Just (B8.pack s))
+strContent :: Setter File File () String
+strContent = sets (\functor f -> f & fileContent .~ Just (B8.pack (functor ())))
 
 
 instance Eq File where
@@ -431,10 +427,7 @@ makeLenses ''Group
 
 
 owner :: FileLike a => Setter a a () User
-owner =
-  sets (\functor filelike -> doit filelike (functor ()))
- where
-   doit filelike o = filelike & ownerID .~ (o ^. uid)
+owner = sets (\functor filelike -> filelike & ownerID .~ ((functor ()) ^. uid))
 
 
 group :: FileLike a => Setter a a () Group

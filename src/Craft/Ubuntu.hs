@@ -1,8 +1,11 @@
 module Craft.Ubuntu where
 
 import           Control.Lens
-import           Data.ByteString.Lens
+import           Control.Monad.Logger (logDebug)
+import           Data.ByteString.Lens (unpackedChars)
+import           Data.Maybe           (catMaybes)
 import           Data.String.Utils    (replace)
+import qualified Data.Text            as T
 import           Formatting
 
 import           Craft
@@ -17,9 +20,16 @@ makeLenses ''PPA
 
 findPPAFiles :: PPA -> Craft [File]
 findPPAFiles (PPA url) = do
-  fs <- File.find $(mkAbsDir "/etc/apt/sources.list.d") ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
+  mbfs <-
+    mapM (File.getWithContent . view path)
+    =<< File.find
+          $(mkAbsDir "/etc/apt/sources.list.d")
+          ["-name", "*" ++ replace "/" "*" url ++ "*.list"]
+  let fs = catMaybes mbfs
   let nonEmpty = (> 0) . length . view (fileContent . _Just . unpackedChars)
-  return $ filter nonEmpty fs
+  let r = filter nonEmpty fs
+  $logDebug . T.pack $ "findPPAFiles found: " ++ show (map (fromAbsFile . view path) r)
+  return r
 
 
 instance Craftable PPA PPA where
