@@ -82,11 +82,18 @@ newSession :: SSHEnv -> IO Session
 newSession env = do
   randint <- abs <$> (randomIO :: IO Int)
   let defaultControlPathFN =
-        formatToString (".craft-ssh-session-"%s%":"%d%"-"%d)
+        formatToString (".ssh-"%s%":"%d%"-"%d)
           (env^.connectionString)
           (env^.sshPort)
           randint
-  defaultControlPath <- parseRelFile defaultControlPathFN
+  -- ssh will fail with "too long for Unix domain socket" if the hostname
+  -- is too long.
+  -- Just use randint for the socket name if the controlpath is long
+  let shortenedControlPath =
+        if length defaultControlPathFN >= 50
+          then "."++show randint
+          else defaultControlPathFN
+  defaultControlPath <- parseRelFile shortenedControlPath
   let controlPath = fromMaybe defaultControlPath (env^.sshControlPath)
   let args =    [ "-p", show $ env^.sshPort ] -- port
              ++ [ "-i", fromAbsFile $ env^.sshKey ] -- private key
