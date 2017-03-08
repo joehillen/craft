@@ -52,7 +52,7 @@ type RelDirPath  = Path Rel Dir
 data CraftEnv
   = CraftEnv
   { _craftPackageManager :: PackageManager
-  , _craftExecEnv        :: ExecEnv
+  , _craftExecEnvVars    :: ExecEnvVars
   , _craftCWD            :: AbsDirPath
   , _craftUserID         :: UserID
   }
@@ -63,7 +63,7 @@ craftEnv :: PackageManager -> CraftEnv
 craftEnv pm =
   CraftEnv
   { _craftPackageManager = pm
-  , _craftExecEnv        = Map.fromList [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
+  , _craftExecEnvVars    = Map.fromList [("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin")]
   , _craftCWD            = $(mkAbsDir "/")
   , _craftUserID         = rootUserID
   }
@@ -166,7 +166,7 @@ stdoutOrError = [|
     Failure r -> $craftError $ show r|]
 
 
-type ExecEnv = Map String String
+type ExecEnvVars = Map String String
 type CWD = AbsFilePath
 type PackageName = String
 

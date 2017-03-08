@@ -44,7 +44,7 @@ localProc :: CraftEnv -> Command -> Args -> CreateProcess
 localProc ce prog args =
   let UserID uid' = ce^.craftUserID in
   (proc prog args)
-    { env           = Just . Map.toList $ ce^.craftExecEnv
+    { env           = Just . Map.toList $ ce^.craftExecEnvVars
     , cwd           = Just . fromAbsDir $ ce^.craftCWD
     , close_fds     = True
     , create_group  = True

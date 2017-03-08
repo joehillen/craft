@@ -48,7 +48,7 @@ nspawnProc :: AbsDirPath -> CraftEnv -> Command -> Args -> CreateProcess
 nspawnProc dir ce cmd args =
   let UserID uid' = ce^.craftUserID in
   (proc "systemd-nspawn" ("-D":(fromAbsDir dir):"-q":cmd:args))
-  { env           = Just $ Map.toList (ce ^. craftExecEnv)
+  { env           = Just $ Map.toList (ce ^. craftExecEnvVars)
   , cwd           = Just $ fromAbsDir (ce^.craftCWD)
   , close_fds     = True
   , create_group  = True

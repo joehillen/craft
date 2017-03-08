@@ -33,14 +33,14 @@ runCraftVagrant :: VagrantSettings -> CraftEnv -> Craft a -> LoggingT IO a
 runCraftVagrant settings env configs = do
   uid' <- liftIO getRealUserID
   let box = vagrantBox settings
-  sysEnv <- Trans.lift System.Environment.getEnvironment
+  sysEnvVars <- Trans.lift System.Environment.getEnvironment
   cwd <- parseAbsDir =<< Trans.lift System.Directory.getCurrentDirectory
   -- vagrant ssh-config
   sshcfg <-
     runCraft
       runLocal
       (craftEnv (env ^. craftPackageManager)
-       & craftExecEnv .~ Map.fromList sysEnv
+       & craftExecEnvVars .~ Map.fromList sysEnvVars
        & craftCWD     .~ cwd
        & craftUserID  .~ UserID (fromIntegral uid'))
       $ do

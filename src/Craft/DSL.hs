@@ -84,7 +84,7 @@ parseFile parser fp = do
 
 craftExecPath :: CraftEnv -> Craft [AbsDirPath]
 craftExecPath ce = do
-  let dps = maybe [] (splitOn ":") . Map.lookup "PATH" $ ce^.craftExecEnv
+  let dps = maybe [] (splitOn ":") . Map.lookup "PATH" $ ce^.craftExecEnvVars
   mapM parseAbsDir dps
 
 
@@ -101,8 +101,8 @@ withPath :: [AbsDirPath] -> Craft a -> Craft a
 withPath = withEnvVar "PATH" . intercalate ":" . map fromAbsDir
 
 
-withEnv :: ExecEnv -> Craft a -> Craft a
-withEnv env = local (\r -> r & craftExecEnv .~ env)
+withEnvVars :: ExecEnvVars -> Craft a -> Craft a
+withEnvVars vars = local (\r -> r & craftExecEnvVars .~ vars)
 
 
 withCWD :: AbsDirPath -> Craft a -> Craft a
@@ -117,8 +117,8 @@ inDirectory dir = withCWD $ dir^.directoryPath
 withEnvVar :: String -> String -> Craft a -> Craft a
 withEnvVar name val go = do
   ce <- ask
-  let env = Map.insert name val $ ce ^. craftExecEnv
-  withEnv env go
+  let vars = Map.insert name val $ ce ^. craftExecEnvVars
+  withEnvVars vars go
 
 
 withUser :: User -> Craft a -> Craft a
