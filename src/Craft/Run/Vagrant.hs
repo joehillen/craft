@@ -52,8 +52,7 @@ runCraftVagrant settings env configs = do
   key <- parseAbsFile $ cfgLookupOrError box "identityfile" sshcfg
   -- vagrant ssh
   withSession
-    (sshEnv addr key
-     & sshUser .~ user
+    (sshEnv user addr key
      & sshPort .~ port)
     $ \session ->
         runCraft

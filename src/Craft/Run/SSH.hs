@@ -42,13 +42,13 @@ connectionString :: Optic' (->) (Const String) SSHEnv String
 connectionString = to (\env -> concat [env ^. sshUser, "@", env ^. sshAddr])
 
 
-sshEnv :: String -> AbsFilePath -> SSHEnv
-sshEnv addr key =
+sshEnv :: String -> String -> AbsFilePath -> SSHEnv
+sshEnv user addr key =
   SSHEnv
   { _sshAddr        = addr
   , _sshPort        = 22
   , _sshKey         = key
-  , _sshUser        = "root"
+  , _sshUser        = user
   , _sshControlPath = Nothing
   , _sshOptions     = sshDefaultOptions
   }
