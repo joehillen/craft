@@ -1,25 +1,28 @@
+{-# LANGUAGE BangPatterns #-}
 module Craft.Run.SSH where
 
-import           Control.Concurrent        (threadDelay)
-import           Control.Exception.Lifted  (bracket)
+import           Control.Concurrent         (threadDelay)
+import           Control.Exception.Lifted   (bracket)
 import           Control.Lens
-import           Control.Monad.Logger      (LoggingT, logDebugNS)
+import           Control.Monad.Logger       (LoggingT, logDebugNS)
 import           Control.Monad.Reader
-import qualified Control.Monad.Trans       as Trans
-import qualified Data.ByteString.Char8     as B8
-import           Data.List                 (intersperse)
-import qualified Data.Map.Strict           as Map
-import           Data.Maybe                (fromMaybe)
-import           Data.String.Utils         (replace)
-import qualified Data.Text                 as T
+import qualified Control.Monad.Trans        as Trans
+import qualified Data.ByteString.Char8      as B8
+import           Data.List                  (intersperse)
+import qualified Data.Map.Strict            as Map
+import           Data.Maybe                 (fromMaybe)
+import           Data.String.Utils          (replace)
+import qualified Data.Text                  as T
 import           Formatting
 import           Formatting.ShortFormatters
 import qualified Path
 import           Path.IO
-import           System.Process            (ProcessHandle)
-import qualified System.Process            as Process
-import qualified System.Process.ByteString as Proc.BS
-import           System.Random             hiding (next)
+import           System.Exit                (ExitCode (..))
+import           System.Process             (ProcessHandle)
+import qualified System.Process             as Process
+import qualified System.Process.ByteString  as Proc.BS
+import qualified System.Process.ListLike    as SPLL
+import           System.Random              hiding (next)
 import           System.Timeout
 
 import           Craft.Helpers
@@ -81,20 +84,23 @@ prependEachWith flag opts = flag:(intersperse flag opts)
 newSession :: SSHEnv -> IO Session
 newSession env = do
   randint <- abs <$> (randomIO :: IO Int)
-  let defaultControlPathFN =
-        formatToString (".ssh-"%s%":"%d%"-"%d)
-          (env^.connectionString)
-          (env^.sshPort)
-          randint
   -- ssh will fail with "too long for Unix domain socket" if the hostname
   -- is too long.
-  -- Just use randint for the socket name if the controlpath is long
-  let shortenedControlPath =
-        if length defaultControlPathFN >= 50
-          then "."++show randint
-          else defaultControlPathFN
-  defaultControlPath <- parseRelFile shortenedControlPath
-  let controlPath = fromMaybe defaultControlPath (env^.sshControlPath)
+  -- Just use randint for the socket suffix if the controlpath is long
+  let defaultControlPathFN =
+        let prefix = ".ssh-"
+            longSuffix =
+              formatToString (s%":"%d%"-"%d)
+                (env^.connectionString)
+                (env^.sshPort)
+                randint
+            suffix =
+              if length longSuffix <= 50
+                then longSuffix
+                else show randint
+         in prefix++suffix
+  defaultControlFP <- parseRelFile defaultControlPathFN
+  let controlPath = fromMaybe defaultControlFP (env^.sshControlPath)
   let args =    [ "-p", show $ env^.sshPort ] -- port
              ++ [ "-i", fromAbsFile $ env^.sshKey ] -- private key
              ++ prependEachWith "-o"
@@ -114,14 +120,33 @@ newSession env = do
   (_, _, _, !ph) <- Process.createProcess masterProc
   void $ timeout 10000000 {- 10 seconds -} $
     waitForControlPath controlPath
-  return
-    Session
-    { _sessionEnv              = env
-    , _sessionMasterProcess    = masterProc
-    , _sessionMasterProcHandle = ph
-    , _sessionControlPath      = controlPath
-    , _sessionArgs             = args
-    }
+  let session =
+        Session
+        { _sessionEnv              = env
+        , _sessionMasterProcess    = masterProc
+        , _sessionMasterProcHandle = ph
+        , _sessionControlPath      = controlPath
+        , _sessionArgs             = args
+        }
+  testSession session
+  return session
+
+
+testSession :: Session -> IO ()
+testSession session = do
+  (exit', _, stderr') <- SPLL.readCreateProcessWithExitCode (sshProc session "exit") "" {- stdin -}
+  case exit' of
+    ExitSuccess -> return ()
+    (ExitFailure code) -> do
+      let env = session^.sessionEnv
+      fail $
+        formatToString
+          (s%"@"%s%":"%d%" SSH connection failed with code "%d%": "%s)
+          (env^.sshUser)
+          (env^.sshAddr)
+          (env^.sshPort)
+          code
+          stderr'
 
 
 waitForControlPath :: Path a Path.File -> IO ()
@@ -151,14 +176,19 @@ runSSHSession :: Session -> CraftRunner
 runSSHSession session =
   CraftRunner
   { runExec =
-      \ce command args ->
-        runCreateProcess =<< sshProc session ce command args
+      \ce command args -> do
+        let p = sshProc session $ sshExecStr ce command args
+        logDebugNS "ssh" $ T.pack $ showProcess p
+        runCreateProcess p
   , runExec_ =
-      \ce command args ->
-        runCreateProcess_ (unwords (command:args)) =<< sshProc session ce command args
+      \ce command args -> do
+        let p = sshProc session (sshExecStr ce command args)
+        logDebugNS "ssh" $ T.pack $ showProcess p
+        runCreateProcess_ (unwords (command:args)) p
   , runFileRead =
       \fp -> do
-        p <- sshProc session craftEnvOverride "cat" [fromAbsFile fp]
+        let p = sshProc session $ sshExecStr craftEnvOverride "cat" [fromAbsFile fp]
+        logDebugNS "ssh" $ T.pack $ showProcess p
         (ec, content, stderr') <-
           Trans.lift $ Proc.BS.readCreateProcessWithExitCode p ""
         unless (isSuccessCode ec) $
@@ -166,7 +196,8 @@ runSSHSession session =
         return content
   , runFileWrite =
       \fp content -> do
-        p <- sshProc session craftEnvOverride "tee" [fromAbsFile fp]
+        let p = sshProc session $ sshExecStr craftEnvOverride "tee" [fromAbsFile fp]
+        logDebugNS "ssh" $ T.pack $ showProcess p
         (ec, _, stderr') <-
           Trans.lift $ Proc.BS.readCreateProcessWithExitCode p content
         unless (isSuccessCode ec) $
@@ -201,26 +232,23 @@ runCraftSSH env ce configs =
   withSession env $ \session -> runCraft (runSSHSession session) ce configs
 
 
-sshProc :: Session -> CraftEnv -> Command -> Args
-        -> LoggingT IO Process.CreateProcess
-sshProc session ce command args = do
-  let p =
-        Process.proc
-          "ssh"
-          $ (session^.sessionArgs)
-            ++ (prependEachWith "-o"
-                [ "ControlMaster=auto"
-                , "ControlPersist=no"
-                ])
-            ++ [ session ^. sessionEnv . connectionString
-               , fullExecStr
-               ]
-  logDebugNS "ssh" $ T.pack $ showProcess p
-  return p
- where
-  fullExecStr :: String
-  fullExecStr = unwords (sudoArgs ++ ["sh", "-c", "'", shellStr, "'"])
+sshProc :: Session -> String
+        -> Process.CreateProcess
+sshProc session command = do
+  Process.proc
+    "ssh"
+    $ (session^.sessionArgs)
+      ++ (prependEachWith "-o"
+          [ "ControlMaster=auto"
+          , "ControlPersist=no"
+          ])
+      ++ [ session ^. sessionEnv . connectionString
+         , command
+         ]
 
+sshExecStr :: CraftEnv -> Command -> Args -> String
+sshExecStr ce command args = unwords (sudoArgs ++ ["sh", "-c", "'", shellStr, "'"])
+ where
   sudoArgs :: [String]
   sudoArgs =
     let UserID uid' = ce^.craftUserID in
