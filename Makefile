@@ -14,4 +14,5 @@ examples: build
 
 test:
 	stack build --test
+	$(MAKE) -C examples clean
 	$(MAKE) -C examples test
