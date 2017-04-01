@@ -147,6 +147,9 @@ reload = serviceCommand "reload"
 reloadOrRestart :: Service -> Craft ()
 reloadOrRestart = serviceCommand "reload-or-restart"
 
+isActive :: Service -> Craft Bool
+isActive s = isSuccess <$> exec "systemctl" ["is-active", fromRelFile $ s^.serviceFileName]
+
 instance Craftable Service Service where
   watchCraft s = do
     !w <- watchCraft_ $ s^.serviceUnit
@@ -163,7 +166,8 @@ instance Craftable Service Service where
               if s^.reloadOnChange
                 then reloadOrRestart s
                 else return ()
-        start s
+        unlessM (isActive s) $
+          start s
     return (w, s)
 
 
