@@ -92,6 +92,7 @@ data Service
   , _watches         :: [Watched]
   }
 
+
 service :: AbsFilePath -> UnitFormat -> Service
 service fp content =
   Service
@@ -111,6 +112,7 @@ instance FileLike Service where
   ownerID = serviceUnit.ownerID
   groupID = serviceUnit.groupID
 
+
 mkServicePath :: FilePath -> Q Exp
 mkServicePath s =
   let ext = ".service"
@@ -120,35 +122,47 @@ mkServicePath s =
           else s++ext
   in [| systemdDP </> $(mkRelFile sn) |]
 
-serviceFileName :: Lens' Service RelFilePath
-serviceFileName = serviceUnit.unitFile.fileName
 
-serviceCommand :: String -> Service -> Craft ()
-serviceCommand cmd s = systemctl cmd [fromRelFile $ s^.serviceFileName]
+class HasUnitName a where
+  unitName :: Getter a String
 
-start :: Service -> Craft ()
-start = serviceCommand "start"
+instance HasUnitName Unit where
+  unitName = unitFile.fileName.(to fromRelFile)
 
-restart :: Service -> Craft ()
-restart = serviceCommand "restart"
+instance HasUnitName Service where
+  unitName = serviceUnit.unitName
 
-stop :: Service -> Craft ()
-stop = serviceCommand "stop"
 
-enable :: Service -> Craft ()
-enable = serviceCommand "enable"
 
-disable :: Service -> Craft ()
-disable = serviceCommand "disable"
+ctl :: HasUnitName u => String -> u -> Craft ()
+ctl cmd u = systemctl cmd [u^.unitName]
 
-reload :: Service -> Craft ()
-reload = serviceCommand "reload"
+start :: HasUnitName u => u -> Craft ()
+start = ctl "start"
 
-reloadOrRestart :: Service -> Craft ()
-reloadOrRestart = serviceCommand "reload-or-restart"
+restart :: HasUnitName u => u -> Craft ()
+restart = ctl "restart"
 
-isActive :: Service -> Craft Bool
-isActive s = isSuccess <$> exec "systemctl" ["is-active", fromRelFile $ s^.serviceFileName]
+stop :: HasUnitName u => u -> Craft ()
+stop = ctl "stop"
+
+enable :: HasUnitName u => u -> Craft ()
+enable = ctl "enable"
+
+disable :: HasUnitName u => u -> Craft ()
+disable = ctl "disable"
+
+reload :: HasUnitName u => u -> Craft ()
+reload = ctl "reload"
+
+reloadOrRestart :: HasUnitName u => u -> Craft ()
+reloadOrRestart = ctl "reload-or-restart"
+
+isActive :: HasUnitName a => a -> Craft Bool
+isActive u = isSuccess <$> exec "systemctl" ["is-active", u^.unitName]
+
+isEnabled :: HasUnitName a => a -> Craft Bool
+isEnabled u = isSuccess <$> exec "systemctl" ["is-enabled", u^.unitName]
 
 instance Craftable Service Service where
   watchCraft s = do
