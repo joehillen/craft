@@ -2,6 +2,8 @@ Craft only works with GHC 7.10.
 
 # WIP
 
+[![Join the chat at https://gitter.im/craft-hs/Lobby](https://badges.gitter.im/craft-hs/Lobby.svg)](https://gitter.im/craft-hs/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 ***THIS PROJECT IS A WIP. DO NOT USE! BIG REFACTORS COMING SOON.***
 
 # Getting Started
