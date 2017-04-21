@@ -8,6 +8,8 @@ In order of priority
 ** TODO Exec Pipes
 *** TODO grep
 ** TODO Send stdin to Exec
+* TODO Add concurrency
+  - https://hackage.haskell.org/package/concurrency
 * TODO Use Text?
 * TODO use `data-default`
 * TODO distinguish CraftEnv from EnvVars
