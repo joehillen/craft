@@ -284,6 +284,13 @@ instance Craftable Group Group where
   watchCraft grp = do
     _ <- $notImplemented "craft Group"
     -- groupFromName . groupname
+    -- if `getent group $gid`
+    --   then if old_group_name /= groupname
+    --          then `groupmod -n groupname OLD_GROUP_NAME`
+    --   else if `getent group $groupname`
+    --          then createGroup $gid $groupname
+    --          else `groupmod -g $gid $groupname`
+    -- TODO: handle non unique gid and groupnames
     exec_ "groupadd" $ toArg "--gid" (grp ^. Craft.Types.gid) ++ [show $ grp ^. groupName]
     exec_ "gpasswd" ["--members", intercalate "," (map show (grp ^. groupMembers))
                              , show $ grp ^. groupName]
