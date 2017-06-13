@@ -28,8 +28,7 @@ setup = do
   let pippkg = Craft.package "python-pip"
   unlessM (File.exists pipfp) $ craft_ pippkg
   craft_ $ map package ["pyopenssl", "ndg-httpsclient", "pyasn1"]
-  withPath [usrLocalBin] $
-    craft_ $ latest "pip"
+  craft_ $ latest "pip"
   destroy_ pippkg
   withPath [usrLocalBin] $
     mapM_ (craft_ . latest)
