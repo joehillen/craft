@@ -1,11 +1,8 @@
-name:                craft
+-- This file has been generated from package.yaml by hpack version 0.17.1.
+--
+-- see: https://github.com/sol/hpack
 
--- The package version.  See the Haskell package versioning policy (PVP)
--- for standards guiding when and how versions should be incremented.
--- http://www.haskell.org/haskellwiki/Package_versioning_policy
--- PVP summary:      +-+------- breaking API changes
---                   | | +----- non-breaking API additions
---                   | | | +--- code changes with no API change
+name:                craft
 version:             0.0.0.1
 synopsis:            A UNIX configuration management library in Haskell
 description:         A UNIX configuration management EDSL/library in Haskell
@@ -13,143 +10,186 @@ license:             Apache-2.0
 license-file:        LICENSE
 author:              Joe Hillenbrand
 maintainer:          joehillen@gmail.com
--- copyright:
--- category:
 build-type:          Simple
--- Extra files to be distributed with the package, such as examples or a
--- README.
--- extra-source-files:
-cabal-version:       >=1.10
+cabal-version:       >= 1.10
 
 library
-  ghc-options:         -Wall
-  hs-source-dirs:      src
-                     , src/Craft
-  exposed-modules:     Craft
-                     , Craft.Apt
-                     , Craft.Checksum
-                     , Craft.Craftable
-                     , Craft.Config
-                     , Craft.Config.Ini
-                     , Craft.Config.Json
-                     , Craft.Config.SSH
-                     , Craft.Config.Shell
-                     , Craft.Config.Yaml
-                     , Craft.DSL
-                     , Craft.Daemontools
-                     , Craft.Directory
-                     , Craft.Facter
-                     , Craft.File
-                     , Craft.File.Link
-                     , Craft.File.Mode
-                     , Craft.File.Sourced
-                     , Craft.Git
-                     , Craft.Group
-                     , Craft.Helpers
-                     , Craft.Hostname
-                     , Craft.Hosts
-                     , Craft.Hosts.Parser
-                     , Craft.Hosts.Types
-                     , Craft.Internal.Helpers
-                     , Craft.Internal.Helpers.Parsing
-                     , Craft.Internal.UserGroup
-                     , Craft.Nginx
-                     , Craft.Package
-                     , Craft.Pip
-                     , Craft.Run
-                     , Craft.Run.Internal
-                     , Craft.Run.Local
-                     , Craft.Run.Nspawn
-                     , Craft.Run.SSH
-                     , Craft.Run.Vagrant
-                     , Craft.S3File
-                     , Craft.SSH
-                     , Craft.SSH.AuthorizedKey
-                     , Craft.SSH.PrivateKey
-                     , Craft.SSH.PublicKey
-                     , Craft.Systemd
-                     , Craft.SysV
-                     , Craft.Types
-                     , Craft.Ubuntu
-                     , Craft.Upstart
-                     , Craft.User
-                     , Craft.Wget
-
-  other-modules:       Craft.Internal
-                     , Craft.Directory.Parser
-                     , Craft.Error
-
-  default-language:    Haskell2010
-  default-extensions:  BangPatterns
-                     , LambdaCase
-                     , MultiParamTypeClasses
-                     , OverloadedStrings
-                     , QuasiQuotes
-                     , RankNTypes
-                     , RecordWildCards
-                     , TemplateHaskell
-                     , TypeFamilies
-
-  build-depends:       base >= 4.8
-                     , aeson
-                     , aeson-pretty
-                     , ansi-terminal
-                     , async
-                     , bytestring
-                     , conduit
-                     , conduit-combinators
-                     , conduit-extra
-                     , containers
-                     , cryptonite
-                     , directory
-                     , exceptions
-                     , fast-logger
-                     , monad-logger
-                     , filepath
-                     , formatting
-                     , free
-                     , unordered-containers
-                     , ini
-                     , lifted-base
-                     , lens
-                     , megaparsec
-                     , MissingH
-                     , memory
-                     , monad-logger
-                     , mtl
-                     , path
-                     , path-io
-                     , process
-                     , process-extras
-                     , pureMD5
-                     , QuickCheck
-                     , random
-                     , split
-                     , streaming-commons
-                     , template-haskell
-                     , text
-                     , transformers
-                     , unix
-                     , versions
-                     , yaml
+  ghc-options: -Wall
+  hs-source-dirs:
+      src
+      src/Craft
+  exposed-modules:
+      Craft
+      Craft.Apt
+      Craft.Checksum
+      Craft.Craftable
+      Craft.Config
+      Craft.Config.Ini
+      Craft.Config.Json
+      Craft.Config.SSH
+      Craft.Config.Shell
+      Craft.Config.Yaml
+      Craft.DSL
+      Craft.Daemontools
+      Craft.Directory
+      Craft.Facter
+      Craft.File
+      Craft.File.Link
+      Craft.File.Mode
+      Craft.File.Sourced
+      Craft.Git
+      Craft.Group
+      Craft.Helpers
+      Craft.Hostname
+      Craft.Hosts
+      Craft.Hosts.Parser
+      Craft.Hosts.Types
+      Craft.Internal.Helpers
+      Craft.Internal.Helpers.Parsing
+      Craft.Internal.UserGroup
+      Craft.Nginx
+      Craft.Package
+      Craft.Pip
+      Craft.Run
+      Craft.Run.Internal
+      Craft.Run.Local
+      Craft.Run.Nspawn
+      Craft.Run.SSH
+      Craft.Run.Vagrant
+      Craft.S3File
+      Craft.SSH
+      Craft.SSH.AuthorizedKey
+      Craft.SSH.PrivateKey
+      Craft.SSH.PublicKey
+      Craft.Systemd
+      Craft.SysV
+      Craft.Types
+      Craft.Ubuntu
+      Craft.Upstart
+      Craft.User
+      Craft.Wget
+  other-modules:
+      Craft.Directory.Parser
+      Craft.Error
+      Craft.Internal
+      Apt
+      Checksum
+      Config
+      Config.Ini
+      Config.Json
+      Config.Shell
+      Config.SSH
+      Config.Yaml
+      Craftable
+      Daemontools
+      Directory
+      Directory.Parser
+      DSL
+      Error
+      Facter
+      File
+      File.Link
+      File.Mode
+      File.Sourced
+      Git
+      Group
+      Helpers
+      Hostname
+      Hosts
+      Hosts.Parser
+      Hosts.Types
+      Internal
+      Internal.Helpers
+      Internal.Helpers.Parsing
+      Internal.UserGroup
+      Nginx
+      Package
+      Pip
+      Run
+      Run.Internal
+      Run.Local
+      Run.Nspawn
+      Run.SSH
+      Run.Vagrant
+      S3File
+      SSH
+      SSH.AuthorizedKey
+      SSH.PrivateKey
+      SSH.PublicKey
+      Systemd
+      SysV
+      Types
+      Ubuntu
+      Upstart
+      User
+      Wget
+      Paths_craft
+  default-language: Haskell2010
+  default-extensions: BangPatterns LambdaCase MultiParamTypeClasses OverloadedStrings QuasiQuotes RankNTypes RecordWildCards TemplateHaskell TypeFamilies
+  build-depends:
+      megaparsec
+    , QuickCheck
+    , base >=4.8
+    , aeson
+    , aeson-pretty
+    , ansi-terminal
+    , async
+    , bytestring
+    , conduit
+    , conduit-combinators
+    , conduit-extra
+    , containers
+    , cryptonite
+    , directory
+    , exceptions
+    , fast-logger
+    , monad-logger
+    , filepath
+    , formatting
+    , free
+    , unordered-containers
+    , ini
+    , lifted-base
+    , lens
+    , MissingH
+    , memory
+    , monad-logger
+    , mtl
+    , path
+    , path-io
+    , process
+    , process-extras
+    , pureMD5
+    , random
+    , split
+    , streaming-commons
+    , template-haskell
+    , text
+    , transformers
+    , unix
+    , versions
+    , yaml
 
 test-suite craft-test
-  type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
-  main-is:             Spec.hs
-  other-modules:       Craft.Config.ShellSpec
-                     , Craft.File.ModeSpec
-                     , Craft.Hosts.ParserSpec
-                     , Craft.S3FileSpec
-                     , Craft.SSH.AuthorizedKeySpec
-                     , Craft.SSH.PublicKeySpec
-                     , Craft.SSHSpec
-  build-depends:       base
-                     , craft
-                     , hspec >= 1.3
-                     , hspec-megaparsec
-                     , heredoc
-                     , megaparsec
-                     , QuickCheck
-  ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall
-  default-language:    Haskell2010
+  type: exitcode-stdio-1.0
+  hs-source-dirs:
+      test
+  main-is: Spec.hs
+  other-modules:
+      Craft.Config.ShellSpec
+      Craft.File.ModeSpec
+      Craft.Hosts.ParserSpec
+      Craft.S3FileSpec
+      Craft.SSH.AuthorizedKeySpec
+      Craft.SSH.PublicKeySpec
+      Craft.SSHSpec
+  build-depends:
+      megaparsec
+    , QuickCheck
+    , base
+    , craft
+    , hspec >=1.3
+    , hspec-megaparsec
+    , heredoc
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
+  default-language: Haskell2010
