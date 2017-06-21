@@ -11,7 +11,6 @@ dependencies:
 library:
   source-dirs:
   - src
-  - src/Craft
   default-extensions:
   - BangPatterns
   - LambdaCase

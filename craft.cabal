@@ -2,22 +2,65 @@
 --
 -- see: https://github.com/sol/hpack
 
-name:                craft
-version:             0.0.0.1
-synopsis:            A UNIX configuration management library in Haskell
-description:         A UNIX configuration management EDSL/library in Haskell
-license:             Apache-2.0
-license-file:        LICENSE
-author:              Joe Hillenbrand
-maintainer:          joehillen@gmail.com
-build-type:          Simple
-cabal-version:       >= 1.10
+name:           craft
+version:        0.0.0.1
+synopsis:       A UNIX configuration management library in Haskell
+description:    A UNIX configuration management EDSL/library in Haskell
+author:         Joe Hillenbrand
+maintainer:     joehillen@gmail.com
+license:        Apache-2.0
+license-file:   LICENSE
+build-type:     Simple
+cabal-version:  >= 1.10
 
 library
-  ghc-options: -Wall
   hs-source-dirs:
       src
-      src/Craft
+  default-extensions: BangPatterns LambdaCase MultiParamTypeClasses OverloadedStrings QuasiQuotes RankNTypes RecordWildCards TemplateHaskell TypeFamilies
+  ghc-options: -Wall
+  build-depends:
+      megaparsec
+    , QuickCheck
+    , base >=4.8
+    , aeson
+    , aeson-pretty
+    , ansi-terminal
+    , async
+    , bytestring
+    , conduit
+    , conduit-combinators
+    , conduit-extra
+    , containers
+    , cryptonite
+    , directory
+    , exceptions
+    , fast-logger
+    , monad-logger
+    , filepath
+    , formatting
+    , free
+    , unordered-containers
+    , ini
+    , lifted-base
+    , lens
+    , MissingH
+    , memory
+    , monad-logger
+    , mtl
+    , path
+    , path-io
+    , process
+    , process-extras
+    , pureMD5
+    , random
+    , split
+    , streaming-commons
+    , template-haskell
+    , text
+    , transformers
+    , unix
+    , versions
+    , yaml
   exposed-modules:
       Craft
       Craft.Apt
@@ -72,117 +115,15 @@ library
       Craft.Directory.Parser
       Craft.Error
       Craft.Internal
-      Apt
-      Checksum
-      Config
-      Config.Ini
-      Config.Json
-      Config.Shell
-      Config.SSH
-      Config.Yaml
-      Craftable
-      Daemontools
-      Directory
-      Directory.Parser
-      DSL
-      Error
-      Facter
-      File
-      File.Link
-      File.Mode
-      File.Sourced
-      Git
-      Group
-      Helpers
-      Hostname
-      Hosts
-      Hosts.Parser
-      Hosts.Types
-      Internal
-      Internal.Helpers
-      Internal.Helpers.Parsing
-      Internal.UserGroup
-      Nginx
-      Package
-      Pip
-      Run
-      Run.Internal
-      Run.Local
-      Run.Nspawn
-      Run.SSH
-      Run.Vagrant
-      S3File
-      SSH
-      SSH.AuthorizedKey
-      SSH.PrivateKey
-      SSH.PublicKey
-      Systemd
-      SysV
-      Types
-      Ubuntu
-      Upstart
-      User
-      Wget
       Paths_craft
   default-language: Haskell2010
-  default-extensions: BangPatterns LambdaCase MultiParamTypeClasses OverloadedStrings QuasiQuotes RankNTypes RecordWildCards TemplateHaskell TypeFamilies
-  build-depends:
-      megaparsec
-    , QuickCheck
-    , base >=4.8
-    , aeson
-    , aeson-pretty
-    , ansi-terminal
-    , async
-    , bytestring
-    , conduit
-    , conduit-combinators
-    , conduit-extra
-    , containers
-    , cryptonite
-    , directory
-    , exceptions
-    , fast-logger
-    , monad-logger
-    , filepath
-    , formatting
-    , free
-    , unordered-containers
-    , ini
-    , lifted-base
-    , lens
-    , MissingH
-    , memory
-    , monad-logger
-    , mtl
-    , path
-    , path-io
-    , process
-    , process-extras
-    , pureMD5
-    , random
-    , split
-    , streaming-commons
-    , template-haskell
-    , text
-    , transformers
-    , unix
-    , versions
-    , yaml
 
 test-suite craft-test
   type: exitcode-stdio-1.0
+  main-is: Spec.hs
   hs-source-dirs:
       test
-  main-is: Spec.hs
-  other-modules:
-      Craft.Config.ShellSpec
-      Craft.File.ModeSpec
-      Craft.Hosts.ParserSpec
-      Craft.S3FileSpec
-      Craft.SSH.AuthorizedKeySpec
-      Craft.SSH.PublicKeySpec
-      Craft.SSHSpec
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
   build-depends:
       megaparsec
     , QuickCheck
@@ -191,5 +132,12 @@ test-suite craft-test
     , hspec >=1.3
     , hspec-megaparsec
     , heredoc
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
+  other-modules:
+      Craft.Config.ShellSpec
+      Craft.File.ModeSpec
+      Craft.Hosts.ParserSpec
+      Craft.S3FileSpec
+      Craft.SSH.AuthorizedKeySpec
+      Craft.SSH.PublicKeySpec
+      Craft.SSHSpec
   default-language: Haskell2010
