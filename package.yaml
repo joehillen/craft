@@ -36,6 +36,7 @@ library:
   - Craft.DSL
   - Craft.Daemontools
   - Craft.Directory
+  - Craft.Directory.Parser
   - Craft.Facter
   - Craft.File
   - Craft.File.Link

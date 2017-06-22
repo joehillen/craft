@@ -1,4 +1,4 @@
--- This file has been generated from package.yaml by hpack version 0.17.1.
+-- This file has been generated from package.yaml by hpack version 0.17.0.
 --
 -- see: https://github.com/sol/hpack
 
@@ -75,6 +75,7 @@ library
       Craft.DSL
       Craft.Daemontools
       Craft.Directory
+      Craft.Directory.Parser
       Craft.Facter
       Craft.File
       Craft.File.Link
@@ -112,7 +113,6 @@ library
       Craft.User
       Craft.Wget
   other-modules:
-      Craft.Directory.Parser
       Craft.Error
       Craft.Internal
       Paths_craft
@@ -134,6 +134,7 @@ test-suite craft-test
     , heredoc
   other-modules:
       Craft.Config.ShellSpec
+      Craft.Directory.ParserSpec
       Craft.File.ModeSpec
       Craft.Hosts.ParserSpec
       Craft.S3FileSpec
