@@ -204,6 +204,7 @@ runSSHSession session =
           $craftError $ "Failed to write file '" ++ fromAbsFile fp ++ "': " ++ B8.unpack stderr'
   , runSourceFile =
       \src dest -> do
+        -- TODO: come up with a backup alternative if rsync is unavailable
         let p =
               Process.proc "rsync"
                 [ "--quiet" -- suppress non-error messages
