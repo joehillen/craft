@@ -42,10 +42,6 @@ dpkgQueryBin :: String
 dpkgQueryBin = "dpkg-query"
 
 
-dpkgQueryStatus :: String -> Craft ExecResult
-dpkgQueryStatus pn = dpkgQuery ["-s", pn]
-
-
 expectOutput :: String -> [String] -> Craft String
 expectOutput cmd args = do
   r <- $stdoutOrError =<< exec cmd args
@@ -59,7 +55,7 @@ expectOutput cmd args = do
 
 dpkgQueryShow :: String -> String -> Craft String
 dpkgQueryShow pattern n =
-  expectOutput dpkgQueryBin [ "--show", "--showformat", pattern, n ]
+  expectOutput dpkgQueryBin [ "--show", "--showformat="++pattern, n ]
 
 
 dpkgQueryVersion :: String -> Craft String
@@ -72,11 +68,14 @@ dpkgQueryPackage = dpkgQueryShow "${Package}"
 
 getAptPackage :: PackageName -> Craft (Maybe Package)
 getAptPackage pn =
-  dpkgQueryStatus pn >>= \case
+  dpkgQuery ["--show", "--showformat=${Status}", pn] >>= \case
     Failure _ -> return Nothing
-    Success _ -> Just <$> do
-      r <- dpkgQueryVersion pn
-      return $ Package pn (Version r)
+    Success res ->
+      case words $ res^.stdout of
+        "install":_ -> do
+          r <- dpkgQueryVersion pn
+          return $ Just $ Package pn (Version r)
+        _             -> return Nothing
 
 
 aptInstallOptions :: [String]
