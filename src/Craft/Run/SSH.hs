@@ -11,7 +11,6 @@ import qualified Data.ByteString.Char8      as B8
 import           Data.List                  (intersperse)
 import qualified Data.Map.Strict            as Map
 import           Data.Maybe                 (fromMaybe)
-import           Data.String.Utils          (replace)
 import qualified Data.Text                  as T
 import           Formatting
 import           Formatting.ShortFormatters
@@ -256,24 +255,24 @@ sshExecStr ce command args = unwords (sudoArgs ++ ["sh", "-c", "'", shellStr, "'
     ["sudo", "-u", "\\#"++(show uid'), "-n", "-H"]
 
   shellStr :: String
-  shellStr = unwords (cdArgs ++ execEnvArgs ++ (command : map (escape specialChars) args))
-
-  specialChars :: [String]
-  specialChars = [" ", "*", "$", "'"]
+  shellStr = unwords (cdArgs ++ execEnvArgs ++ map escape (command:args))
 
   execEnvArgs :: [String]
-  execEnvArgs = map (escape specialChars) . renderEnvVars $ ce ^. craftExecEnvVars
+  execEnvArgs = map escape . renderEnvVars $ ce ^. craftExecEnvVars
 
   cdArgs :: [String]
-  cdArgs = ["cd", (fromAbsDir $ ce^.craftCWD), ";"]
+  cdArgs = ["cd", escape (fromAbsDir $ ce^.craftCWD), ";"]
 
-  escape :: [String] -> String -> String
-  escape = recur backslash
 
-  recur _   []     str = str
-  recur fun (a:as) str = recur fun as $ fun a str
-
-  backslash char' = replace char' ('\\':char')
+-- TODO: TESTME
+escape :: String -> String
+escape str = concat $ do
+  ch <- str
+  if (ch `elem` (" *$'{}\\#&;"::[Char]))
+    then do
+      return ('\\':[ch])
+    else
+      return [ch]
 
 
 renderEnvVars :: ExecEnvVars -> [String]
