@@ -137,6 +137,7 @@ test-suite craft-test
       Craft.Directory.ParserSpec
       Craft.File.ModeSpec
       Craft.Hosts.ParserSpec
+      Craft.Run.SSHSpec
       Craft.S3FileSpec
       Craft.SSH.AuthorizedKeySpec
       Craft.SSH.PublicKeySpec

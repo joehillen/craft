@@ -264,15 +264,16 @@ sshExecStr ce command args = unwords (sudoArgs ++ ["sh", "-c", "'", shellStr, "'
   cdArgs = ["cd", escape (fromAbsDir $ ce^.craftCWD), ";"]
 
 
--- TODO: TESTME
+specialChars :: [Char]
+specialChars = " \\`!#$&,;'\"|{}()[]<>?"
+
+
 escape :: String -> String
 escape str = concat $ do
   ch <- str
-  if (ch `elem` (" *$'{}\\#&;"::[Char]))
-    then do
-      return ('\\':[ch])
-    else
-      return [ch]
+  return $ if ch `elem` specialChars
+             then '\\':[ch]
+             else [ch]
 
 
 renderEnvVars :: ExecEnvVars -> [String]
