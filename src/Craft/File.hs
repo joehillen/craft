@@ -82,6 +82,8 @@ getWithContent fp =
       return . Just $ f & fileContent ?~ content'
 
 
+-- TODO: fallback if md5sum is not available
+-- XXX: use sha256sum?
 md5sum :: AbsFilePath -> Craft String
 md5sum fp = head . words <$> ($stdoutOrError =<< exec "md5sum" [fromAbsFile fp])
 

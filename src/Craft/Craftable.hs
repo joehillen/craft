@@ -329,6 +329,7 @@ instance Craftable File File where
           Just c  -> File.write fp c
         File.setStats f
         when (isJust $ f  ^. fileContent) $ do
+          -- XXX: use sha256?
           actualMD5 <- File.md5sum fp
           unless (actualMD5 == expectedMD5) $
             err "Content Mismatch."
