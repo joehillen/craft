@@ -269,11 +269,7 @@ specialChars = " \\`!#$&,;'\"|{}()[]<>?"
 
 
 escape :: String -> String
-escape str = concat $ do
-  ch <- str
-  return $ if ch `elem` specialChars
-             then '\\':[ch]
-             else [ch]
+escape str = foldr (\ ch str' -> if ch `elem` specialChars then '\\':ch:str' else ch:str') [] str
 
 
 renderEnvVars :: ExecEnvVars -> [String]
