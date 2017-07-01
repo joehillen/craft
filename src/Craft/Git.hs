@@ -127,48 +127,51 @@ get dp =
 
 
 instance Craftable Repo Repo where
-  watchCraft r = do
-    let dp = r ^. gitDirectory . path
-        ver = r ^. gitVersion
+  watchCraft repo' = do
+    let dp = repo' ^. gitDirectory . path
+        ver = repo' ^. gitVersion
         verify ver' =
           case ver of
             Commit _ ->
               when (ver' /= ver) $
                 $craftError
-                $ formatToString ("craft Git.Repo `"%shown%"` failed! Wrong Commit: "%shown%" Got: "%shown)
-                                 r ver ver'
+                $ formatToString ("craft Git.Repo' `"%shown%"` failed! Wrong Commit: "%shown%" Got: "%shown)
+                                 repo' ver ver'
             _ -> return ()
         checkoutCommit :: Craft Version
         checkoutCommit = do
-          setURL $ r ^. gitUrl
+          setURL $ repo' ^. gitUrl
           git "fetch" [origin]
           git "checkout" ["--force", show ver]
           git "reset" ["--hard"]
           ver' <- getVersion
           verify ver'
           return ver'
+    res <-
+      Dir.get dp >>= \case
+        Nothing -> do
+          case repo' ^. gitDepth of
+            Nothing -> git "clone" [repo' ^. gitUrl, fromAbsDir dp]
+            Just d  -> git "clone" ["--depth", show d, repo' ^. gitUrl, fromAbsDir dp]
+          Dir.get dp >>= \case
+            Nothing -> $craftError $ "craft Git.Repo' `"++show repo'++"` failed! "
+                                  ++ "Clone Failed. Directory `"++show dp++"` not found."
+            Just dir -> do
+              craft_ $ repo' ^. gitDirectory
+              inDirectory dir $ do
+                ver' <- checkoutCommit
+                return (Created, repo' & gitVersion .~ ver' )
 
-    Dir.get dp >>= \case
-      Nothing -> do
-        case r ^. gitDepth of
-          Nothing -> git "clone" [r ^. gitUrl, fromAbsDir dp]
-          Just d  -> git "clone" ["--depth", show d, r ^. gitUrl, fromAbsDir dp]
-        Dir.get dp >>= \case
-          Nothing -> $craftError $ "craft Git.Repo `"++show r++"` failed! "
-                                ++ "Clone Failed. Directory `"++show dp++"` not found."
-          Just dir -> do
-            craft_ $ r ^. gitDirectory
-            inDirectory dir $ do
-              ver' <- checkoutCommit
-              return (Created, r & gitVersion .~ ver' )
-
-      Just dir -> do
-        craft_ $ r ^. gitDirectory
-        inDirectory dir $ do
-          !beforeVersion <- getVersion
-          ver' <- checkoutCommit
-          case ver of
-            Latest branchName -> git "pull" [origin, branchName]
-            _                 -> return ()
-          return ( if beforeVersion == ver' then Unchanged else Updated
-                 , r & gitVersion .~ ver')
+        Just dir -> do
+          craft_ $ repo' ^. gitDirectory
+          inDirectory dir $ do
+            !beforeVersion <- getVersion
+            ver' <- checkoutCommit
+            case ver of
+              Latest branchName -> git "pull" [origin, branchName]
+              _                 -> return ()
+            return ( if beforeVersion == ver' then Unchanged else Updated
+                   , repo' & gitVersion .~ ver')
+    when (changed (fst res)) $
+      exec_ "chown" [((show $ repo'^.ownerID)++":"++(show $ repo'^.groupID)), "-R", fromAbsDir (repo'^.path)]
+    return res
