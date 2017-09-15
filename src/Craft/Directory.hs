@@ -75,3 +75,15 @@ find :: AbsDirPath -> Args -> Craft [Directory]
 find dir args = do
   ds <- mapM parseAbsDir . drop 1 . lines =<< $stdoutOrError =<< exec "find" ([fromAbsDir dir] ++ args ++ ["-type", "d"])
   catMaybes <$> (mapM get ds)
+
+
+setOwnerRecursive :: User -> Directory -> Craft ()
+setOwnerRecursive u d = exec_ "chown" ["-R", show (u^.User.name), fromAbsDir $ d^.path]
+
+
+setOwnerAndGroupRecursive :: User -> Directory -> Craft ()
+setOwnerAndGroupRecursive u d = exec_ "chown" ["-R", show (u^.userName)++":"++show (u^.userGroup.groupName), fromAbsDir $ d^.path]
+
+
+setGroupRecursive :: Group -> Directory -> Craft ()
+setGroupRecursive g d = exec_ "chgrp" ["-R", show (g^.groupName), fromAbsDir $ d^.path]
