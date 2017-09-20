@@ -5,6 +5,8 @@ In order of priority
 * TODO replace process with typed-process
 * TODO Replace use of "error" with proper exception types and call stacks
 * TODO Remove Exec_
+** TODO Rewrite Exec to work like Shake's cmd
+   https://hackage.haskell.org/package/shake-0.16/docs/Development-Shake-Command.html#v:cmd
 ** TODO Exec Pipes
 *** TODO grep
 ** TODO Send stdin to Exec
