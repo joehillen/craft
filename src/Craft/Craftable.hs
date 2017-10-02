@@ -122,13 +122,9 @@ instance Craftable a b => Craftable [a] [b] where
   craft = mapM craft
   watchCraft as = do
     (ws, bs) <- unzip <$> mapM watchCraft as
-    let w =
-          if all (== Unchanged) ws
-          then Unchanged
-          else
-            if all (== Created) ws
-            then Created
-            else Updated
+    let w | all (== Unchanged) ws = Unchanged
+          | all (== Created) ws   = Created
+          | otherwise             = Updated
     return (w, bs)
 
 
@@ -142,17 +138,12 @@ instance Destroyable a => Destroyable [a] where
         rs' -> Just rs'
   watchDestroy xs = do
     (ws, rs) <- unzip <$> mapM watchDestroy xs
-    let w =
-          if all (== Unchanged) ws
-          then Unchanged
-          else
-            if all (== Removed) ws
-            then Removed
-            else Updated
-    let res =
-          case catMaybes rs of
-            []  -> Nothing
-            rs' -> Just rs'
+    let w | all (== Unchanged) ws = Unchanged
+          | all (== Removed) ws   = Created
+          | otherwise             = Updated
+    let res = case catMaybes rs of
+                []  -> Nothing
+                rs' -> Just rs'
     return (w, res)
 
 
@@ -422,18 +413,15 @@ instance Craftable Directory Directory where
           Just stats -> return (True, stats)
       Just stats -> return (False, stats)
     dirChanged <-
-      or <$> sequence
-        [ runIfNotEq modeBefore  (d^.mode)    (flip setMode dp)
-        , runIfNotEq ownerBefore (d^.ownerID) (flip setOwnerID dp)
-        , runIfNotEq groupBefore (d^.groupID) (flip setGroupID dp)
-        ]
-    return $
-      if dirCreated
-      then (Created, d)
-      else
-        if dirChanged
-        then (Updated, d)
-        else (Unchanged, d)
+      or <$> sequence [ runIfNotEq modeBefore  (d^.mode)    (`setMode` dp)
+                      , runIfNotEq ownerBefore (d^.ownerID) (`setOwnerID` dp)
+                      , runIfNotEq groupBefore (d^.groupID) (`setGroupID` dp)
+                      ]
+    let result | dirCreated = (Created, d)
+               | dirChanged = (Updated, d)
+               | otherwise  = (Unchanged, d)
+    return result
+
 
 
 instance Craftable AbsDirPath Directory where
