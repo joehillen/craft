@@ -3,20 +3,21 @@ module Craft.Internal.UserGroup where
 import           Control.Lens
 import           Data.List                      (intercalate)
 import           Data.Maybe                     (fromJust)
+import           Data.Void                      (Void)
 import           Text.Megaparsec
-import           Text.Megaparsec.String
+import           Text.Megaparsec.Char
 
 import           Craft.Internal
 import           Craft.Internal.Helpers
 import           Craft.Internal.Helpers.Parsing
 
 
-colon :: Parser Char
+colon :: Parsec Void String Char
 colon = char ':'
 
 
 -- TESTME
-passwdParser :: Parser (UserName, UserID, GroupID, String, String, String)
+passwdParser :: Parsec Void String (UserName, UserID, GroupID, String, String, String)
 passwdParser = do
   name      <- UserName <$> someTill anyChar colon
   _password <- manyTill anyChar colon
@@ -29,7 +30,7 @@ passwdParser = do
 
 
 -- TESTME
-shadowParser :: Parser String
+shadowParser :: Parsec Void String String
 shadowParser = do
   _name <- someTill anyChar colon
   manyTill anyChar colon
@@ -69,7 +70,7 @@ getent :: String -> String -> Craft ExecResult
 getent dbase key = exec "getent" [dbase, key]
 
 
-parseGetent :: Parser a -> String -> String -> String -> Craft a
+parseGetent :: Parsec Void String a -> String -> String -> String -> Craft a
 parseGetent parser dbase key input =
   case parse parser (unwords ["getent", dbase, key]) input of
     Left  err -> $craftError $ show err
@@ -95,7 +96,7 @@ useradd User{..} =
 
 
 -- TESTME
-groupParser :: Parser Group
+groupParser :: Parsec Void String Group
 groupParser = do
   name <- GroupName <$> someTill anyChar colon
   _ <- manyTill anyChar colon

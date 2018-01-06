@@ -11,8 +11,9 @@ import           Crypto.MAC.HMAC         (HMAC, hmac)
 import           Data.ByteArray.Encoding
 import qualified Data.ByteString.Char8   as B8
 import qualified Data.Text               as T
+import           Data.Void               (Void)
 import           Text.Megaparsec
-import           Text.Megaparsec.String
+import           Text.Megaparsec.Char
 
 import           Craft                   hiding (try)
 import qualified Craft.File              as File
@@ -95,14 +96,14 @@ getS3Sum f = do
   return $ filter ('"' /=) <$> lookup "ETag" headers
 
 
-httpHeaders :: Parser [(String, String)]
+httpHeaders :: Parsec Void String [(String, String)]
 httpHeaders = do
   _ <- string "HTTP/1." >> oneOf ['0', '1'] >> string " 200 OK" >> eol
   headers <- header `sepEndBy1` eol
   return headers
 
 
-header :: Parser (String, String)
+header :: Parsec Void String (String, String)
 header = do
   k <- noneOf [':', '\r', '\n'] `someTill` string ": "
   v <- many $ noneOf ['\r', '\n']

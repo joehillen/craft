@@ -1,9 +1,11 @@
 module Craft.Config.Shell where
 
 import           Control.Lens                   hiding (noneOf, set)
+import qualified Data.ByteString.Char8 as B8
 import           Data.Maybe                     (catMaybes)
+import           Data.Void                      (Void)
 import           Text.Megaparsec                hiding (parse)
-import           Text.Megaparsec.String
+import           Text.Megaparsec.Char
 
 import           Craft                          hiding (try)
 import           Craft.Config
@@ -21,7 +23,7 @@ instance ConfigFormat ShellFormat where
      showkv :: (String, String) -> String
      showkv (k, v) = k++"="++v
   parseConfig fp s =
-    case runParser parser (fromAbsFile fp) s of
+    case runParser parser (fromAbsFile fp) (B8.unpack s) of
       Left err   -> $craftError $ show err
       Right cfgs -> return cfgs
 
@@ -60,24 +62,24 @@ empty = ShellFormat []
 
 
 -- TESTME
-parser :: Parser ShellFormat
+parser :: Parsec Void String ShellFormat
 parser = do
   items <- line `sepEndBy` eol
   return . ShellFormat $ catMaybes items
 
 
-line :: Parser (Maybe (String, String))
+line :: Parsec Void String (Maybe (String, String))
 line =  do
   try (comment >> return Nothing)
   <|> try (space >> end >> return Nothing)
   <|> (Just <$> item)
 
 
-comment :: Parser ()
+comment :: Parsec Void String ()
 comment = space >> char '#' >> manyTill anyChar end >> return ()
 
 
-item :: Parser (String, String)
+item :: Parsec Void String (String, String)
 item = do
   space
   name <- some $ noneOf [' ', '=']

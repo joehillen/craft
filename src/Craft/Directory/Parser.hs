@@ -4,12 +4,13 @@ module Craft.Directory.Parser where
 
 import           Control.Monad          (void)
 import           Text.Megaparsec
-import           Text.Megaparsec.String
+import           Text.Megaparsec.Char
+import           Data.Void (Void)
 
 
-getFilesParser :: Parser [String]
+getFilesParser :: Parsec Void String [String]
 getFilesParser = do
-  void $ optional $ string "." >> newline
+  void $ optional $ char '.' >> newline
   void $ optional $ string ".." >> newline
   r <- (some $ noneOf ['\n']) `sepEndBy` newline
   space

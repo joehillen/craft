@@ -1,7 +1,7 @@
 module Craft.Config where
 
 import           Control.Lens
-import qualified Data.ByteString.Char8 as B8
+import           Data.ByteString       (ByteString)
 
 import           Craft
 import qualified Craft.File            as File
@@ -25,14 +25,14 @@ config fp cfg =
 class ConfigFormat a where
   showConfig :: a -> String
 
-  parseConfig :: AbsFilePath -> String -> Craft a
+  parseConfig :: AbsFilePath -> ByteString -> Craft a
 
   configFromFile :: File -> Craft (Config a)
   configFromFile f = do
     bs <- case f ^. fileContent of
             Nothing -> fileRead (f ^. path)
             Just bs -> return bs
-    cfgs <- parseConfig (f^.path) (B8.unpack bs)
+    cfgs <- parseConfig (f^.path) bs
     return Config { _configFile = f
                   , _configs    = cfgs
                   }

@@ -1,8 +1,9 @@
 module Craft.SSH.PublicKey where
 
 import           Control.Lens
+import           Data.Void                      (Void)
 import           Text.Megaparsec
-import           Text.Megaparsec.String
+import           Text.Megaparsec.Char
 
 import           Craft
 import           Craft.Internal.Helpers.Parsing
@@ -35,7 +36,7 @@ toString pk =
      ++ if null comment then "" else " " ++ comment
 
 
-parsePublicKey :: Parser PublicKey
+parsePublicKey :: Parsec Void String PublicKey
 parsePublicKey = do
   space
   kt <- parseKeyType
@@ -46,5 +47,5 @@ parsePublicKey = do
   return $ PublicKey kt key comment
 
 
-base64Char :: Parser Char
+base64Char :: Parsec Void String Char
 base64Char = alphaNumChar <|> char '+' <|> char '/' <|> char '='

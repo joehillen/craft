@@ -9,6 +9,7 @@ where
 import           Control.Lens
 import qualified Data.HashMap.Strict as HM
 import           Data.Ini
+import           Data.Text.Encoding           (decodeUtf8)
 import qualified Data.Text           as T
 
 import           Craft.Config
@@ -32,7 +33,7 @@ config = Craft.Config.config
 instance ConfigFormat IniFormat where
   showConfig format = T.unpack . printIniWith (_settings format) $ _inifmt format
   parseConfig fp s =
-    case parseIni (T.pack s) of
+    case parseIni (decodeUtf8 s) of
       Left err -> $craftError $ "Failed to parse ini file"++show fp++": "++err
       Right x  -> return $ IniFormat
                            { _inifmt   = x

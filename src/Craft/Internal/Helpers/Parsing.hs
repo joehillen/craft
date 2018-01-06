@@ -1,10 +1,10 @@
 module Craft.Internal.Helpers.Parsing where
 
 import           Control.Monad          (void)
+import           Data.Void (Void)
+import           Text.Megaparsec
+import           Text.Megaparsec.Char (eol)
 
-import           Text.Megaparsec        hiding (parse)
-import           Text.Megaparsec.String
 
-
-end :: Parser ()
+end :: Parsec Void String ()
 end = try (void $ lookAhead eol) <|> eof

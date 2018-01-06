@@ -18,7 +18,7 @@ data JsonFormat a = (FromJSON a, ToJSON a) => JsonFormat { _jsonfmt :: a }
 instance (FromJSON a, ToJSON a) => ConfigFormat (JsonFormat a) where
   showConfig = B8.unpack . BSL.toStrict . encodePretty . _jsonfmt
   parseConfig fp s =
-    case eitherDecodeStrict (B8.pack s) of
+    case eitherDecodeStrict s of
       Left err -> $craftError $ "Failed to parse "++show fp++" : "++err
       Right x  -> return $ JsonFormat x
 
@@ -31,4 +31,5 @@ config :: (FromJSON a, ToJSON a) => AbsFilePath -> a -> Config (JsonFormat a)
 config fp = Craft.Config.config fp . JsonFormat
 
 
-makeLenses ''JsonFormat
+jsonfmt :: (FromJSON a, ToJSON a) => Lens' (JsonFormat a) a
+jsonfmt f (JsonFormat x) = fmap JsonFormat (f x)

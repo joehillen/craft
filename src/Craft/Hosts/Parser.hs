@@ -5,9 +5,9 @@ module Craft.Hosts.Parser where
 import           Control.Monad                  (void)
 import           Data.List                      (intercalate)
 import           Data.Maybe                     (catMaybes)
+import           Data.Void                      (Void)
 import           Text.Megaparsec
--- import           Text.Megaparsec.Lexer
-import           Text.Megaparsec.String
+import           Text.Megaparsec.Char
 
 import           Craft.Hosts.Types
 import           Craft.Internal.Helpers.Parsing (end)
@@ -21,13 +21,13 @@ parseHosts s = do
     Left err -> $craftError $ show err
 
 
-parser :: Parser Hosts
+parser :: Parsec Void String Hosts
 parser = do
   rs <- parserLine `sepEndBy` (many eol)
   return . Hosts $ catMaybes rs
 
 
-parserLine :: Parser (Maybe (IP, [Name]))
+parserLine :: Parsec Void String (Maybe (IP, [Name]))
 parserLine = do
   -- skip comments
   try (comment >> return Nothing)
@@ -36,14 +36,14 @@ parserLine = do
   <|> (Just <$> item)
 
 
-comment :: Parser String
+comment :: Parsec Void String String
 comment = do
   skipMany white
   void $ char '#'
   manyTill anyChar end
 
 
-item :: Parser (IP, [Name])
+item :: Parsec Void String (IP, [Name])
 item = do
   skipMany white
   ip <- try ipv4 <|> ipv6
@@ -53,11 +53,11 @@ item = do
   return (ip, names)
 
 
-num :: Parser String
+num :: Parsec Void String String
 num = choice [ string "0", nonzero ]
 
 
-nonzero :: Parser String
+nonzero :: Parsec Void String String
 nonzero = do
   a <- oneOf ['1'..'9'] <?> "non-zero digit with non-zero part"
   rest <- count' 0 2 digitChar
@@ -67,15 +67,15 @@ nonzero = do
 
 
 -- TODO: check RFC
-hostname :: Parser Name
+hostname :: Parsec Void String Name
 hostname = Name <$> some (alphaNumChar <|> oneOf ['.', '-'])
 
 
-dot :: Parser ()
+dot :: Parsec Void String ()
 dot = void $ char '.'
 
 
-ipv4 :: Parser IP
+ipv4 :: Parsec Void String IP
 ipv4 = label "ipv4 address" $ do
   p1 <- num
   dot
@@ -88,9 +88,9 @@ ipv4 = label "ipv4 address" $ do
   return . IP $ intercalate "." [p1, p2, p3, p4]
 
 
-ipv6 :: Parser IP
+ipv6 :: Parsec Void String IP
 ipv6 = IP <$> some (hexDigitChar <|> char ':') <?> "ipv6 address"
 
 
-white :: Parser Char
+white :: Parsec Void String Char
 white = oneOf [' ', '\t']

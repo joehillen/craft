@@ -1,6 +1,8 @@
--- This file has been generated from package.yaml by hpack version 0.17.0.
+-- This file has been generated from package.yaml by hpack version 0.20.0.
 --
 -- see: https://github.com/sol/hpack
+--
+-- hash: b7624728fac953fa2a4e47d83185db420c2886eddc6fdda5e5d1cd7882188746
 
 name:           craft
 version:        0.0.0.1
@@ -19,13 +21,13 @@ library
   default-extensions: BangPatterns LambdaCase MultiParamTypeClasses OverloadedStrings QuasiQuotes RankNTypes RecordWildCards TemplateHaskell TypeFamilies
   ghc-options: -Wall
   build-depends:
-      megaparsec
+      MissingH
     , QuickCheck
-    , base >=4.8
     , aeson
     , aeson-pretty
     , ansi-terminal
     , async
+    , base >=4.8
     , bytestring
     , conduit
     , conduit-combinators
@@ -35,15 +37,13 @@ library
     , directory
     , exceptions
     , fast-logger
-    , monad-logger
     , filepath
     , formatting
     , free
-    , unordered-containers
     , ini
-    , lifted-base
     , lens
-    , MissingH
+    , lifted-base
+    , megaparsec
     , memory
     , monad-logger
     , mtl
@@ -59,6 +59,7 @@ library
     , text
     , transformers
     , unix
+    , unordered-containers
     , versions
     , yaml
   exposed-modules:
@@ -125,13 +126,13 @@ test-suite craft-test
       test
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall
   build-depends:
-      megaparsec
-    , QuickCheck
+      QuickCheck
     , base
     , craft
+    , heredoc
     , hspec >=1.3
     , hspec-megaparsec
-    , heredoc
+    , megaparsec
   other-modules:
       Craft.Config.ShellSpec
       Craft.Directory.ParserSpec
@@ -142,4 +143,5 @@ test-suite craft-test
       Craft.SSH.AuthorizedKeySpec
       Craft.SSH.PublicKeySpec
       Craft.SSHSpec
+      Paths_craft
   default-language: Haskell2010

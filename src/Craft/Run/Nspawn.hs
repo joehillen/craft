@@ -24,15 +24,15 @@ runNspawn dir =
         in runCreateProcess_ (showProcess p) p
   , runFileRead =
       \fp -> do
-        fp' <- stripDir $(mkAbsDir "/") fp
+        fp' <- stripProperPrefix $(mkAbsDir "/") fp
         Trans.lift . BS.readFile . fromAbsFile $ dir</>fp'
   , runFileWrite =
       \fp content -> do
-        fp' <- stripDir $(mkAbsDir "/") fp
+        fp' <- stripProperPrefix $(mkAbsDir "/") fp
         Trans.lift (BS.writeFile (fromAbsFile (dir</>fp')) content)
   , runSourceFile =
       \src dest -> do
-        dest' <- stripDir $(mkAbsDir "/") dest
+        dest' <- stripProperPrefix $(mkAbsDir "/") dest
         let p = (proc "/bin/cp" [src, fromAbsFile (dir</>dest')])
                 { env           = Nothing
                 , cwd           = Nothing

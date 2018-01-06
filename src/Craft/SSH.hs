@@ -2,8 +2,9 @@ module Craft.SSH where
 
 import           Control.Lens
 import           Data.Char              (toLower)
+import Data.Void (Void)
 import           Text.Megaparsec
-import           Text.Megaparsec.String
+import           Text.Megaparsec.Char
 
 import           Craft
 
@@ -34,7 +35,7 @@ userDir user =
   & ownerAndGroup .~ user
 
 
-parseKeyType :: Parser KeyType
+parseKeyType :: Parsec Void String KeyType
 parseKeyType = do
   void $ string "ssh-"
   s <- alphaNumChar `someTill` (void spaceChar <|> eof)

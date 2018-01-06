@@ -1,15 +1,16 @@
 module Craft.SSH.AuthorizedKey where
 
 import           Control.Lens
-import qualified Data.Map.Strict        as Map
-import           Data.Maybe             (catMaybes)
+import qualified Data.Map.Strict      as Map
+import           Data.Maybe           (catMaybes)
+import           Data.Void            (Void)
 import           Text.Megaparsec
-import           Text.Megaparsec.String
+import           Text.Megaparsec.Char
 
-import           Craft                  hiding (try)
-import qualified Craft.File             as File
+import           Craft                hiding (try)
+import qualified Craft.File           as File
 import           Craft.SSH
-import           Craft.SSH.PublicKey    as PK
+import           Craft.SSH.PublicKey  as PK
 
 
 data AuthorizedKey
@@ -62,7 +63,7 @@ authkeysToMap :: [AuthorizedKey] -> Map.Map String PublicKey
 authkeysToMap = Map.fromList . map (((,)<$>_pubkeyValue<*>id) . _authkey)
 
 
-parsePublicKeys :: Parser [PublicKey]
+parsePublicKeys :: Parsec Void String [PublicKey]
 parsePublicKeys = do
   keys <- (try (Just <$> parsePublicKey) <|> (space >> return Nothing)) `sepEndBy` eol
   return $ catMaybes keys

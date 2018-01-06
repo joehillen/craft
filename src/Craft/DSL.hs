@@ -3,13 +3,14 @@ module Craft.DSL where
 import           Control.Lens
 import           Control.Monad.Free
 import           Control.Monad.Reader
-import qualified Data.ByteString        as BS
-import qualified Data.ByteString.Char8  as B8
-import           Data.List              (intercalate)
-import           Data.List.Split        (splitOn)
-import qualified Data.Map.Strict        as Map
+import qualified Data.ByteString       as BS
+import qualified Data.ByteString.Char8 as B8
+import           Data.List             (intercalate)
+import           Data.List.Split       (splitOn)
+import qualified Data.Map.Strict       as Map
+import           Data.Void             (Void)
 import           Text.Megaparsec
-import           Text.Megaparsec.String
+import           Text.Megaparsec.Char
 
 import           Craft.Types
 
@@ -49,7 +50,7 @@ sourceFile :: (IO FilePath) -> AbsFilePath -> Craft ()
 sourceFile sourcer dest = liftF $ SourceFile sourcer dest ()
 
 
-parseExecResult :: ExecResult -> Parser a -> String -> Craft a
+parseExecResult :: ExecResult -> Parsec Void String a -> String -> Craft a
 parseExecResult execr parser str =
   case parse parser (showProcess $ execResultProcess execr) str of
     Right x -> return x
@@ -66,7 +67,7 @@ parseExecResult execr parser str =
 
 
 -- | better than grep
-parseExecStdout :: Parser a -> Command -> Args -> Craft a
+parseExecStdout :: Parsec Void String a -> Command -> Args -> Craft a
 parseExecStdout parser cmd args = do
   r <- exec cmd args
   s <- $stdoutOrError r
@@ -74,7 +75,7 @@ parseExecStdout parser cmd args = do
 
 
 -- TODO: XXX: What if the file doesn't exist?
-parseFile :: Parser a -> AbsFilePath -> Craft a
+parseFile :: Parsec Void String a -> AbsFilePath -> Craft a
 parseFile parser fp = do
   str <- B8.unpack <$> fileRead fp
   case runParser parser (show fp) str of
@@ -158,7 +159,7 @@ getStats fp =
     Success r -> Just <$> parseExecResult (Success r) statsParser (r^.stdout)
 
 
-statsParser :: Parser (Mode, UserID, GroupID)
+statsParser :: Parsec Void String (Mode, UserID, GroupID)
 statsParser = do
   mode' <- modeParser
   void $ char ':'
@@ -168,9 +169,9 @@ statsParser = do
   return (mode', owner', group')
 
 
-modeParser :: Parser Mode
+modeParser :: Parsec Void String Mode
 modeParser = fromOctalString <$> some digitChar
 
 
-digitParser :: Parser Int
+digitParser :: Parsec Void String Int
 digitParser = read <$> some digitChar

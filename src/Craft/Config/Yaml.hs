@@ -14,9 +14,9 @@ data YamlFormat a = (FromJSON a, ToJSON a) => YamlFormat { _yamlfmt :: a }
 
 
 instance (FromJSON a, ToJSON a) => ConfigFormat (YamlFormat a) where
-  showConfig = B8.unpack . encode . _yamlfmt
+  showConfig (YamlFormat c) = B8.unpack $ encode c
   parseConfig fp s =
-    case decodeEither (B8.pack s) of
+    case decodeEither s of
       Left err -> $craftError $ "Failed to parse " ++ show fp ++ " : " ++ err
       Right x  -> return $ YamlFormat x
 
@@ -29,4 +29,5 @@ config :: (FromJSON a, ToJSON a) => AbsFilePath -> a -> Config (YamlFormat a)
 config fp = Craft.Config.config fp . YamlFormat
 
 
-makeLenses ''YamlFormat
+yamlfmt :: (FromJSON a, ToJSON a) => Lens' (YamlFormat a) a
+yamlfmt f (YamlFormat x) = fmap YamlFormat (f x)

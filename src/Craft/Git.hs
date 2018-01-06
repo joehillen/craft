@@ -1,12 +1,13 @@
 module Craft.Git where
 
-import           Control.Lens           hiding (noneOf)
-import           Formatting             hiding (char)
+import           Control.Lens         hiding (noneOf)
+import           Data.Void            (Void)
+import           Formatting           hiding (char)
 import           Text.Megaparsec
-import           Text.Megaparsec.String
+import           Text.Megaparsec.Char
 
-import           Craft                  hiding (Version (..))
-import qualified Craft.Directory        as Dir
+import           Craft                hiding (Version (..))
+import qualified Craft.Directory      as Dir
 
 
 type BranchName = String
@@ -94,14 +95,14 @@ getURL = do
 
 
 -- TESTME
-repoURLParser :: Parser [((String, String), String)]
+repoURLParser :: Parsec Void String [((String, String), String)]
 repoURLParser = some $ do
   remote <- word
   url' <- word
   direction <- char '(' *> some alphaNumChar <* char ')' <* newline
   return ((remote, direction), url')
  where
-  word :: Parser String
+  word :: Parsec Void String String
   word = some (noneOf [' ', '\t']) <* some (spaceChar <|> tab)
 
 

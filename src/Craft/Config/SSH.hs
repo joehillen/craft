@@ -1,10 +1,12 @@
 module Craft.Config.SSH where
 
 import           Control.Lens                   hiding (noneOf)
+import qualified Data.ByteString.Char8          as B8
 import           Data.Char                      (toLower)
 import           Data.Maybe                     (catMaybes)
-import           Text.Megaparsec
-import           Text.Megaparsec.String
+import           Data.Void                      (Void)
+import           Text.Megaparsec                hiding (match)
+import           Text.Megaparsec.Char
 
 import           Craft                          hiding (try)
 import           Craft.Config
@@ -44,7 +46,7 @@ makeLenses ''UserConfig
 
 instance ConfigFormat SSHConfig where
   showConfig = show
-  parseConfig = sshConfigParse
+  parseConfig fp s = sshConfigParse fp (B8.unpack s)
 
 
 userPath :: UserConfig -> AbsFilePath
@@ -102,7 +104,7 @@ instance Show Section where
   show (Match match body)   = "Match " ++ match ++ "\n" ++ showBody body
 
 
-parseTitle :: Parser (String, String)
+parseTitle :: Parsec Void String (String, String)
 parseTitle = do
   space
   type' <- try (string' "host") <|> string' "match"
@@ -113,11 +115,11 @@ parseTitle = do
   return (type', name)
 
 
-parseBody :: Parser [(String, String)]
+parseBody :: Parsec Void String [(String, String)]
 parseBody = many bodyLine
 
 
-bodyLine :: Parser (String, String)
+bodyLine :: Parsec Void String (String, String)
 bodyLine = do
   notFollowedBy parseTitle
   space
@@ -130,7 +132,7 @@ bodyLine = do
   return (name, trim val)
 
 
-parseSection :: Parser Section
+parseSection :: Parsec Void String Section
 parseSection = do
   title <- parseTitle
   body <- parseBody
@@ -140,6 +142,6 @@ parseSection = do
     _       -> error "Craft.Config.SSH.parse failed. This should be impossible."
 
 
-parser :: Parser Sections
+parser :: Parsec Void String Sections
 parser = some parseSection
 
