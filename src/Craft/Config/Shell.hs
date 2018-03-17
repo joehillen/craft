@@ -4,7 +4,7 @@ import           Control.Lens                   hiding (noneOf, set)
 import qualified Data.ByteString.Char8 as B8
 import           Data.Maybe                     (catMaybes)
 import           Data.Void                      (Void)
-import           Text.Megaparsec                hiding (parse)
+import           Text.Megaparsec                hiding (parse, empty)
 import           Text.Megaparsec.Char
 
 import           Craft                          hiding (try)
