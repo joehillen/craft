@@ -171,7 +171,7 @@ sameElems xs ys = S.fromList xs == S.fromList ys
 createUser :: UserOptions -> Craft ()
 createUser UserOptions{..} = do
   groupArg <- getGroupArg _optGroup
-  exec_ "useradd" $ optsToArgs ++ groupArg ++ groupsArg ++ [show _optName]
+  exec_ "useradd" $ optsToArgs ++ groupArg ++ groupsArg ++ [_optName]
  where
   getGroupArg :: Maybe GroupName -> Craft [String]
   getGroupArg Nothing = return []
