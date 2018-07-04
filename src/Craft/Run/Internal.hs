@@ -55,7 +55,7 @@ runCreateProcess_ src p = do
     ExitSuccess   -> return ()
  where
    pipeConsumer logger s =
-     decodeUtf8C =$= CT.lines =$ awaitForever (\txt ->
+     decodeUtf8C .| CT.lines .| awaitForever (\txt ->
        (`runLoggingT` logger) (logDebugNS s txt))
 
 

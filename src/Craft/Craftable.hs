@@ -266,7 +266,7 @@ instance Craftable User User where
         if and res
           then return (Unchanged, existingUser)
           else
-            userFromStr (show name) >>= \case
+            userFromStr name >>= \case
               Nothing -> notFound
               Just user'' -> return (Updated, user'')
 

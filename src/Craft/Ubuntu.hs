@@ -51,7 +51,7 @@ instance Destroyable PPA where
     then return (Unchanged, Nothing)
     else do
       craft_ $ package "software-properties-common"
-      exec_ "add-apt-repository" ["-y", "-r", "ppa:" ++ url]
+      void $ exec "add-apt-repository" ["-y", "-r", "ppa:" ++ url]
       fsAfter <- findPPAFiles ppa
       unless (null fsAfter) $
         $craftError $ formatToString ("destroy PPA `"%shown%"` failed! Found: "%shown) ppa fsAfter
