@@ -27,7 +27,7 @@ import           Data.Map.Strict            (Map)
 import qualified Data.Map.Strict            as Map
 import           Data.Maybe                 (isNothing)
 import qualified Data.Text                  as T
-import           Data.Versions              (parseV)
+import qualified Data.Versions
 import           Formatting
 import           Language.Haskell.TH.Syntax (Exp, Q)
 import           Path                       hiding (File)
@@ -491,7 +491,7 @@ compareVersions a b =
   compare (ver a) (ver b)
  where
   ver x =
-    case parseV (T.pack x) of
+    case Data.Versions.version (T.pack x) of
       Left err -> error $ "Failed to parse version '" ++ x ++ "': " ++ show err
       Right v  -> v
 

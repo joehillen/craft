@@ -28,18 +28,21 @@ data Watched
   deriving (Eq, Show)
 makePrisms ''Watched
 
+instance Semigroup Watched where
+  a         <> Unchanged = a
+  Unchanged <> a         = a
+  Updated   <> a         = a
+  a         <> Updated   = a
+  Created   <> Created   = Created
+  Removed   <> Removed   = Removed
+  Created   <> Removed   = Updated -- ???
+  Removed   <> Created   = Updated -- ???
+
 -- | This instance might be unsound.
 -- What to do about `mappend Created Removed`?
 instance Monoid Watched where
-  mempty = Unchanged
-  mappend a         Unchanged = a
-  mappend Unchanged a         = a
-  mappend Updated   a         = a
-  mappend a         Updated   = a
-  mappend Created   Created   = Created
-  mappend Removed   Removed   = Removed
-  mappend Created   Removed   = Updated -- ???
-  mappend Removed   Created   = Updated -- ???
+  mempty              = Unchanged
+  mappend a         b = a <> b
 
 
 changed :: Watched -> Bool
