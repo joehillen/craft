@@ -20,7 +20,7 @@ renderUnit :: UnitFormat -> String
 renderUnit = unlines . map renderSection
 
 renderSection :: (String, [(String, String)]) -> String
-renderSection (name, fields) = unlines $ ("["++name++"]"):(map renderField fields)
+renderSection (name, fields) = unlines $ ("["++name++"]"):map renderField fields
 
 renderField :: (String, String) -> String
 renderField (k, v) = k++"="++v
@@ -39,8 +39,7 @@ data Status
 --------------------------------------------------------------------------------
 -- Unit
 
-data Unit
-  = Unit
+newtype Unit = Unit
   { _unitFile       :: File
   }
 
@@ -127,7 +126,7 @@ class HasUnitName a where
   unitName :: Getter a String
 
 instance HasUnitName Unit where
-  unitName = unitFile.fileName.(to fromRelFile)
+  unitName = unitFile.fileName.to fromRelFile
 
 instance HasUnitName Service where
   unitName = serviceUnit.unitName
@@ -149,8 +148,14 @@ stop = ctl "stop"
 enable :: HasUnitName u => u -> Craft ()
 enable = ctl "enable"
 
+enableNow :: HasUnitName u => u -> Craft ()
+enableNow u = systemctl "enable" ["--now", u^.unitName]
+
 disable :: HasUnitName u => u -> Craft ()
 disable = ctl "disable"
+
+disableNow :: HasUnitName u => u -> Craft ()
+disableNow u = systemctl "disable" ["--now", u^.unitName]
 
 reload :: HasUnitName u => u -> Craft ()
 reload = ctl "reload"
@@ -176,12 +181,8 @@ instance Craftable Service Service where
         when (w /= Created && any changed (w:s^.watches)) $
           if s^.restartOnChange
             then restart s
-            else
-              if s^.reloadOnChange
-                then reloadOrRestart s
-                else return ()
-        unlessM (isActive s) $
-          start s
+            else when (s^.reloadOnChange) $ reloadOrRestart s
+        start s
     return (w, s)
 
 
