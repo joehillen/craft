@@ -44,26 +44,26 @@ instance Craftable Wget Wget where
                             <> "Expected `"<>show (wg^.chksum)<>"` "
                             <> "Got `"<>show actual<>"`"
     let check = Checksum.check destf
-    let watchDest = do
+    let watchCraftDest = do
           w <- watchCraft_ destf
           return (w, wg)
 
     let freshDownload = do
           run wg
           case wg ^. chksum of
-            Nothing      -> watchDest
+            Nothing      -> watchCraftDest
             Just chksum' ->
               check chksum' >>= \case
-                Checksum.Matched           -> watchDest
+                Checksum.Matched           -> watchCraftDest
                 Checksum.Failed r          -> $craftError $ show r
                 Checksum.Mismatched actual -> $craftError $ mismatchError actual
     File.exists destfp >>= \case
       True ->
         case wg ^. chksum of
-          Nothing      -> freshDownload
+          Nothing      -> watchCraftDest
           Just chksum' ->
             check chksum' >>= \case
-              Checksum.Matched      -> watchDest
+              Checksum.Matched      -> watchCraftDest
               Checksum.Failed r     -> $craftError $ show r
               Checksum.Mismatched _ -> freshDownload
       False -> do
