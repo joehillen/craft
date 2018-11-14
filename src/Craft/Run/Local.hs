@@ -10,7 +10,6 @@ import           System.Process      hiding (readCreateProcessWithExitCode,
 import           Craft.Run.Internal
 import           Craft.Types
 
-
 runLocal :: CraftRunner
 runLocal =
   CraftRunner

@@ -1,8 +1,10 @@
--- This file has been generated from package.yaml by hpack version 0.20.0.
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b7624728fac953fa2a4e47d83185db420c2886eddc6fdda5e5d1cd7882188746
+-- hash: c195dccadc46afd55faf64c3604ad911ad6c61f1a5c1e0dad155cf4285880e4b
 
 name:           craft
 version:        0.0.0.1
@@ -13,7 +15,6 @@ maintainer:     joehillen@gmail.com
 license:        Apache-2.0
 license-file:   LICENSE
 build-type:     Simple
-cabal-version:  >= 1.10
 
 library
   hs-source-dirs:
