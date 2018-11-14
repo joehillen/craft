@@ -1,12 +1,13 @@
 module Craft.Git where
 
 import           Control.Lens         hiding (noneOf)
+import           Control.Monad.Trans.Maybe
 import           Data.Void            (Void)
 import           Formatting           hiding (char)
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 
-import           Craft                hiding (Version (..))
+import           Craft
 import qualified Craft.Directory      as Dir
 
 
@@ -15,17 +16,17 @@ type TagName    = String
 type SHA        = String
 
 
-data Version
+data Rev
   = Branch BranchName
-  | Latest BranchName
+  | Pull   BranchName
   | Tag    TagName
   | Commit SHA
  deriving (Eq)
 
 
-instance Show Version where
+instance Show Rev where
   show (Branch name) = name
-  show (Latest name) = name
+  show (Pull name) = name
   show (Tag    name) = "tags/" ++ name
   show (Commit sha)  = sha
 
@@ -41,19 +42,21 @@ data Repo
   = Repo
     { _gitUrl       :: URL
     , _gitDirectory :: Directory
-    , _gitVersion   :: Version
+    , _gitRev       :: Rev
     , _gitDepth     :: Maybe Int
     }
   deriving (Eq, Show)
 makeLenses ''Repo
 
+rev :: Lens' Repo Rev
+rev = gitRev
 
 repo :: URL -> AbsDirPath -> Repo
 repo url' dirpath =
   Repo
   { _gitUrl       = url'
   , _gitDirectory = directory dirpath
-  , _gitVersion   = Latest "master"
+  , _gitRev       = Pull "master"
   , _gitDepth     = Nothing
   }
 
@@ -106,73 +109,72 @@ repoURLParser = some $ do
   word = some (noneOf [' ', '\t']) <* some (spaceChar <|> tab)
 
 
-getVersion :: Craft Version
-getVersion = Commit <$> parseExecStdout (some alphaNumChar) gitBin ["rev-parse", "HEAD"]
+getRev :: Craft Rev
+getRev = Commit <$> parseExecStdout (some alphaNumChar) gitBin ["rev-parse", "HEAD"]
 
 
 get :: AbsDirPath -> Craft (Maybe Repo)
-get dp =
-  Dir.get dp >>= \case
-    Nothing -> return Nothing
-    Just dir ->
-      inDirectory dir $ do
-        !url'     <- getURL
-        !version' <- getVersion
-        return $
-          Just $ Repo
-          { _gitDirectory = dir
-          , _gitUrl       = url'
-          , _gitVersion   = version'
-          , _gitDepth     = Nothing
-          }
+get dp = runMaybeT $ do
+  dir <- MaybeT $ Dir.get dp
+  MaybeT $ inDirectory dir $
+    Just <$> (Repo <$> getURL
+                   <*> pure dir
+                   <*> getRev
+                   <*> pure Nothing)
 
 
 instance Craftable Repo Repo where
-  watchCraft repo' = do
-    let dp = repo' ^. gitDirectory . path
-        ver = repo' ^. gitVersion
-        verify ver' =
-          case ver of
+  watchCraft desiredRepo = do
+    let dp = desiredRepo ^. gitDirectory . path
+    let desiredRev = desiredRepo ^. gitRev
+    let verify actualRev =
+          case desiredRev of
             Commit _ ->
-              when (ver' /= ver) $
+              when (actualRev /= desiredRev) $
                 $craftError
-                $ formatToString ("craft Git.Repo' `"%shown%"` failed! Wrong Commit: "%shown%" Got: "%shown)
-                                 repo' ver ver'
+                $ formatToString ("craft Git.DesiredRepo `"%shown%"` failed! Wrong Commit: "%shown%" Got: "%shown)
+                                 desiredRepo desiredRev actualRev
             _ -> return ()
-        checkoutCommit :: Craft Version
+
+    let checkoutCommit :: Craft Rev
         checkoutCommit = do
-          setURL $ repo' ^. gitUrl
+          setURL $ desiredRepo ^. gitUrl
           git "fetch" [origin]
-          git "checkout" ["--force", show ver]
+          git "checkout" ["--force", show desiredRev]
           git "reset" ["--hard"]
-          ver' <- getVersion
-          verify ver'
-          return ver'
+          actualRev <- getRev
+          verify actualRev
+          return actualRev
+
+    let depthArg = case desiredRepo ^. gitDepth of
+          Nothing -> []
+          Just d  -> ["--depth", show d]
+
     res <-
       Dir.get dp >>= \case
         Nothing -> do
-          case repo' ^. gitDepth of
-            Nothing -> git "clone" [repo' ^. gitUrl, fromAbsDir dp]
-            Just d  -> git "clone" ["--depth", show d, repo' ^. gitUrl, fromAbsDir dp]
+          git "clone" $ depthArg++[desiredRepo ^. gitUrl, fromAbsDir dp]
           Dir.get dp >>= \case
-            Nothing -> $craftError $ "craft Git.Repo' `"++show repo'++"` failed! "
-                                  ++ "Clone Failed. Directory `"++show dp++"` not found."
+            Nothing -> $craftError $ "craft Git.Repo `"++show desiredRepo++"` failed! "
+                                  ++ "Clone Failed. Directory not found: "++show dp
             Just dir -> do
-              craft_ $ repo' ^. gitDirectory
+              craft_ $ desiredRepo ^. gitDirectory
               inDirectory dir $ do
-                ver' <- checkoutCommit
-                return (Created, repo' & gitVersion .~ ver' )
+                actualRev <- checkoutCommit
+                return (Created, desiredRepo & gitRev .~ actualRev)
 
         Just dir -> do
-          craft_ $ repo' ^. gitDirectory
+          craft_ $ desiredRepo ^. gitDirectory
           inDirectory dir $ do
-            !beforeVersion <- getVersion
-            ver' <- checkoutCommit
-            case ver of
-              Latest branchName -> git "pull" [origin, branchName]
-              _                 -> return ()
-            return ( if beforeVersion == ver' then Unchanged else Updated
-                   , repo' & gitVersion .~ ver')
+            !beforeRev <- getRev
+            actualRev <- checkoutCommit
+            case desiredRev of
+              Pull branchName -> git "pull" [origin, branchName]
+              _               -> return ()
+            let w = if beforeRev == actualRev
+                      then Unchanged
+                      else Updated
+            return (w, desiredRepo & gitRev .~ actualRev)
     when (changed (fst res)) $
-      exec_ "chown" [((show $ repo'^.ownerID)++":"++(show $ repo'^.groupID)), "-R", fromAbsDir (repo'^.path)]
+      exec_ "chown" [((show $ desiredRepo^.ownerID)++":"++(show $ desiredRepo^.groupID)), "-R", fromAbsDir (desiredRepo^.path)]
     return res
